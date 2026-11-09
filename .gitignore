@@ -1,0 +1,32 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+.idea/
+*.iml
+dist/
+.env
+!gradle/wrapper/gradle-wrapper.jar
+
+# Voice input engine (scripts/fetch_voice_assets.sh): sherpa-onnx runtime and GigaAM/Silero models.
+app/libs/
+app/src/main/assets/voice/
+
+# Emoji pictures (scripts/fetch_emoji.py): Apple artwork fetched at build time; the catalog next to them is committed.
+app/src/main/assets/emoji/img/
+
+# Trained slide to type model (just swipe-install): its licence is not settled.
+app/src/main/assets/swipe/
+core/src/test/resources/swipe/
+
+# Word pairs from Russian Wikipedia for slide to type (just bigrams): tens of MB, rebuilt locally.
+app/src/main/assets/dict/
+.DS_Store
+
+*.md
+!README.md
+!DEV.md
+!CONTRIBUTION.md
+!docs/**/*.md
+.claude
+__pycache__/
