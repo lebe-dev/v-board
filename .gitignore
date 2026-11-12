@@ -25,6 +25,7 @@ app/src/main/assets/dict/
 
 *.md
 !README.md
+!CHANGELOG.md
 !DEV.md
 !CONTRIBUTION.md
 !docs/**/*.md
