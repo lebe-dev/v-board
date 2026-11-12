@@ -130,9 +130,9 @@ internal class KeyRenderer(
         fillRoundRect(canvas, b, theme.keyColor(spec.style, pressed), radius)
 
         when (spec.type) {
-            KeyType.SHIFT -> drawIcon(canvas, b, shiftIcon(), theme.label)
-            KeyType.BACKSPACE -> drawIcon(canvas, b, R.drawable.ic_backspace, theme.label)
-            KeyType.LANGUAGE -> drawIcon(canvas, b, R.drawable.ic_language, theme.label)
+            KeyType.SHIFT -> drawIcon(canvas, b, shiftIcon(), theme.keyIcon)
+            KeyType.BACKSPACE -> drawIcon(canvas, b, R.drawable.ic_backspace, theme.keyIcon)
+            KeyType.LANGUAGE -> drawIcon(canvas, b, R.drawable.ic_language, theme.keyIcon)
             KeyType.ENTER -> drawIcon(canvas, b, enterAction.icon, theme.actionIcon)
             KeyType.SPACE -> drawLabel(canvas, b, spec.label, b.height * SPACE_LABEL_SIZE, theme.label)
             KeyType.SYMBOLS, KeyType.ALPHABET, KeyType.MORE_SYMBOLS ->

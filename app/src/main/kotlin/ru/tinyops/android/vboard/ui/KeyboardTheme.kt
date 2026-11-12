@@ -31,6 +31,7 @@ class KeyboardTheme(
     val suggestionDivider = palette.suggestionDivider
     val suggestionPressed = palette.suggestionPressed
     val stripIcon = palette.stripIcon
+    val keyIcon = palette.keyIcon
     val voiceActive = palette.voiceActive
     val voiceActiveIcon = palette.voiceActiveIcon
     val voiceHalo = palette.voiceHalo

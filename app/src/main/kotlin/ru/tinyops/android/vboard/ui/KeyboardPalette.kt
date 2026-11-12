@@ -32,6 +32,7 @@ data class KeyboardPalette(
     @param:ColorInt val voiceActiveIcon: Int,
     @param:ColorInt val voiceHalo: Int,
     @param:ColorInt val voiceStatus: Int,
+    @param:ColorInt val keyIcon: Int = label,
 ) {
     companion object {
         /** The built-in light or dark colors from `res/values(-night)/colors.xml`. */

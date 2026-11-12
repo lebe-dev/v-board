@@ -54,6 +54,36 @@ class KeyboardThemesTest {
     }
 
     @Test
+    fun `contrast icons recolor only the icons of their own variant`() {
+        KeyboardThemes.select(context, KeyboardThemes.MINT)
+        val mint = KeyboardThemes.find(KeyboardThemes.MINT)
+        assertEquals(false, KeyboardThemes.selected(context).whiteIcons)
+        assertEquals(false, KeyboardThemes.selected(context).darkIcons)
+
+        KeyboardThemes.setContrastIcons(context, night = true, on = true)
+        val choice = KeyboardThemes.selected(context)
+        val dark = choice.copy(mode = ThemeMode.DARK).palette(context)
+        assertEquals(Color.WHITE, dark.stripIcon)
+        assertEquals(Color.WHITE, dark.keyIcon)
+        assertEquals(mint.palette(context, night = true).label, dark.label)
+        assertEquals(mint.palette(context, night = false), choice.copy(mode = ThemeMode.LIGHT).palette(context))
+
+        KeyboardThemes.setContrastIcons(context, night = false, on = true)
+        val light = KeyboardThemes.selected(context).copy(mode = ThemeMode.LIGHT).palette(context)
+        assertEquals(Color.BLACK, light.stripIcon)
+        assertEquals(Color.BLACK, light.keyIcon)
+        assertNotEquals(choice.key, KeyboardThemes.selected(context).key)
+    }
+
+    @Test
+    fun `key icons take the label color by default`() {
+        for (theme in KeyboardThemes.all) {
+            val palette = theme.palette(context, night = true)
+            assertEquals(theme.id, palette.label, palette.keyIcon)
+        }
+    }
+
+    @Test
     fun `a fixed mode ignores the system one`() {
         val classic = KeyboardThemes.find(KeyboardThemes.CLASSIC)
         assertEquals(0xFFE9EAEC.toInt(), ThemeChoice(classic, ThemeMode.LIGHT).palette(context).background)

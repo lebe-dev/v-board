@@ -312,7 +312,9 @@ class EmojiPanelView(
             }
             addView(
                 ImageView(context).apply {
-                    setImageDrawable(requireNotNull(context.getDrawable(icon)).mutate().apply { setTint(theme.label) })
+                    setImageDrawable(
+                        requireNotNull(context.getDrawable(icon)).mutate().apply { setTint(theme.keyIcon) },
+                    )
                 },
                 LinearLayout.LayoutParams(dp(ACTION_ICON), dp(ACTION_ICON)).apply { marginEnd = dp(ACTION_ICON_GAP) },
             )
@@ -376,7 +378,7 @@ class EmojiPanelView(
     private fun backspaceButton(): View =
         ImageView(context).apply {
             setImageDrawable(
-                requireNotNull(context.getDrawable(R.drawable.ic_backspace)).mutate().apply { setTint(theme.label) },
+                requireNotNull(context.getDrawable(R.drawable.ic_backspace)).mutate().apply { setTint(theme.keyIcon) },
             )
             val paddingX = dp(BACKSPACE_PADDING_X)
             val paddingY = dp(BACKSPACE_PADDING_Y)

@@ -38,13 +38,18 @@ class ThemeSpec(
     ): KeyboardPalette = resolve(context, night)
 }
 
-/** A theme together with the mode that picks its variant. */
+/**
+ * A theme together with the mode that picks its variant. [whiteIcons] and [darkIcons] paint the
+ * icons without a color of their own white in the dark variant and black in the light one.
+ */
 data class ThemeChoice(
     val spec: ThemeSpec,
     val mode: ThemeMode,
+    val whiteIcons: Boolean = false,
+    val darkIcons: Boolean = false,
 ) {
     /** Changes whenever the keyboard has to be rebuilt with other colors. */
-    val key: String get() = "${spec.id}:${mode.id}"
+    val key: String get() = "${spec.id}:${mode.id}:$whiteIcons:$darkIcons"
 
     fun night(context: Context): Boolean =
         when (mode) {
@@ -53,7 +58,17 @@ data class ThemeChoice(
             ThemeMode.SYSTEM -> context.isNight()
         }
 
-    fun palette(context: Context): KeyboardPalette = spec.palette(context, night(context))
+    fun palette(context: Context): KeyboardPalette {
+        val night = night(context)
+        val palette = spec.palette(context, night)
+        val icon =
+            when {
+                night && whiteIcons -> Color.WHITE
+                !night && darkIcons -> Color.BLACK
+                else -> return palette
+            }
+        return palette.copy(stripIcon = icon, keyIcon = icon)
+    }
 }
 
 private fun Context.isNight(): Boolean =
@@ -75,6 +90,8 @@ object KeyboardThemes {
     private const val PREFS = "keyboard"
     private const val PREF_THEME = "theme"
     private const val PREF_MODE = "theme_mode"
+    private const val PREF_WHITE_ICONS = "icons_white"
+    private const val PREF_DARK_ICONS = "icons_dark"
 
     /** Stored theme ids that stand for the classic theme in a fixed mode. */
     private val CLASSIC_MODES = ThemeMode.entries.associateBy { it.id }
@@ -109,7 +126,12 @@ object KeyboardThemes {
             ThemeMode.entries.firstOrNull { it.id == prefs.getString(PREF_MODE, null) }
                 ?: CLASSIC_MODES[id]
                 ?: ThemeMode.SYSTEM
-        return ThemeChoice(find(id), mode)
+        return ThemeChoice(
+            spec = find(id),
+            mode = mode,
+            whiteIcons = prefs.getBoolean(PREF_WHITE_ICONS, false),
+            darkIcons = prefs.getBoolean(PREF_DARK_ICONS, false),
+        )
     }
 
     fun select(
@@ -128,6 +150,15 @@ object KeyboardThemes {
         mode: ThemeMode,
     ) {
         prefs(context).edit { putString(PREF_MODE, mode.id) }
+    }
+
+    /** Turns the contrast icons of the dark ([night]) or light variant on or off. */
+    fun setContrastIcons(
+        context: Context,
+        night: Boolean,
+        on: Boolean,
+    ) {
+        prefs(context).edit { putBoolean(if (night) PREF_WHITE_ICONS else PREF_DARK_ICONS, on) }
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

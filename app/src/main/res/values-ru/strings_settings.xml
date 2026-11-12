@@ -24,6 +24,9 @@
     <string name="theme_group_default">По умолчанию</string>
     <string name="theme_group_colors">Цвета</string>
     <string name="theme_dynamic">Динамический цвет</string>
+    <string name="theme_icons_white">Использовать белый цвет для иконок</string>
+    <string name="theme_icons_dark">Использовать тёмный цвет для иконок</string>
+    <string name="theme_icons_summary">Иконки без своего цвета: панель над клавишами, Shift, удаление и смена языка</string>
     <string name="theme_classic">Классика</string>
     <string name="theme_mode_system">Как в системе</string>
     <string name="theme_mode_light">Светлая</string>

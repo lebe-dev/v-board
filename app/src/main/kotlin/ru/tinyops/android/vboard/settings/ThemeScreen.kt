@@ -76,6 +76,22 @@ internal fun ThemeScreen(
     }
     SettingsPage(title = stringResource(R.string.theme_title), onBack = onBack) {
         item(key = "mode") { ModeChoice(selected.mode, onSelectMode) }
+        item(key = "icons") {
+            val night = selected.night(context)
+            SettingsSection(null) {
+                item {
+                    SettingsSwitchRow(
+                        title = stringResource(if (night) R.string.theme_icons_white else R.string.theme_icons_dark),
+                        summary = stringResource(R.string.theme_icons_summary),
+                        checked = if (night) selected.whiteIcons else selected.darkIcons,
+                        onCheckedChange = {
+                            KeyboardThemes.setContrastIcons(context, night, it)
+                            choice.value = KeyboardThemes.selected(context)
+                        },
+                    )
+                }
+            }
+        }
         for (group in ThemeGroup.entries) {
             item(key = group.name) {
                 ThemeGroupSection(group, KeyboardThemes.all.filter { it.group == group }, selected, onSelect)

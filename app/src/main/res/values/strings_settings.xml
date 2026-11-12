@@ -24,6 +24,9 @@
     <string name="theme_group_default">Default</string>
     <string name="theme_group_colors">Colors</string>
     <string name="theme_dynamic">Dynamic color</string>
+    <string name="theme_icons_white">Use white for icons</string>
+    <string name="theme_icons_dark">Use a dark color for icons</string>
+    <string name="theme_icons_summary">Icons without a color of their own: the panel above the keys, Shift, delete and the language key</string>
     <string name="theme_classic">Classic</string>
     <string name="theme_mode_system">System</string>
     <string name="theme_mode_light">Light</string>
