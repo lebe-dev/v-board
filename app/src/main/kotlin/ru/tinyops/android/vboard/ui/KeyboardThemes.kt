@@ -38,6 +38,12 @@ class ThemeSpec(
     ): KeyboardPalette = resolve(context, night)
 }
 
+/** Which of the pill-shaped keys, "?123" and the action key (the magnifier among them), are square like the rest. */
+data class KeyShapes(
+    val squareMode: Boolean = false,
+    val squareAction: Boolean = false,
+)
+
 /**
  * A theme together with the mode that picks its variant. [whiteIcons] and [darkIcons] paint the
  * icons without a color of their own white in the dark variant and black in the light one.
@@ -47,9 +53,10 @@ data class ThemeChoice(
     val mode: ThemeMode,
     val whiteIcons: Boolean = false,
     val darkIcons: Boolean = false,
+    val shapes: KeyShapes = KeyShapes(),
 ) {
     /** Changes whenever the keyboard has to be rebuilt with other colors. */
-    val key: String get() = "${spec.id}:${mode.id}:$whiteIcons:$darkIcons"
+    val key: String get() = "${spec.id}:${mode.id}:$whiteIcons:$darkIcons:$shapes"
 
     fun night(context: Context): Boolean =
         when (mode) {
@@ -92,6 +99,8 @@ object KeyboardThemes {
     private const val PREF_MODE = "theme_mode"
     private const val PREF_WHITE_ICONS = "icons_white"
     private const val PREF_DARK_ICONS = "icons_dark"
+    private const val PREF_SQUARE_MODE = "keys_square_mode"
+    private const val PREF_SQUARE_ACTION = "keys_square_action"
     private const val PREF_RECENT = "theme_recent"
     private const val RECENT_LIMIT = 3
 
@@ -133,6 +142,11 @@ object KeyboardThemes {
             mode = mode,
             whiteIcons = prefs.getBoolean(PREF_WHITE_ICONS, false),
             darkIcons = prefs.getBoolean(PREF_DARK_ICONS, false),
+            shapes =
+                KeyShapes(
+                    squareMode = prefs.getBoolean(PREF_SQUARE_MODE, false),
+                    squareAction = prefs.getBoolean(PREF_SQUARE_ACTION, false),
+                ),
         )
     }
 
@@ -172,6 +186,20 @@ object KeyboardThemes {
         on: Boolean,
     ) {
         prefs(context).edit { putBoolean(if (night) PREF_WHITE_ICONS else PREF_DARK_ICONS, on) }
+    }
+
+    fun setSquareModeKey(
+        context: Context,
+        on: Boolean,
+    ) {
+        prefs(context).edit { putBoolean(PREF_SQUARE_MODE, on) }
+    }
+
+    fun setSquareActionKey(
+        context: Context,
+        on: Boolean,
+    ) {
+        prefs(context).edit { putBoolean(PREF_SQUARE_ACTION, on) }
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

@@ -119,7 +119,7 @@ internal class KeyRenderer(
     ) {
         val spec = key.spec
         val b = key.bounds
-        val pill = spec.style == KeyStyle.MODE || spec.style == KeyStyle.ACTION
+        val pill = theme.isPill(spec.style)
         val radius = if (pill) b.height / 2f else theme.keyRadius
         // A pressed key sinks: its shadow disappears.
         if (!pressed) {
@@ -151,7 +151,7 @@ internal class KeyRenderer(
         key: PlacedKey,
     ) {
         val b = key.bounds
-        val pill = key.spec.style == KeyStyle.MODE || key.spec.style == KeyStyle.ACTION
+        val pill = theme.isPill(key.spec.style)
         fillRoundRect(canvas, b, theme.keyColor(KeyStyle.LETTER, false), if (pill) b.height / 2f else theme.keyRadius)
     }
 

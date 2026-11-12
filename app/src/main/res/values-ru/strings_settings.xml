@@ -20,6 +20,12 @@
     <string name="settings_appearance">Внешний вид</string>
     <string name="settings_voice_link_summary">Офлайн-распознавание речи, диктовка и обработка текста</string>
 
+    <string name="keys_title">Клавиши</string>
+    <string name="keys_link_summary">Форма клавиш "?123" и действия</string>
+    <string name="keys_square_mode">Квадратная клавиша "?123"</string>
+    <string name="keys_square_mode_summary">Как у букв, а не таблетка</string>
+    <string name="keys_square_action">Квадратная клавиша действия</string>
+    <string name="keys_square_action_summary">Клавиша Ввод и лупа: как у букв, а не таблетка</string>
     <string name="theme_title">Тема</string>
     <string name="theme_group_default">По умолчанию</string>
     <string name="theme_group_recent">Недавние</string>

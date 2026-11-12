@@ -249,7 +249,7 @@ class KeyboardService :
     private fun createInputView(): View {
         val choice = KeyboardThemes.selected(this)
         themeKey = choice.key
-        val theme = KeyboardTheme(this, choice.palette(this))
+        val theme = KeyboardTheme(this, choice.palette(this), choice.shapes)
         val strip =
             SuggestionStripView(this, theme).also {
                 it.listener = this

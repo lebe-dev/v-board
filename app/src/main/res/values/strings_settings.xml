@@ -20,6 +20,12 @@
     <string name="settings_appearance">Appearance</string>
     <string name="settings_voice_link_summary">Offline speech recognition, dictation and text processing</string>
 
+    <string name="keys_title">Keys</string>
+    <string name="keys_link_summary">Shape of the "?123" and action keys</string>
+    <string name="keys_square_mode">Square "?123" key</string>
+    <string name="keys_square_mode_summary">Like the letter keys instead of a pill</string>
+    <string name="keys_square_action">Square action key</string>
+    <string name="keys_square_action_summary">The Enter key and the magnifier, like the letter keys instead of a pill</string>
     <string name="theme_title">Theme</string>
     <string name="theme_group_default">Default</string>
     <string name="theme_group_recent">Recent</string>

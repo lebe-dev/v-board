@@ -132,4 +132,15 @@ class KeyboardThemesTest {
         for (id in listOf("plum", "mint", "plum", "coral", "dieter")) KeyboardThemes.select(context, id)
         assertEquals(listOf("dieter", "coral", "plum"), KeyboardThemes.recent(context).map { it.id })
     }
+
+    @Test
+    fun `mode and action keys are pills until made square`() {
+        assertEquals(KeyShapes(), KeyboardThemes.selected(context).shapes)
+        val before = KeyboardThemes.selected(context).key
+        KeyboardThemes.setSquareModeKey(context, true)
+        assertEquals(KeyShapes(squareMode = true), KeyboardThemes.selected(context).shapes)
+        KeyboardThemes.setSquareActionKey(context, true)
+        assertEquals(KeyShapes(squareMode = true, squareAction = true), KeyboardThemes.selected(context).shapes)
+        assertNotEquals(before, KeyboardThemes.selected(context).key)
+    }
 }

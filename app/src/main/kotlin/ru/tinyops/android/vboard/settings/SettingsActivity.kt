@@ -259,6 +259,7 @@ internal class TypingLinks(
 /** Where the rows of the settings root lead. */
 internal class MainSettingsLinks(
     val theme: () -> Unit,
+    val keys: () -> Unit,
     val voice: () -> Unit,
     val dictation: () -> Unit,
     val proofread: () -> Unit,
@@ -287,6 +288,7 @@ internal enum class Screen(
 ) {
     MAIN,
     THEME(MAIN),
+    KEYS(MAIN),
     VOICE(MAIN),
     CLIPBOARD(MAIN),
     FULLSCREEN(MAIN),
@@ -306,6 +308,15 @@ internal enum class Screen(
     SERVERS(MAIN),
     DIAGNOSTICS(MAIN),
     APP_LOG(DIAGNOSTICS),
+}
+
+@Composable
+private fun AppearancePage(
+    screen: Screen,
+    theme: MutableState<ThemeChoice>,
+    onBack: () -> Unit,
+) {
+    if (screen == Screen.THEME) ThemeScreen(theme, onBack) else KeysScreen(theme, onBack)
 }
 
 @Composable
@@ -352,8 +363,7 @@ private fun SettingsNavigation(
                     links = mainLinks(navigate = { screen = it }, openServers),
                     onClose = { backDispatcher?.onBackPressed() },
                 )
-            Screen.THEME ->
-                ThemeScreen(theme, onBack = back)
+            Screen.THEME, Screen.KEYS -> AppearancePage(current, theme, back)
             Screen.VOICE ->
                 VoiceSettingsScreen(
                     state = state,
@@ -398,6 +408,7 @@ private fun mainLinks(
     openServers: () -> Unit,
 ) = MainSettingsLinks(
     theme = { navigate(Screen.THEME) },
+    keys = { navigate(Screen.KEYS) },
     voice = { navigate(Screen.VOICE) },
     dictation = { navigate(Screen.DICTATION_FEATURE) },
     proofread = { navigate(Screen.PROOFREAD_FEATURE) },

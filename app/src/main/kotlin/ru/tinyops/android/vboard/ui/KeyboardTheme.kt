@@ -14,6 +14,7 @@ import ru.tinyops.android.vboard.core.layout.KeyStyle
 class KeyboardTheme(
     private val context: Context,
     palette: KeyboardPalette = KeyboardPalette.fromResources(context),
+    private val shapes: KeyShapes = KeyShapes(),
 ) {
     val background = palette.background
     val keyShadow = palette.keyShadow
@@ -57,6 +58,14 @@ class KeyboardTheme(
             KeyStyle.MODE to (palette.functionKey to palette.functionKeyPressed),
             KeyStyle.ACTION to (palette.actionKey to palette.actionKeyPressed),
         )
+
+    /** Whether a key of this style is a pill rather than a rounded square. */
+    fun isPill(style: KeyStyle): Boolean =
+        when (style) {
+            KeyStyle.MODE -> !shapes.squareMode
+            KeyStyle.ACTION -> !shapes.squareAction
+            else -> false
+        }
 
     private val icons = SparseArray<Drawable>()
 

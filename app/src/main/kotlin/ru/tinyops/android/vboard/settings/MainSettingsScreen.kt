@@ -46,6 +46,15 @@ internal fun MainSettingsScreen(
                 }
                 item {
                     SettingsLinkRow(
+                        title = stringResource(R.string.keys_title),
+                        summary = stringResource(R.string.keys_link_summary),
+                        icon = R.drawable.ic_keyboard,
+                        prominent = true,
+                        onClick = links.keys,
+                    )
+                }
+                item {
+                    SettingsLinkRow(
                         title = stringResource(R.string.settings_emoji),
                         summary = stringResource(R.string.settings_emoji_link_summary),
                         icon = R.drawable.ic_emoji,
