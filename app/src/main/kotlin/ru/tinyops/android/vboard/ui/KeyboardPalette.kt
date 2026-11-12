@@ -7,15 +7,12 @@ import androidx.annotation.ColorInt
 import androidx.core.graphics.ColorUtils
 import ru.tinyops.android.vboard.R
 
-/**
- * Every color the keyboard draws with. Key and strip colors may be translucent: they are painted
- * over the (possibly gradient) background. Previews and popups cover other keys and stay opaque.
- */
+/** Every color the keyboard draws with. Backgrounds, keys and previews are opaque. */
 data class KeyboardPalette(
-    @param:ColorInt val backgroundTop: Int,
-    @param:ColorInt val backgroundBottom: Int,
+    @param:ColorInt val background: Int,
     @param:ColorInt val key: Int,
     @param:ColorInt val keyPressed: Int,
+    @param:ColorInt val keyShadow: Int,
     @param:ColorInt val functionKey: Int,
     @param:ColorInt val functionKeyPressed: Int,
     @param:ColorInt val actionKey: Int,
@@ -36,17 +33,15 @@ data class KeyboardPalette(
     @param:ColorInt val voiceHalo: Int,
     @param:ColorInt val voiceStatus: Int,
 ) {
-    val isGradient: Boolean get() = backgroundTop != backgroundBottom
-
     companion object {
         /** The built-in light or dark colors from `res/values(-night)/colors.xml`. */
         fun fromResources(context: Context): KeyboardPalette {
             fun color(id: Int) = context.getColor(id)
             return KeyboardPalette(
-                backgroundTop = color(R.color.kb_background),
-                backgroundBottom = color(R.color.kb_background),
+                background = color(R.color.kb_background),
                 key = color(R.color.kb_key),
                 keyPressed = color(R.color.kb_key_pressed),
+                keyShadow = color(R.color.kb_key_shadow),
                 functionKey = color(R.color.kb_function_key),
                 functionKeyPressed = color(R.color.kb_function_key_pressed),
                 actionKey = color(R.color.kb_action_key),
@@ -90,10 +85,10 @@ data class KeyboardPalette(
                 val accent = color(android.R.color.system_accent1_200)
                 val onAccent = color(android.R.color.system_accent1_800)
                 KeyboardPalette(
-                    backgroundTop = color(android.R.color.system_neutral1_900),
-                    backgroundBottom = color(android.R.color.system_neutral1_900),
+                    background = color(android.R.color.system_neutral1_900),
                     key = color(android.R.color.system_neutral2_700),
                     keyPressed = color(android.R.color.system_neutral2_600),
+                    keyShadow = withAlpha(Color.BLACK, SHADOW_DARK),
                     functionKey = color(android.R.color.system_neutral2_800),
                     functionKeyPressed = color(android.R.color.system_neutral2_700),
                     actionKey = accent,
@@ -118,10 +113,10 @@ data class KeyboardPalette(
                 val accent = color(android.R.color.system_accent1_600)
                 val onAccent = color(android.R.color.system_accent1_0)
                 KeyboardPalette(
-                    backgroundTop = color(android.R.color.system_neutral2_50),
-                    backgroundBottom = color(android.R.color.system_neutral2_50),
+                    background = color(android.R.color.system_neutral2_50),
                     key = color(android.R.color.system_neutral1_10),
                     keyPressed = color(android.R.color.system_neutral2_100),
+                    keyShadow = withAlpha(Color.BLACK, SHADOW_LIGHT),
                     functionKey = color(android.R.color.system_accent2_100),
                     functionKeyPressed = color(android.R.color.system_accent2_200),
                     actionKey = accent,
@@ -146,110 +141,63 @@ data class KeyboardPalette(
         }
 
         /**
-         * A palette built around a background (a flat color when [top] == [bottom], else a vertical
-         * gradient) and an accent for the action key:
-         * keys are white (on dark backgrounds) or black (on light ones) veils over the background.
+         * A palette from a few base colors; pressed states, previews and the strip are derived.
+         * [shadow] is the opaque tint of the key shadow, applied with a dark- or light-theme alpha.
          */
-        fun tinted(
-            @ColorInt top: Int,
-            @ColorInt bottom: Int,
-            @ColorInt accent: Int,
-            dark: Boolean,
+        @Suppress("LongParameterList")
+        fun of(
+            @ColorInt background: Int,
+            @ColorInt key: Int,
+            @ColorInt functionKey: Int,
+            @ColorInt actionKey: Int,
+            @ColorInt actionIcon: Int,
+            @ColorInt label: Int,
+            @ColorInt hint: Int,
+            @ColorInt trail: Int,
+            @ColorInt divider: Int = functionKey,
+            @ColorInt stripIcon: Int = hint,
+            @ColorInt shadow: Int = Color.BLACK,
         ): KeyboardPalette {
-            val ink = if (dark) Color.WHITE else INK_DARK
-            val veil = if (dark) Color.WHITE else Color.BLACK
-            val middle = ColorUtils.blendARGB(top, bottom, HALF)
-            val onAccent = contentColorFor(accent)
-            val keyVeil = if (dark) darkKeyVeil(top, bottom) else 0f
+            val dark = ColorUtils.calculateLuminance(background) < DARK_LUMINANCE
             return KeyboardPalette(
-                backgroundTop = top,
-                backgroundBottom = bottom,
-                key = if (dark) withAlpha(veil, keyVeil) else withAlpha(Color.WHITE, KEY_LIGHT),
-                keyPressed = if (dark) withAlpha(veil, keyVeil + PRESSED_STEP) else withAlpha(veil, LIGHT_PRESSED),
-                functionKey = withAlpha(veil, if (dark) FUNCTION_VEIL_DARK else FUNCTION_VEIL_LIGHT),
-                functionKeyPressed =
-                    withAlpha(
-                        veil,
-                        if (dark) FUNCTION_VEIL_DARK + PRESSED_STEP else FUNCTION_PRESSED_LIGHT,
-                    ),
-                actionKey = accent,
-                actionKeyPressed = ColorUtils.blendARGB(accent, Color.BLACK, ACTION_PRESSED_SHADE),
-                actionIcon = onAccent,
-                label = ink,
-                hint = withAlpha(ink, HINT_ALPHA),
-                preview =
-                    if (dark) {
-                        ColorUtils.compositeColors(withAlpha(veil, PREVIEW_VEIL), middle)
-                    } else {
-                        Color.WHITE
-                    },
-                popupSelected = accent,
-                popupSelectedLabel = onAccent,
-                trail = if (dark) ColorUtils.blendARGB(accent, Color.WHITE, TRAIL_LIGHTEN) else accent,
-                suggestion = withAlpha(ink, SUGGESTION_ALPHA),
-                suggestionDivider = withAlpha(ink, DIVIDER_ALPHA),
-                suggestionPressed = withAlpha(veil, STRIP_PRESSED_VEIL),
-                stripIcon = withAlpha(ink, ICON_ALPHA),
-                voiceActive = accent,
-                voiceActiveIcon = onAccent,
-                voiceHalo = withAlpha(accent, HALO_ALPHA),
-                voiceStatus = withAlpha(ink, HINT_ALPHA),
+                background = background,
+                key = key,
+                keyPressed = ColorUtils.blendARGB(key, label, PRESSED_BLEND),
+                keyShadow = withAlpha(shadow, if (dark) SHADOW_DARK else SHADOW_LIGHT),
+                functionKey = functionKey,
+                functionKeyPressed = ColorUtils.blendARGB(functionKey, label, PRESSED_BLEND),
+                actionKey = actionKey,
+                actionKeyPressed = ColorUtils.blendARGB(actionKey, actionIcon, PRESSED_BLEND),
+                actionIcon = actionIcon,
+                label = label,
+                hint = hint,
+                preview = if (dark) ColorUtils.blendARGB(key, label, PREVIEW_BLEND) else key,
+                popupSelected = actionKey,
+                popupSelectedLabel = actionIcon,
+                trail = trail,
+                suggestion = label,
+                suggestionDivider = divider,
+                suggestionPressed = ColorUtils.blendARGB(background, label, STRIP_PRESSED_BLEND),
+                stripIcon = stripIcon,
+                voiceActive = actionKey,
+                voiceActiveIcon = actionIcon,
+                voiceHalo = withAlpha(actionKey, HALO_ALPHA),
+                voiceStatus = hint,
             )
         }
-
-        /**
-         * The strongest white veil for letter keys that keeps white labels readable: bright
-         * backgrounds (green, light gradients) get fainter keys.
-         */
-        private fun darkKeyVeil(
-            @ColorInt top: Int,
-            @ColorInt bottom: Int,
-        ): Float {
-            val lighter =
-                if (ColorUtils.calculateLuminance(top) >
-                    ColorUtils.calculateLuminance(bottom)
-                ) {
-                    top
-                } else {
-                    bottom
-                }
-            return KEY_VEILS.firstOrNull { alpha ->
-                val key = ColorUtils.compositeColors(withAlpha(Color.WHITE, alpha), lighter)
-                ColorUtils.calculateContrast(Color.WHITE, key) >= MIN_LABEL_CONTRAST
-            } ?: 0f
-        }
-
-        /** White or near-black, whichever reads better on [background]. */
-        private fun contentColorFor(
-            @ColorInt background: Int,
-        ): Int = if (ColorUtils.calculateLuminance(background) > LIGHT_LUMINANCE) INK_DARK else Color.WHITE
 
         private fun withAlpha(
             @ColorInt color: Int,
             alpha: Float,
         ): Int = ColorUtils.setAlphaComponent(color, (alpha * MAX_ALPHA).toInt())
 
-        private const val INK_DARK = 0xFF1F1F1F.toInt()
         private const val MAX_ALPHA = 255
-        private const val HALF = 0.5f
-        private const val LIGHT_LUMINANCE = 0.45
-        private const val KEY_VEIL_DARK = 0.22f
-        private val KEY_VEILS = listOf(KEY_VEIL_DARK, 0.18f, 0.14f, 0.1f, 0.06f)
-        private const val MIN_LABEL_CONTRAST = 3.0
-        private const val PRESSED_STEP = 0.14f
-        private const val FUNCTION_VEIL_DARK = 0.1f
-        private const val KEY_LIGHT = 0.9f
-        private const val LIGHT_PRESSED = 0.12f
-        private const val FUNCTION_VEIL_LIGHT = 0.08f
-        private const val FUNCTION_PRESSED_LIGHT = 0.16f
-        private const val ACTION_PRESSED_SHADE = 0.2f
-        private const val PREVIEW_VEIL = 0.32f
-        private const val TRAIL_LIGHTEN = 0.35f
-        private const val HINT_ALPHA = 0.75f
-        private const val SUGGESTION_ALPHA = 0.9f
-        private const val DIVIDER_ALPHA = 0.2f
-        private const val STRIP_PRESSED_VEIL = 0.12f
-        private const val ICON_ALPHA = 0.8f
+        private const val DARK_LUMINANCE = 0.2
+        private const val PRESSED_BLEND = 0.16f
+        private const val PREVIEW_BLEND = 0.08f
+        private const val STRIP_PRESSED_BLEND = 0.1f
+        private const val SHADOW_LIGHT = 0.18f
+        private const val SHADOW_DARK = 0.5f
         private const val HALO_ALPHA = 0.33f
     }
 }

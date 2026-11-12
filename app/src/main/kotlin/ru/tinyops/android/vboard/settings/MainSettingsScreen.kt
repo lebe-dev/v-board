@@ -38,7 +38,7 @@ internal fun MainSettingsScreen(
                 item {
                     SettingsLinkRow(
                         title = stringResource(R.string.theme_title),
-                        summary = stringResource(theme.name ?: theme.group.title),
+                        summary = stringResource(theme.name),
                         icon = R.drawable.ic_palette,
                         prominent = true,
                         onClick = links.theme,

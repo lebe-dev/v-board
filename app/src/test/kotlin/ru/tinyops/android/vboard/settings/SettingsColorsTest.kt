@@ -36,15 +36,15 @@ class SettingsColorsTest {
 
     @Test
     fun `a color theme paints only the badges with its accent`() {
-        val palette = theme("color_teal").palette(context)
-        val badge = checkNotNull(badgeColors(theme("color_teal"), context))
+        val palette = theme("coral").palette(context)
+        val badge = checkNotNull(badgeColors(theme("coral"), context))
         assertEquals(Color(palette.actionKey), badge.container)
         assertEquals(Color(palette.actionIcon), badge.content)
     }
 
     @Test
     fun `badge colors are opaque`() {
-        val badge = checkNotNull(badgeColors(theme("gradient_purple"), context))
+        val badge = checkNotNull(badgeColors(theme("plum"), context))
         assertEquals(1f, badge.container.alpha, 0f)
         assertEquals(1f, badge.content.alpha, 0f)
     }

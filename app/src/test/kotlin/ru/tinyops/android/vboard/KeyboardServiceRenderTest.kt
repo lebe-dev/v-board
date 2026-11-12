@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -116,6 +117,9 @@ class KeyboardServiceRenderTest {
         assertEquals(color(R.color.kb_key), bitmap.keyFill(keyboard, letter))
         assertEquals(color(R.color.kb_function_key), bitmap.keyFill(keyboard, shift))
         assertEquals(color(R.color.kb_action_key), bitmap.keyFill(keyboard, enter))
+        // A thin shadow under the key lifts it off the background.
+        val belowKey = bitmap.getPixel(letter.bounds.centerX.toInt(), (keyboard.top + letter.bounds.bottom + 1).toInt())
+        assertNotEquals(color(R.color.kb_background), belowKey)
         assertEquals(
             10,
             keyboard.spec!!

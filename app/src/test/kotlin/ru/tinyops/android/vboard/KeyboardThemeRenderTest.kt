@@ -69,14 +69,12 @@ class KeyboardThemeRenderTest {
         val before = render(startInput(), "theme-system-dark")
         assertEquals(service.getColor(R.color.kb_background), before.getPixel(2, 2))
 
-        KeyboardThemes.select(service, "gradient_purple")
-        val root = startInput()
-        val bitmap = render(root, "theme-gradient-purple")
-        val palette = KeyboardThemes.find("gradient_purple").palette(service)
-        // The gradient runs from the top of the strip to the bottom of the keys.
-        assertNear(palette.backgroundTop, bitmap.getPixel(2, 0))
-        assertNear(palette.backgroundBottom, bitmap.getPixel(2, bitmap.height - 1))
-        assertNotEquals(bitmap.getPixel(2, 0), bitmap.getPixel(2, bitmap.height - 1))
+        KeyboardThemes.select(service, "stripe")
+        val bitmap = render(startInput(), "theme-stripe")
+        val palette = KeyboardThemes.find("stripe").palette(service)
+        assertNear(palette.background, bitmap.getPixel(2, 0))
+        assertNear(palette.background, bitmap.getPixel(2, bitmap.height - 1))
+        assertNotEquals(before.getPixel(2, 0), bitmap.getPixel(2, 0))
     }
 
     @Test

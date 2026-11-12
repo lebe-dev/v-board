@@ -7,6 +7,7 @@
     <dimen name="kb_padding_top">4dp</dimen>
     <dimen name="kb_padding_bottom">8dp</dimen>
     <dimen name="kb_key_radius">7dp</dimen>
+    <dimen name="kb_key_shadow">1dp</dimen>
     <dimen name="kb_trail_width">5dp</dimen>
     <dimen name="kb_suggestion_height">48dp</dimen>
     <dimen name="kb_suggestion_text">17sp</dimen>

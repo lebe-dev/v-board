@@ -2,7 +2,6 @@ package ru.tinyops.android.vboard.ui
 
 import android.content.Context
 import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
 import android.util.SparseArray
 import androidx.annotation.DimenRes
 import androidx.annotation.DrawableRes
@@ -16,15 +15,15 @@ class KeyboardTheme(
     private val context: Context,
     palette: KeyboardPalette = KeyboardPalette.fromResources(context),
 ) {
-    val backgroundTop = palette.backgroundTop
-    val background = palette.backgroundBottom
+    val background = palette.background
+    val keyShadow = palette.keyShadow
     val label = palette.label
     val hint = palette.hint
     val actionIcon = palette.actionIcon
     val preview = palette.preview
 
     /** Surfaces that float above the keyboard background: halfway between it and a letter key. */
-    val raised = ColorUtils.blendARGB(palette.backgroundBottom, palette.key, RAISED_BLEND)
+    val raised = ColorUtils.blendARGB(palette.background, palette.key, RAISED_BLEND)
     val popupSelected = palette.popupSelected
     val popupSelectedLabel = palette.popupSelectedLabel
     val trail = palette.trail
@@ -44,6 +43,7 @@ class KeyboardTheme(
     val paddingTop = dimen(R.dimen.kb_padding_top)
     val paddingBottom = dimen(R.dimen.kb_padding_bottom)
     val keyRadius = dimen(R.dimen.kb_key_radius)
+    val keyShadowOffset = dimen(R.dimen.kb_key_shadow)
     val trailWidth = dimen(R.dimen.kb_trail_width)
     val suggestionHeight = dimen(R.dimen.kb_suggestion_height)
     val suggestionTextSize = dimen(R.dimen.kb_suggestion_text)
@@ -75,13 +75,8 @@ class KeyboardTheme(
         return icon
     }
 
-    /** The window background: a flat color or a top-to-bottom gradient. */
-    fun backgroundDrawable(): Drawable =
-        if (backgroundTop == background) {
-            background.toDrawable()
-        } else {
-            GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(backgroundTop, background))
-        }
+    /** The window background. */
+    fun backgroundDrawable(): Drawable = background.toDrawable()
 
     private fun dimen(
         @DimenRes id: Int,

@@ -120,7 +120,14 @@ internal class KeyRenderer(
         val spec = key.spec
         val b = key.bounds
         val pill = spec.style == KeyStyle.MODE || spec.style == KeyStyle.ACTION
-        fillRoundRect(canvas, b, theme.keyColor(spec.style, pressed), if (pill) b.height / 2f else theme.keyRadius)
+        val radius = if (pill) b.height / 2f else theme.keyRadius
+        // A pressed key sinks: its shadow disappears.
+        if (!pressed) {
+            rect.set(b.left, b.top + theme.keyShadowOffset, b.right, b.bottom + theme.keyShadowOffset)
+            keyPaint.color = theme.keyShadow
+            canvas.drawRoundRect(rect, radius, radius, keyPaint)
+        }
+        fillRoundRect(canvas, b, theme.keyColor(spec.style, pressed), radius)
 
         when (spec.type) {
             KeyType.SHIFT -> drawIcon(canvas, b, shiftIcon(), theme.label)

@@ -35,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -93,15 +92,12 @@ private fun ThemeGroupSection(
             }
         }
         if (expanded) {
-            for ((row, chunk) in themes.chunked(COLUMNS).withIndex()) {
+            for (chunk in themes.chunked(COLUMNS)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(SettingsSpacing.Gap)) {
-                    chunk.forEachIndexed { column, theme ->
-                        val number = row * COLUMNS + column + 1
+                    chunk.forEach { theme ->
                         ThemeTile(
                             theme = theme,
-                            description =
-                                theme.name?.let { stringResource(it) }
-                                    ?: stringResource(R.string.theme_tile, title, number),
+                            description = stringResource(theme.name),
                             selected = theme.id == selected,
                             onClick = { onSelect(theme.id) },
                             modifier = Modifier.weight(1f),
@@ -157,14 +153,12 @@ private fun ThemeTile(
             }
             if (selected) SelectedMark()
         }
-        theme.name?.let {
-            Text(
-                stringResource(it),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = SettingsSpacing.Small / 2),
-            )
-        }
+        Text(
+            description,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = SettingsSpacing.Small / 2),
+        )
     }
 }
 
@@ -172,12 +166,12 @@ private fun ThemeTile(
 @Composable
 private fun BoxScope.TileContent(palette: KeyboardPalette) {
     // White keys vanish on a light background: show the darker function keys there.
-    val light = ColorUtils.calculateLuminance(palette.backgroundBottom) > LIGHT_LUMINANCE
+    val light = ColorUtils.calculateLuminance(palette.background) > LIGHT_LUMINANCE
     val bar = if (light) palette.functionKey else palette.key
     Box(
         Modifier
             .matchParentSize()
-            .background(Brush.verticalGradient(listOf(Color(palette.backgroundTop), Color(palette.backgroundBottom)))),
+            .background(Color(palette.background)),
     )
     Row(
         modifier =
