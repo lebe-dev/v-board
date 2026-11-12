@@ -32,7 +32,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -134,14 +133,20 @@ private fun ThemeGroupSection(
     selected: ThemeChoice,
     onSelect: (String) -> Unit,
 ) {
-    var expanded by rememberSaveable(key) { mutableStateOf(true) }
+    val context = LocalContext.current
+    var expanded by remember(key) { mutableStateOf(!KeyboardThemes.isCollapsed(context, key)) }
     Column(verticalArrangement = Arrangement.spacedBy(SettingsSpacing.Gap)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = SettingsSpacing.Small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            FilledTonalIconButton(onClick = { expanded = !expanded }) {
+            FilledTonalIconButton(
+                onClick = {
+                    expanded = !expanded
+                    KeyboardThemes.setCollapsed(context, key, !expanded)
+                },
+            ) {
                 Icon(
                     painterResource(R.drawable.ic_expand),
                     stringResource(if (expanded) R.string.theme_collapse else R.string.theme_expand),

@@ -101,6 +101,7 @@ object KeyboardThemes {
     private const val PREF_DARK_ICONS = "icons_dark"
     private const val PREF_SQUARE_MODE = "keys_square_mode"
     private const val PREF_SQUARE_ACTION = "keys_square_action"
+    private const val PREF_COLLAPSED = "theme_collapsed"
     private const val PREF_RECENT = "theme_recent"
     private const val RECENT_LIMIT = 3
 
@@ -186,6 +187,21 @@ object KeyboardThemes {
         on: Boolean,
     ) {
         prefs(context).edit { putBoolean(if (night) PREF_WHITE_ICONS else PREF_DARK_ICONS, on) }
+    }
+
+    /** Whether a section of the theme picker, such as "colors", is folded. */
+    fun isCollapsed(
+        context: Context,
+        section: String,
+    ): Boolean = section in prefs(context).getStringSet(PREF_COLLAPSED, emptySet()).orEmpty()
+
+    fun setCollapsed(
+        context: Context,
+        section: String,
+        collapsed: Boolean,
+    ) {
+        val sections = prefs(context).getStringSet(PREF_COLLAPSED, emptySet()).orEmpty()
+        prefs(context).edit { putStringSet(PREF_COLLAPSED, if (collapsed) sections + section else sections - section) }
     }
 
     fun setSquareModeKey(

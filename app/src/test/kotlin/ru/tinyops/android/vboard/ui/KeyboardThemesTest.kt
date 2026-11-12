@@ -143,4 +143,15 @@ class KeyboardThemesTest {
         assertEquals(KeyShapes(squareMode = true, squareAction = true), KeyboardThemes.selected(context).shapes)
         assertNotEquals(before, KeyboardThemes.selected(context).key)
     }
+
+    @Test
+    fun `collapsed sections are remembered`() {
+        assertTrue(!KeyboardThemes.isCollapsed(context, "colors"))
+        KeyboardThemes.setCollapsed(context, "colors", true)
+        KeyboardThemes.setCollapsed(context, "recent", true)
+        assertTrue(KeyboardThemes.isCollapsed(context, "colors"))
+        KeyboardThemes.setCollapsed(context, "colors", false)
+        assertTrue(!KeyboardThemes.isCollapsed(context, "colors"))
+        assertTrue(KeyboardThemes.isCollapsed(context, "recent"))
+    }
 }
