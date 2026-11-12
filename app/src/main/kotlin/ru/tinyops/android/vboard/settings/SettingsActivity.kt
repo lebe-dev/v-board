@@ -264,7 +264,7 @@ internal class MainSettingsLinks(
     val customButtons: () -> Unit,
     val typing: TypingLinks,
     val text: TextLinks,
-    val appLog: () -> Unit,
+    val diagnostics: () -> Unit,
 )
 
 /** The pages of text improvement the settings root links to. */
@@ -303,7 +303,8 @@ internal enum class Screen(
     AUTOCORRECT(MAIN),
     PROMPTS(MAIN),
     SERVERS(MAIN),
-    APP_LOG(MAIN),
+    DIAGNOSTICS(MAIN),
+    APP_LOG(DIAGNOSTICS),
 }
 
 @Composable
@@ -373,6 +374,7 @@ private fun SettingsNavigation(
                         ),
                     onBack = back,
                 )
+            Screen.DIAGNOSTICS -> DiagnosticsScreen(onOpenLog = { screen = Screen.APP_LOG }, onBack = back)
             Screen.FULLSCREEN, Screen.APP_LOG -> StandalonePage(current, back)
             Screen.CLIPBOARD, Screen.EMOJI, Screen.EMOJI_GROUPS, Screen.EMOJI_SINGLE, Screen.SLIDE_ENGINE,
             Screen.AUTOCORRECT, Screen.SUGGESTIONS,
@@ -421,7 +423,7 @@ private fun mainLinks(
             servers = openServers,
             dictionary = { navigate(Screen.DICTIONARY) },
         ),
-    appLog = { navigate(Screen.APP_LOG) },
+    diagnostics = { navigate(Screen.DIAGNOSTICS) },
 )
 
 /** The pages without sub-pages: the fullscreen mode and the application log. */

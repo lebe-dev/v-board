@@ -17,13 +17,12 @@ import ru.tinyops.android.vboard.core.gesture.SlideEngine
 import ru.tinyops.android.vboard.core.input.SpaceDragMode
 import ru.tinyops.android.vboard.core.voice.TextFeature
 import ru.tinyops.android.vboard.core.voice.find
-import ru.tinyops.android.vboard.diagnostics.ErrorReporting
 import ru.tinyops.android.vboard.ui.ThemeSpec
 
 /**
  * The settings root, in sections: appearance (theme, emoji), typing (slide to type, clipboard, the space bar,
  * the fullscreen mode), voice input, text improvement (dictation, proofreading, prompts, servers), the backup of
- * all settings and the app itself; the back arrow closes settings.
+ * all settings and the app itself (language, diagnostics, version); the back arrow closes settings.
  */
 @Composable
 internal fun MainSettingsScreen(
@@ -71,7 +70,7 @@ internal fun MainSettingsScreen(
         }
         item { EnhancementSection(state, links) }
         item { BackupSection() }
-        item { ApplicationSection(links.appLog) }
+        item { ApplicationSection(links.diagnostics) }
     }
 }
 
@@ -276,16 +275,10 @@ private fun SpaceDragRow() {
     )
 }
 
-/**
- * The app itself: the language, the switch that lets it send technical error reports to the developer (off by
- * default), the error log and the version.
- */
+/** The app itself: the language, the link to diagnostics and the version. */
 @Composable
-private fun ApplicationSection(onOpenLog: () -> Unit) {
+private fun ApplicationSection(onOpenDiagnostics: () -> Unit) {
     val context = LocalContext.current
-    val prefs = KeyboardPrefs(context)
-    var sendErrors by remember { mutableStateOf(prefs.sendErrors) }
-    val logOn = prefs.logErrors
     val localeManager = context.getSystemService(LocaleManager::class.java)
     var language by remember { mutableStateOf(localeManager.applicationLocales.toLanguageTags()) }
     SettingsSection(stringResource(R.string.settings_application)) {
@@ -307,29 +300,13 @@ private fun ApplicationSection(onOpenLog: () -> Unit) {
                 },
             )
         }
-        if (ErrorReporting.available) {
-            item {
-                SettingsSwitchRow(
-                    title = stringResource(R.string.settings_send_errors),
-                    summary = stringResource(R.string.settings_send_errors_summary),
-                    icon = R.drawable.ic_bug_report,
-                    prominent = true,
-                    checked = sendErrors,
-                    onCheckedChange = {
-                        sendErrors = it
-                        prefs.sendErrors = it
-                        ErrorReporting.sync(context)
-                    },
-                )
-            }
-        }
         item {
             SettingsLinkRow(
-                title = stringResource(R.string.app_log_title),
-                summary = stringResource(if (logOn) R.string.app_log_link_on else R.string.feature_off),
-                icon = R.drawable.ic_article,
+                title = stringResource(R.string.diagnostics_title),
+                summary = stringResource(R.string.diagnostics_link_summary),
+                icon = R.drawable.ic_bug_report,
                 prominent = true,
-                onClick = onOpenLog,
+                onClick = onOpenDiagnostics,
             )
         }
         item {
