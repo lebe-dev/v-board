@@ -7,6 +7,8 @@ adb := env_var_or_default("ADB", "adb")
 ime := "ru.tinyops.android.vboard/.KeyboardService"
 debug_apk := "app/build/outputs/apk/debug/app-debug.apk"
 release_apk := "app/build/outputs/apk/release/app-release.apk"
+# Packed into debug builds only; release builds download it from the GitHub release.
+word_pairs := "build/bigrams/assets/dict/ru.bigrams"
 # Russian Wikipedia for the word pair table: untrusted downloads, kept outside the repository.
 wiki_dir := env_var_or_default("WIKI_DIR", env_var("HOME") + "/.cache/v-board/wikipedia-ru")
 bigrams_python := "PYTHONDONTWRITEBYTECODE=1 uv run --python 3.12 --no-project --with pyarrow==26.0.1 --with numpy==2.5.4 python -I"
@@ -31,12 +33,13 @@ build: voice emoji
     {{ gradle }} :app:assembleDebug
     @echo "APK: {{ debug_apk }}"
 
-# Build the release APK (one universal APK, R8-minified, signed with the release key) into dist/.
+# Build the release APK (one universal APK, R8-minified, signed with the release key) and the word pair table
+# the app downloads from the GitHub release into dist/; attach both to the release.
 release: voice emoji
     #!/usr/bin/env bash
     set -euo pipefail
-    if [ ! -f app/src/main/assets/dict/ru.bigrams ]; then
-        echo "No word pair table: run 'just bigrams' first, or slide to type ignores the previous word." >&2
+    if [ ! -f "{{ word_pairs }}" ]; then
+        echo "No word pair table: run 'just bigrams' first, the release offers it for download." >&2
         exit 1
     fi
     {{ gradle }} :app:assembleRelease
@@ -51,6 +54,9 @@ release: voice emoji
     mkdir -p dist
     cp "{{ release_apk }}" "dist/vboard-${version}.apk"
     echo "APK: dist/vboard-${version}.apk"
+    # The app checks the unpacked table against the hash built into it, so this exact file goes to the release.
+    gzip -9 -n -c "{{ word_pairs }}" > dist/ru.bigrams.gz
+    echo "Word pairs: dist/ru.bigrams.gz (attach to the v${version} release)"
     # Error reports name the build as version+commit; only this exact mapping decodes its stack traces.
     mapping="dist/vboard-${version}+$(git rev-parse --short HEAD).mapping.txt.gz"
     gzip -9 -c app/build/outputs/mapping/release/mapping.txt > "$mapping"
@@ -151,7 +157,7 @@ bigrams min="3":
     #!/usr/bin/env bash
     set -euo pipefail
     scripts/fetch_wikipedia.sh "{{ wiki_dir }}"
-    mkdir -p build/bigrams app/src/main/assets/dict
+    mkdir -p build/bigrams "$(dirname "{{ word_pairs }}")"
     # Shard 20 stays out: bigrams-contexts takes the previous words of the validation gestures from it.
     shards=()
     for shard in "{{ wiki_dir }}"/train-000*-of-00021.parquet; do
@@ -159,7 +165,7 @@ bigrams min="3":
     done
     {{ bigrams_python }} scripts/swipe_model/bigrams.py count "${shards[@]}" --output build/bigrams/counts.npz
     {{ bigrams_python }} scripts/swipe_model/bigrams.py build build/bigrams/counts.npz --min-count {{ min }} \
-        --output app/src/main/assets/dict/ru.bigrams
+        --output "{{ word_pairs }}"
 
 # Give the NeuroSwipe validation gestures previous words from the Wikipedia shard the table leaves out.
 bigrams-contexts archive:

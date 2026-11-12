@@ -21,9 +21,8 @@ internal object DictionaryAssets {
     }
 
     /**
-     * Opens the word pair table of [language], or returns null when the build has none (it is not
-     * in git and comes from `just bigrams`). Tens of megabytes, so its pages are not brought in:
-     * a lookup reads only a few of them.
+     * Opens the word pair table of [language] packed in a debug build, or returns null when the build
+     * has none. Tens of megabytes, so its pages are not brought in: a lookup reads only a few of them.
      */
     fun openBigrams(
         assets: AssetManager,

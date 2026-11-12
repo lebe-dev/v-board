@@ -1,4 +1,6 @@
+import com.android.build.api.variant.BuildConfigField
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.security.MessageDigest
 import javax.inject.Inject
 
 /** Puts the dictionary images built by :core among the assets. */
@@ -19,6 +21,28 @@ abstract class CopyDictionaryImages : DefaultTask() {
             from(images)
             into(outputDir)
         }
+    }
+}
+
+/** SHA-256 and size of a file as `hash:size`, or an empty string when there is no file. Read at every build. */
+abstract class FileFingerprint : ValueSource<String, FileFingerprint.Parameters> {
+    interface Parameters : ValueSourceParameters {
+        val file: RegularFileProperty
+    }
+
+    override fun obtain(): String {
+        val file = parameters.file.get().asFile
+        if (!file.isFile) return ""
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(1 shl 16)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) } + ":" + file.length()
     }
 }
 
@@ -104,6 +128,15 @@ val releaseKeystoreFile: File? =
         }
     }
 
+// The Russian word pair table of the experimental slide to type engine, built by `just bigrams`. A debug build
+// packs it; a release build downloads it from the GitHub release of its version as `ru.bigrams.gz`, so
+// the APK stays small for those who do not use the engine.
+val wordPairsAssets = rootProject.layout.projectDirectory.dir("build/bigrams/assets")
+val wordPairsTable = wordPairsAssets.file("dict/ru.bigrams")
+val wordPairsFingerprint =
+    providers.of(FileFingerprint::class) { parameters.file.set(wordPairsTable) }
+val githubRepository = "lebe-dev/v-board"
+
 val swipeCheck = providers.gradleProperty("swipeCheck")
 val swipeModelOverride = providers.gradleProperty("swipeModelAssets")
 
@@ -119,6 +152,9 @@ android {
         versionName = "1.0.0-beta"
         buildConfigField("String", "GIT_HASH", "\"${gitShortHash.get()}\"")
         buildConfigField("String", "SENTRY_DSN", "\"${sentryDsn.get()}\"")
+        buildConfigField("String", "WORD_PAIRS_URL", "\"\"")
+        buildConfigField("String", "WORD_PAIRS_SHA256", "\"\"")
+        buildConfigField("long", "WORD_PAIRS_SIZE", "0L")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // sherpa-onnx ships native libraries for four ABIs; phones are arm64.
@@ -140,6 +176,11 @@ android {
     androidResources {
         noCompress += listOf("onnx", "pte", "dict", "bigrams")
     }
+
+    sourceSets
+        .getByName("debug")
+        .assets.directories
+        .add(wordPairsAssets.asFile.path)
 
     // `just swipe-device-check`: a package of its own, because connected tests uninstall what they
     // install and would take the keyboard on the phone and its data with them.
@@ -249,6 +290,20 @@ androidComponents {
     onVariants { variant ->
         variant.sources.assets?.addGeneratedSourceDirectory(copyDictionaryImages, CopyDictionaryImages::outputDir)
     }
+    onVariants(selector().withBuildType("release")) { variant ->
+        val version = android.defaultConfig.versionName
+        val url = "https://github.com/$githubRepository/releases/download/v$version/ru.bigrams.gz"
+        val fields = variant.buildConfigFields ?: return@onVariants
+        fields.put("WORD_PAIRS_URL", BuildConfigField("String", "\"$url\"", null))
+        fields.put(
+            "WORD_PAIRS_SHA256",
+            wordPairsFingerprint.map { BuildConfigField("String", "\"${it.substringBefore(':')}\"", null) },
+        )
+        fields.put(
+            "WORD_PAIRS_SIZE",
+            wordPairsFingerprint.map { BuildConfigField("long", "${it.substringAfter(':', "0")}L", null) },
+        )
+    }
 }
 
 // Regenerated on a device by `just profile`, not by every build: the result is kept in the sources.
@@ -333,4 +388,12 @@ val checkReleaseSigning =
             check(keystore?.isFile == true) { "Release keystore not found: $keystore" }
         }
     }
-tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(checkReleaseSigning) }
+// A release without the table could not offer it for download: its hash is what the app checks.
+val checkWordPairs =
+    tasks.register("checkWordPairs") {
+        val table = wordPairsTable.asFile
+        doFirst {
+            check(table.isFile) { "Missing the word pair table: run `just bigrams` (expected $table)" }
+        }
+    }
+tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(checkReleaseSigning, checkWordPairs) }

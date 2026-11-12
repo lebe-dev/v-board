@@ -25,6 +25,7 @@ class GestureDecoder(
     private val openDictionary: (Language) -> Dictionary,
     private val openNeural: (Language) -> NeuralGestureEngine? = { null },
     private val openBigrams: (Language) -> BigramTable? = { null },
+    private val bigramsAvailable: (Language) -> Boolean = { false },
 ) {
     private val executor: ExecutorService =
         Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "gesture-decoder") }
@@ -34,6 +35,9 @@ class GestureDecoder(
 
     /** Engines, touched only from [executor]. */
     private val engines = HashMap<Language, SwitchableGestureEngine>()
+
+    /** Languages whose engine holds a word pair table, touched only from [executor]. */
+    private val withBigrams = HashSet<Language>()
 
     /** The engine the next engines start with, touched only from [executor]. */
     private var slideEngine = SlideEngine.DEFAULT
@@ -86,7 +90,25 @@ class GestureDecoder(
             return
         }
         engine(language).setBigrams(table)
+        withBigrams += language
         Log.i(TAG, "loaded word pairs of ${language.code}: ${table.size} words")
+    }
+
+    /** Picks up a word pair table installed since the language was loaded, and lets go of a deleted one. */
+    fun refreshBigrams() {
+        executor.execute {
+            for (language in dictionaries.keys) {
+                val available = bigramsAvailable(language)
+                val loaded = language in withBigrams
+                if (available && !loaded) {
+                    loadBigrams(language)
+                } else if (!available && loaded) {
+                    engine(language).setBigrams(null)
+                    withBigrams -= language
+                    Log.i(TAG, "released word pairs of ${language.code}")
+                }
+            }
+        }
     }
 
     fun setLayout(

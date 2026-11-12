@@ -157,7 +157,8 @@ class KeyboardService :
             GestureDecoder(
                 openDictionary = { language -> DictionaryAssets.open(assets, language) },
                 openNeural = { openNeuralEngine() },
-                openBigrams = { language -> DictionaryAssets.openBigrams(assets, language) },
+                openBigrams = { language -> WordPairs.open(this, language) },
+                bigramsAvailable = { language -> WordPairs.isAvailable(this, language) },
             )
         decoder.setSlideEngine(keyboardPrefs.slideEngine)
         logic = createInputLogic()
@@ -780,6 +781,8 @@ class KeyboardService :
         view.gestureEnabled = gesturesAvailable()
         view.spaceDragMode = keyboardPrefs.spaceDragMode
         decoder.setSlideEngine(keyboardPrefs.slideEngine)
+        // A table downloaded or deleted in the settings since the last field.
+        decoder.refreshBigrams()
         syncShift()
     }
 
