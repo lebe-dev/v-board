@@ -92,6 +92,8 @@ object KeyboardThemes {
     private const val PREF_MODE = "theme_mode"
     private const val PREF_WHITE_ICONS = "icons_white"
     private const val PREF_DARK_ICONS = "icons_dark"
+    private const val PREF_RECENT = "theme_recent"
+    private const val RECENT_LIMIT = 3
 
     /** Stored theme ids that stand for the classic theme in a fixed mode. */
     private val CLASSIC_MODES = ThemeMode.entries.associateBy { it.id }
@@ -139,11 +141,22 @@ object KeyboardThemes {
         id: String,
     ) {
         val mode = selected(context).mode
+        val theme = find(id).id
+        val recent = (listOf(theme) + recent(context).map { it.id }).distinct().take(RECENT_LIMIT)
         prefs(context).edit {
-            putString(PREF_THEME, find(id).id)
+            putString(PREF_THEME, theme)
             putString(PREF_MODE, mode.id)
+            putString(PREF_RECENT, recent.joinToString(","))
         }
     }
+
+    /** The themes picked last, the newest first. */
+    fun recent(context: Context): List<ThemeSpec> =
+        prefs(context)
+            .getString(PREF_RECENT, null)
+            .orEmpty()
+            .split(",")
+            .mapNotNull { byId[it] }
 
     fun selectMode(
         context: Context,

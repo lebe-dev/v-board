@@ -25,6 +25,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -149,10 +150,17 @@ internal fun SettingsDialogContent(content: @Composable ColumnScope.() -> Unit) 
 }
 
 @Composable
-internal fun rowColors(enabled: Boolean) =
-    if (enabled) {
-        ListItemDefaults.colors(containerColor = Color.Transparent)
-    } else {
+internal fun rowColors(
+    enabled: Boolean,
+    dimTitle: Boolean = false,
+) = when {
+    enabled && dimTitle ->
+        ListItemDefaults.colors(
+            containerColor = Color.Transparent,
+            headlineColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = DIMMED_ALPHA),
+        )
+    enabled -> ListItemDefaults.colors(containerColor = Color.Transparent)
+    else -> {
         val disabled = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_ALPHA)
         ListItemDefaults.colors(
             containerColor = Color.Transparent,
@@ -162,6 +170,7 @@ internal fun rowColors(enabled: Boolean) =
             trailingIconColor = disabled,
         )
     }
+}
 
 @Composable
 private fun RowIcon(
@@ -191,7 +200,7 @@ private fun SettingsRow(
     modifier: Modifier,
     supporting: (@Composable () -> Unit)?,
     @DrawableRes icon: Int?,
-    enabled: Boolean,
+    colors: ListItemColors,
     prominent: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
@@ -201,7 +210,7 @@ private fun SettingsRow(
         supportingContent = supporting,
         leadingContent = icon?.let { { RowIcon(it, prominent) } },
         trailingContent = trailing,
-        colors = rowColors(enabled),
+        colors = colors,
     )
 }
 
@@ -221,7 +230,7 @@ internal fun SettingsSwitchRow(
         modifier = Modifier.toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange),
         supporting = summary?.let { { Text(it) } },
         icon = icon,
-        enabled = enabled,
+        colors = rowColors(enabled),
         prominent = prominent,
     ) { CheckedSwitch(checked, enabled) }
 }
@@ -234,13 +243,14 @@ internal fun SettingsSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     supporting: @Composable () -> Unit,
     enabled: Boolean = true,
+    dimWhenOff: Boolean = false,
 ) {
     SettingsRow(
         title = title,
         modifier = Modifier.toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange),
         supporting = supporting,
         icon = null,
-        enabled = enabled,
+        colors = rowColors(enabled, dimTitle = dimWhenOff && !checked),
     ) { CheckedSwitch(checked, enabled) }
 }
 
@@ -325,7 +335,7 @@ internal fun SettingsLinkRow(
         modifier = Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         supporting = summary?.let { { Text(it) } },
         icon = icon,
-        enabled = enabled,
+        colors = rowColors(enabled),
         prominent = prominent,
         trailing =
             when {
@@ -350,7 +360,7 @@ internal fun SettingsRadioRow(
         modifier = Modifier.selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = onClick),
         supporting = summary?.let { { Text(it) } },
         icon = null,
-        enabled = enabled,
+        colors = rowColors(enabled),
         trailing = { RadioButton(selected = selected, onClick = null, enabled = enabled) },
     )
 }
@@ -532,3 +542,4 @@ private val STATUS_PROGRESS = 22.dp
 
 /** The M3 opacity of disabled content. */
 internal const val DISABLED_ALPHA = 0.38f
+private const val DIMMED_ALPHA = 0.7f

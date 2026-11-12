@@ -22,6 +22,7 @@
 
     <string name="theme_title">Theme</string>
     <string name="theme_group_default">Default</string>
+    <string name="theme_group_recent">Recent</string>
     <string name="theme_group_colors">Colors</string>
     <string name="theme_dynamic">Dynamic color</string>
     <string name="theme_icons_white">Use white for icons</string>

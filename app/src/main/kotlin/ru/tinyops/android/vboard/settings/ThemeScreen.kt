@@ -82,7 +82,8 @@ internal fun ThemeScreen(
                 item {
                     SettingsSwitchRow(
                         title = stringResource(if (night) R.string.theme_icons_white else R.string.theme_icons_dark),
-                        summary = stringResource(R.string.theme_icons_summary),
+                        supporting = { Text(stringResource(R.string.theme_icons_summary)) },
+                        dimWhenOff = true,
                         checked = if (night) selected.whiteIcons else selected.darkIcons,
                         onCheckedChange = {
                             KeyboardThemes.setContrastIcons(context, night, it)
@@ -92,9 +93,16 @@ internal fun ThemeScreen(
                 }
             }
         }
+        val recent = KeyboardThemes.recent(context)
+        if (recent.size > 1) {
+            item(key = "recent") {
+                ThemeGroupSection("recent", stringResource(R.string.theme_group_recent), recent, selected, onSelect)
+            }
+        }
         for (group in ThemeGroup.entries) {
             item(key = group.name) {
-                ThemeGroupSection(group, KeyboardThemes.all.filter { it.group == group }, selected, onSelect)
+                val themes = KeyboardThemes.all.filter { it.group == group }
+                ThemeGroupSection(group.name, stringResource(group.title), themes, selected, onSelect)
             }
         }
     }
@@ -120,13 +128,13 @@ private fun ModeChoice(
 
 @Composable
 private fun ThemeGroupSection(
-    group: ThemeGroup,
+    key: String,
+    title: String,
     themes: List<ThemeSpec>,
     selected: ThemeChoice,
     onSelect: (String) -> Unit,
 ) {
-    var expanded by rememberSaveable(group) { mutableStateOf(true) }
-    val title = stringResource(group.title)
+    var expanded by rememberSaveable(key) { mutableStateOf(true) }
     Column(verticalArrangement = Arrangement.spacedBy(SettingsSpacing.Gap)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = SettingsSpacing.Small),

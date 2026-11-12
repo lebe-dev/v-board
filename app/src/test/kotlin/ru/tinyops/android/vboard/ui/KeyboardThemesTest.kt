@@ -125,4 +125,11 @@ class KeyboardThemesTest {
         const val MIN_CONTRAST = 4.5
         const val MAX_ALPHA = 255
     }
+
+    @Test
+    fun `recent themes keep the last picks without repeats`() {
+        assertTrue(KeyboardThemes.recent(context).isEmpty())
+        for (id in listOf("plum", "mint", "plum", "coral", "dieter")) KeyboardThemes.select(context, id)
+        assertEquals(listOf("dieter", "coral", "plum"), KeyboardThemes.recent(context).map { it.id })
+    }
 }
