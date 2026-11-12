@@ -18,7 +18,7 @@ class KeyboardThemesTest {
     @Test
     fun `the catalog has the default and colors groups`() {
         val counts = KeyboardThemes.all.groupingBy { it.group }.eachCount()
-        assertEquals(mapOf(ThemeGroup.DEFAULT to 4, ThemeGroup.COLORS to 4), counts)
+        assertEquals(mapOf(ThemeGroup.DEFAULT to 4, ThemeGroup.COLORS to 8), counts)
         assertEquals(
             KeyboardThemes.all.size,
             KeyboardThemes.all

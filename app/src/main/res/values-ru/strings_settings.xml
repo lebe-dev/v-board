@@ -31,6 +31,10 @@
     <string name="theme_coral">Коралл</string>
     <string name="theme_plum">Слива</string>
     <string name="theme_pistachio">Фисташка</string>
+    <string name="theme_mint">Мята</string>
+    <string name="theme_blueberry">Черника</string>
+    <string name="theme_brownie">Брауни</string>
+    <string name="theme_dieter">Dieter</string>
     <string name="theme_selected">Выбрана</string>
     <string name="theme_expand">Показать группу</string>
     <string name="theme_collapse">Скрыть группу</string>

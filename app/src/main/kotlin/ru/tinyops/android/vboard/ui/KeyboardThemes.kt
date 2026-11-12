@@ -35,6 +35,10 @@ object KeyboardThemes {
     const val CORAL = "coral"
     const val PLUM = "plum"
     const val PISTACHIO = "pistachio"
+    const val MINT = "mint"
+    const val BLUEBERRY = "blueberry"
+    const val BROWNIE = "brownie"
+    const val DIETER = "dieter"
 
     private const val PREFS = "keyboard"
     private const val PREF_THEME = "theme"
@@ -53,6 +57,10 @@ object KeyboardThemes {
             ThemeSpec(CORAL, ThemeGroup.COLORS, R.string.theme_coral) { coralPalette },
             ThemeSpec(PLUM, ThemeGroup.COLORS, R.string.theme_plum) { plumPalette },
             ThemeSpec(PISTACHIO, ThemeGroup.COLORS, R.string.theme_pistachio) { pistachioPalette },
+            ThemeSpec(MINT, ThemeGroup.COLORS, R.string.theme_mint) { mintPalette },
+            ThemeSpec(BLUEBERRY, ThemeGroup.COLORS, R.string.theme_blueberry) { blueberryPalette },
+            ThemeSpec(BROWNIE, ThemeGroup.COLORS, R.string.theme_brownie) { browniePalette },
+            ThemeSpec(DIETER, ThemeGroup.COLORS, R.string.theme_dieter) { dieterPalette },
         )
 
     private val byId = all.associateBy { it.id }
@@ -124,5 +132,59 @@ object KeyboardThemes {
             hint = 0xFF56683F.toInt(),
             trail = 0xFFE0532B.toInt(),
             shadow = 0xFF283C0F.toInt(),
+        )
+
+    private val mintPalette =
+        KeyboardPalette.of(
+            background = 0xFFCFEDE3.toInt(),
+            key = 0xFFF3FBF8.toInt(),
+            functionKey = 0xFFA3D9C6.toInt(),
+            actionKey = 0xFF0F5C4A.toInt(),
+            actionIcon = Color.WHITE,
+            label = 0xFF10241E.toInt(),
+            hint = 0xFF3F6B5E.toInt(),
+            trail = 0xFFD9486B.toInt(),
+            shadow = 0xFF0E4A3A.toInt(),
+        )
+
+    private val blueberryPalette =
+        KeyboardPalette.of(
+            background = 0xFF141A33.toInt(),
+            key = 0xFF232C52.toInt(),
+            functionKey = 0xFF34407A.toInt(),
+            actionKey = 0xFF8FA8FF.toInt(),
+            actionIcon = 0xFF141A33.toInt(),
+            label = 0xFFEEF1FF.toInt(),
+            hint = 0xFFA9B4E8.toInt(),
+            trail = 0xFFC58BFF.toInt(),
+            shadow = 0xFF05081A.toInt(),
+        )
+
+    private val browniePalette =
+        KeyboardPalette.of(
+            background = 0xFF231915.toInt(),
+            key = 0xFF3A2A23.toInt(),
+            functionKey = 0xFF523B30.toInt(),
+            actionKey = 0xFFD9A066.toInt(),
+            actionIcon = 0xFF231915.toInt(),
+            label = 0xFFF6ECE4.toInt(),
+            hint = 0xFFC9AE9A.toInt(),
+            trail = 0xFFD9A066.toInt(),
+            shadow = 0xFF0D0705.toInt(),
+        )
+
+    /** Warm greys of fifties and sixties household appliances with a single orange control. */
+    private val dieterPalette =
+        KeyboardPalette.of(
+            background = 0xFFE4E2DD.toInt(),
+            key = 0xFFF5F4F0.toInt(),
+            functionKey = 0xFFC9C6BF.toInt(),
+            actionKey = 0xFFE8691E.toInt(),
+            actionIcon = 0xFF1D1C1A.toInt(),
+            label = 0xFF1D1C1A.toInt(),
+            hint = 0xFF66635E.toInt(),
+            trail = 0xFFE8691E.toInt(),
+            divider = 0xFFE8691E.toInt(),
+            shadow = 0xFF3E3D3B.toInt(),
         )
 }

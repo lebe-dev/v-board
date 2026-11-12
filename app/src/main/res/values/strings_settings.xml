@@ -31,6 +31,10 @@
     <string name="theme_coral">Coral</string>
     <string name="theme_plum">Plum</string>
     <string name="theme_pistachio">Pistachio</string>
+    <string name="theme_mint">Mint</string>
+    <string name="theme_blueberry">Blueberry</string>
+    <string name="theme_brownie">Brownie</string>
+    <string name="theme_dieter">Dieter</string>
     <string name="theme_selected">Selected</string>
     <string name="theme_expand">Show the group</string>
     <string name="theme_collapse">Hide the group</string>
