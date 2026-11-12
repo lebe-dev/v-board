@@ -1,5 +1,7 @@
 # V-Board
 
+![V-Board](vboard-header.png)
+
 Быстрая и гибкая клавиатура для Android.
 
 [Зачем нужна ещё одна клавиатура?](docs/WHY.md).
