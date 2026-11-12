@@ -419,6 +419,7 @@
     <string name="settings_suggestion_timeout_10">After 10 seconds</string>
     <string name="settings_suggestion_timeout_off">Never</string>
     <string name="custom_button_name">Name</string>
+    <string name="settings_github">Project on GitHub</string>
     <string name="diagnostics_title">Diagnostics</string>
     <string name="diagnostics_link_summary">Error reports and the application log</string>
     <string name="app_log_title">Application log</string>

@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import ru.tinyops.android.vboard.BuildConfig
@@ -274,11 +275,12 @@ private fun SpaceDragRow() {
     )
 }
 
-/** The app itself: the language, the backup of all settings, the link to diagnostics and the version. */
+/** The app itself: the language, the backup of all settings, diagnostics, the project page and the version. */
 @Composable
 private fun ApplicationSection(onOpenDiagnostics: () -> Unit) {
     val context = LocalContext.current
     val backup = rememberBackupActions()
+    val uri = LocalUriHandler.current
     val localeManager = context.getSystemService(LocaleManager::class.java)
     var language by remember { mutableStateOf(localeManager.applicationLocales.toLanguageTags()) }
     SettingsSection(stringResource(R.string.settings_application)) {
@@ -311,9 +313,20 @@ private fun ApplicationSection(onOpenDiagnostics: () -> Unit) {
             )
         }
         item {
+            SettingsLinkRow(
+                title = stringResource(R.string.settings_github),
+                icon = R.drawable.ic_code,
+                prominent = true,
+                external = true,
+                onClick = { runCatching { uri.openUri(PROJECT_URL) } },
+            )
+        }
+        item {
             SettingsNote(
                 stringResource(R.string.settings_version, BuildConfig.VERSION_NAME, BuildConfig.GIT_HASH),
             )
         }
     }
 }
+
+private const val PROJECT_URL = "https://github.com/lebe-dev/v-board"

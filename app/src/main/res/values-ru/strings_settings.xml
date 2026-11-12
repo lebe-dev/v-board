@@ -425,6 +425,7 @@
     <string name="settings_suggestion_timeout_10">Через 10 секунд</string>
     <string name="settings_suggestion_timeout_off">Никогда</string>
     <string name="custom_button_name">Название</string>
+    <string name="settings_github">Проект на GitHub</string>
     <string name="diagnostics_title">Диагностика</string>
     <string name="diagnostics_link_summary">Отчёты об ошибках и журнал приложения</string>
     <string name="app_log_title">Журнал приложения</string>
