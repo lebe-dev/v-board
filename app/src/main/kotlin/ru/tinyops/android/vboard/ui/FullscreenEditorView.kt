@@ -8,6 +8,7 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.inputmethodservice.ExtractEditText
 import android.util.TypedValue
+import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -72,8 +73,12 @@ class FullscreenEditorView(
     /** Light icons mean a dark keyboard, whichever theme it comes from. */
     private val darkTheme = ColorUtils.calculateLuminance(theme.stripIcon) > HALF_LUMINANCE
 
+    /** Makes the system spelling window light or dark like the keyboard. */
+    private fun systemTheme() =
+        if (darkTheme) android.R.style.Theme_DeviceDefault else android.R.style.Theme_DeviceDefault_Light
+
     private val editor =
-        ExtractEditText(context).apply {
+        ExtractEditText(ContextThemeWrapper(context, systemTheme())).apply {
             id = android.R.id.inputExtractEditText
             background = null
             gravity = Gravity.TOP or Gravity.START
