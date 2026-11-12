@@ -205,7 +205,6 @@
     <string name="word_pairs_delete_text">Экспериментальный движок продолжит работать, но перестанет учитывать предыдущее слово. Словарь можно загрузить снова.</string>
     <string name="word_pairs_delete">Удалить</string>
     <string name="settings_version">Версия %1$s (сборка %2$s)</string>
-    <string name="backup_title">Резервная копия</string>
     <string name="backup_export">Экспорт настроек</string>
     <string name="backup_export_summary">Сохранить все настройки в JSON-файл</string>
     <string name="backup_export_keys">Включить API-ключи серверов</string>

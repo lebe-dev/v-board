@@ -45,13 +45,19 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
+/** What the backup rows do: [export] saves the settings to a file, [import] replaces them with a file's. */
+internal class BackupActions(
+    val export: () -> Unit,
+    val import: () -> Unit,
+)
+
 /**
  * Saving all the settings to a JSON file, with the API keys of the servers only when the user ticks the box
  * for them (asked only when some server has a key), and replacing the settings with the ones of such a file,
- * after a warning.
+ * after a warning. Shows the dialogs of both and returns the actions for the rows.
  */
 @Composable
-internal fun BackupSection() {
+internal fun rememberBackupActions(): BackupActions {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // The chosen file waits for the answer to the warning, also through a rotation.
@@ -79,35 +85,20 @@ internal fun BackupSection() {
             }
         }
 
-    SettingsSection(stringResource(R.string.backup_title)) {
-        item {
-            SettingsLinkRow(
-                title = stringResource(R.string.backup_export),
-                summary = stringResource(R.string.backup_export_summary),
-                icon = R.drawable.ic_download,
-                prominent = true,
-                onClick = {
-                    exportKeys = false
-                    // Without a single key there is nothing to warn about: the save dialog opens at once.
-                    if (SettingsBackup.hasApiKeys(context)) {
-                        exportOptions = true
-                    } else {
-                        export.launch(SettingsBackup.fileName(LocalDateTime.now()))
-                    }
-                },
-            )
-        }
-        item {
-            SettingsLinkRow(
-                title = stringResource(R.string.backup_import),
-                summary = stringResource(R.string.backup_import_summary),
-                icon = R.drawable.ic_upload,
-                prominent = true,
-                // Some file managers mark a .json file as text or as plain bytes.
-                onClick = { import.launch(arrayOf(MIME_JSON, "text/*", "application/octet-stream")) },
-            )
-        }
-    }
+    val actions =
+        BackupActions(
+            export = {
+                exportKeys = false
+                // Without a single key there is nothing to warn about: the save dialog opens at once.
+                if (SettingsBackup.hasApiKeys(context)) {
+                    exportOptions = true
+                } else {
+                    export.launch(SettingsBackup.fileName(LocalDateTime.now()))
+                }
+            },
+            // Some file managers mark a .json file as text or as plain bytes.
+            import = { import.launch(arrayOf(MIME_JSON, "text/*", "application/octet-stream")) },
+        )
 
     if (exportOptions) {
         ExportOptions(
@@ -129,6 +120,29 @@ internal fun BackupSection() {
                 scope.launch { importFrom(context, text) }
             },
             onDismiss = { pending = null },
+        )
+    }
+    return actions
+}
+
+/** The rows that export and import the settings. */
+internal fun SettingsSectionScope.backupRows(actions: BackupActions) {
+    item {
+        SettingsLinkRow(
+            title = stringResource(R.string.backup_export),
+            summary = stringResource(R.string.backup_export_summary),
+            icon = R.drawable.ic_download,
+            prominent = true,
+            onClick = actions.export,
+        )
+    }
+    item {
+        SettingsLinkRow(
+            title = stringResource(R.string.backup_import),
+            summary = stringResource(R.string.backup_import_summary),
+            icon = R.drawable.ic_upload,
+            prominent = true,
+            onClick = actions.import,
         )
     }
 }

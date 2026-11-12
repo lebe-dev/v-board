@@ -21,8 +21,8 @@ import ru.tinyops.android.vboard.ui.ThemeSpec
 
 /**
  * The settings root, in sections: appearance (theme, emoji), typing (slide to type, clipboard, the space bar,
- * the fullscreen mode), voice input, text improvement (dictation, proofreading, prompts, servers), the backup of
- * all settings and the app itself (language, diagnostics, version); the back arrow closes settings.
+ * the fullscreen mode), voice input, text improvement (dictation, proofreading, prompts, servers) and the app
+ * itself (language, backup of all settings, diagnostics, version); the back arrow closes settings.
  */
 @Composable
 internal fun MainSettingsScreen(
@@ -69,7 +69,6 @@ internal fun MainSettingsScreen(
             }
         }
         item { EnhancementSection(state, links) }
-        item { BackupSection() }
         item { ApplicationSection(links.diagnostics) }
     }
 }
@@ -275,10 +274,11 @@ private fun SpaceDragRow() {
     )
 }
 
-/** The app itself: the language, the link to diagnostics and the version. */
+/** The app itself: the language, the backup of all settings, the link to diagnostics and the version. */
 @Composable
 private fun ApplicationSection(onOpenDiagnostics: () -> Unit) {
     val context = LocalContext.current
+    val backup = rememberBackupActions()
     val localeManager = context.getSystemService(LocaleManager::class.java)
     var language by remember { mutableStateOf(localeManager.applicationLocales.toLanguageTags()) }
     SettingsSection(stringResource(R.string.settings_application)) {
@@ -300,6 +300,7 @@ private fun ApplicationSection(onOpenDiagnostics: () -> Unit) {
                 },
             )
         }
+        backupRows(backup)
         item {
             SettingsLinkRow(
                 title = stringResource(R.string.diagnostics_title),
