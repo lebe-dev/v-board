@@ -1,0 +1,32 @@
+naming:
+  FunctionNaming:
+    ignoreAnnotated:
+      - "Test"
+      - "Composable"
+
+complexity:
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 10
+  TooManyFunctions:
+    thresholdInFiles: 25
+    thresholdInClasses: 25
+    thresholdInObjects: 20
+    # Android framework classes (View, InputMethodService) come with many mandatory overrides.
+    ignoreOverridden: true
+  CyclomaticComplexMethod:
+    threshold: 18
+  LongMethod:
+    threshold: 80
+
+style:
+  MaxLineLength:
+    maxLineLength: 120
+  ReturnCount:
+    max: 6
+  MagicNumber:
+    ignoreEnums: true
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    excludes:
+      - "**/test/**"

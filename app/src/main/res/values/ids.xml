@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Lets UI tests find the area of the keys: the keys themselves are drawn on a Canvas. -->
+    <item name="keyboard_keys" type="id" />
+</resources>

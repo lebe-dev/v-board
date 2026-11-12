@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="kb_background">#FF1B1B1B</color>
+    <color name="kb_key">#FF5E5E5E</color>
+    <color name="kb_key_pressed">#FF7A7A7A</color>
+    <color name="kb_function_key">#FF2D2D2D</color>
+    <color name="kb_function_key_pressed">#FF454545</color>
+    <color name="kb_action_key">#FF003B5C</color>
+    <color name="kb_action_key_pressed">#FF0B5079</color>
+    <color name="kb_action_icon">#FFFFFFFF</color>
+    <color name="kb_label">#FFFFFFFF</color>
+    <color name="kb_hint">#FFE3E3E3</color>
+    <color name="kb_preview">#FF6E6E6E</color>
+    <color name="kb_popup_selected">#FF8AB4F8</color>
+    <color name="kb_popup_selected_label">#FF0B1C33</color>
+    <color name="kb_trail">#FF8AB4F8</color>
+    <color name="kb_suggestion">#FFE3E3E3</color>
+    <color name="kb_suggestion_divider">#FF3C3C3C</color>
+    <color name="kb_suggestion_pressed">#FF333333</color>
+    <color name="kb_strip_icon">#FFC4C7C5</color>
+    <color name="kb_voice_active">#FF8AB4F8</color>
+    <color name="kb_voice_active_icon">#FF0B1C33</color>
+    <color name="kb_voice_halo">#558AB4F8</color>
+    <color name="kb_voice_status">#FFC4C7C5</color>
+</resources>

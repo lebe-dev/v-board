@@ -1,0 +1,28 @@
+Bundled dictionaries (en.tsv, ru.tsv)
+
+Derived from wordfreq by Robyn Speer
+https://github.com/rspeer/wordfreq
+It aggregates many open corpora (OpenSubtitles, Wikipedia, subtitles, Twitter,
+and others) into a single de-duplicated frequency per word.
+
+Package code: Apache License 2.0
+https://www.apache.org/licenses/LICENSE-2.0
+Frequency data: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+https://creativecommons.org/licenses/by-sa/4.0/
+See https://github.com/rspeer/wordfreq/blob/master/docs/data.rst for the full
+list of sources and their licenses.
+
+Changes: lowercased, filtered to words of 2+ letters of the target alphabet,
+duplicates merged, truncated to the most frequent entries; common Russian
+words with a hyphen added, with a frequency estimated by wordfreq from their
+parts and divided by 10 per hyphen (see scripts/fetch_dictionaries.py).
+
+Word pair table (ru.bigrams)
+
+Counted from Russian Wikipedia, as published in the wikimedia/wikipedia dataset
+(configuration 20231101.ru): https://huggingface.co/datasets/wikimedia/wikipedia
+Text: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0),
+by the contributors of Russian Wikipedia: https://ru.wikipedia.org/
+The table holds only counts of adjacent word pairs, not text; it is built by
+scripts/swipe_model/bigrams.py (see `just bigrams`), and is shared under the
+same licence.

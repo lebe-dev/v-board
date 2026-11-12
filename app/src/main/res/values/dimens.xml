@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="kb_row_height">62dp</dimen>
+    <dimen name="kb_key_gap_horizontal">5dp</dimen>
+    <dimen name="kb_key_gap_vertical">12dp</dimen>
+    <dimen name="kb_padding_horizontal">4dp</dimen>
+    <dimen name="kb_padding_top">4dp</dimen>
+    <dimen name="kb_padding_bottom">8dp</dimen>
+    <dimen name="kb_key_radius">7dp</dimen>
+    <dimen name="kb_trail_width">5dp</dimen>
+    <dimen name="kb_suggestion_height">48dp</dimen>
+    <dimen name="kb_suggestion_text">17sp</dimen>
+    <dimen name="kb_strip_icon">24dp</dimen>
+</resources>
