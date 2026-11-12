@@ -54,7 +54,8 @@ import ru.tinyops.android.vboard.core.voice.TextFeature
 import ru.tinyops.android.vboard.diagnostics.AppLog
 import ru.tinyops.android.vboard.diagnostics.ErrorReporting
 import ru.tinyops.android.vboard.ui.KeyboardThemes
-import ru.tinyops.android.vboard.ui.ThemeSpec
+import ru.tinyops.android.vboard.ui.ThemeChoice
+import ru.tinyops.android.vboard.ui.ThemeMode
 import ru.tinyops.android.vboard.voice.VoicePrefs
 import ru.tinyops.android.vboard.voice.govorun.GovorunConnection
 
@@ -65,7 +66,7 @@ import ru.tinyops.android.vboard.voice.govorun.GovorunConnection
 class SettingsActivity : ComponentActivity() {
     private val microphoneGranted = mutableStateOf(false)
     private val recognition = mutableStateOf(RecognitionStatus.SYSTEM)
-    private val theme = mutableStateOf(KeyboardThemes.find(KeyboardThemes.SYSTEM))
+    private val theme = mutableStateOf(ThemeChoice(KeyboardThemes.find(KeyboardThemes.CLASSIC), ThemeMode.SYSTEM))
     private val scope = MainScope()
     private val govorun by lazy { GovorunConnection(this) }
     private var statusCheck: Job? = null
@@ -310,7 +311,7 @@ internal enum class Screen(
 @Composable
 private fun SettingsNavigation(
     start: Screen,
-    theme: MutableState<ThemeSpec>,
+    theme: MutableState<ThemeChoice>,
     state: VoiceSettingsState,
     voiceStatus: VoiceStatus,
     onRequestMicrophone: () -> Unit,
@@ -347,19 +348,12 @@ private fun SettingsNavigation(
             Screen.MAIN ->
                 MainSettingsScreen(
                     state = state,
-                    theme = theme.value,
+                    theme = theme.value.spec,
                     links = mainLinks(navigate = { screen = it }, openServers),
                     onClose = { backDispatcher?.onBackPressed() },
                 )
             Screen.THEME ->
-                ThemeScreen(
-                    selected = theme.value.id,
-                    onSelect = {
-                        KeyboardThemes.select(context, it)
-                        theme.value = KeyboardThemes.find(it)
-                    },
-                    onBack = back,
-                )
+                ThemeScreen(theme, onBack = back)
             Screen.VOICE ->
                 VoiceSettingsScreen(
                     state = state,
@@ -500,11 +494,11 @@ private const val SHARED_AXIS_SHIFT = 10
  */
 @Composable
 internal fun SettingsTheme(
-    theme: ThemeSpec = KeyboardThemes.find(KeyboardThemes.SYSTEM),
+    theme: ThemeChoice = ThemeChoice(KeyboardThemes.find(KeyboardThemes.CLASSIC), ThemeMode.SYSTEM),
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val dark = settingsMode(theme) ?: isSystemInDarkTheme()
+    val dark = settingsMode(theme.mode) ?: isSystemInDarkTheme()
     val colors = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -515,7 +509,7 @@ internal fun SettingsTheme(
             controls.isAppearanceLightNavigationBars = !dark
         }
     }
-    CompositionLocalProvider(LocalBadgeColors provides badgeColors(theme, context)) {
+    CompositionLocalProvider(LocalBadgeColors provides badgeColors(theme.spec, context, dark)) {
         MaterialTheme(colorScheme = colors, content = content)
     }
 }

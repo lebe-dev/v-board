@@ -15,22 +15,54 @@ enum class ThemeGroup(
     COLORS(R.string.theme_group_colors),
 }
 
-/** A keyboard theme: [palette] resolves its colors, possibly depending on the system dark mode. */
+/** Which variant of a theme the keyboard shows. */
+enum class ThemeMode(
+    val id: String,
+    @param:StringRes val title: Int,
+) {
+    SYSTEM("system", R.string.theme_mode_system),
+    LIGHT("light", R.string.theme_mode_light),
+    DARK("dark", R.string.theme_mode_dark),
+}
+
+/** A keyboard theme with a light and a dark variant. */
 class ThemeSpec(
     val id: String,
     val group: ThemeGroup,
     @param:StringRes val name: Int,
-    private val resolve: (Context) -> KeyboardPalette,
+    private val resolve: (Context, Boolean) -> KeyboardPalette,
 ) {
-    fun palette(context: Context): KeyboardPalette = resolve(context)
+    fun palette(
+        context: Context,
+        night: Boolean,
+    ): KeyboardPalette = resolve(context, night)
 }
+
+/** A theme together with the mode that picks its variant. */
+data class ThemeChoice(
+    val spec: ThemeSpec,
+    val mode: ThemeMode,
+) {
+    /** Changes whenever the keyboard has to be rebuilt with other colors. */
+    val key: String get() = "${spec.id}:${mode.id}"
+
+    fun night(context: Context): Boolean =
+        when (mode) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.SYSTEM -> context.isNight()
+        }
+
+    fun palette(context: Context): KeyboardPalette = spec.palette(context, night(context))
+}
+
+private fun Context.isNight(): Boolean =
+    resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
 
 /** The built-in themes and the selected one stored in the preferences. */
 object KeyboardThemes {
-    const val SYSTEM = "system"
+    const val CLASSIC = "classic"
     const val DYNAMIC = "dynamic"
-    const val LIGHT = "light"
-    const val DARK = "dark"
     const val STRIPE = "stripe"
     const val CORAL = "coral"
     const val PLUM = "plum"
@@ -42,46 +74,87 @@ object KeyboardThemes {
 
     private const val PREFS = "keyboard"
     private const val PREF_THEME = "theme"
+    private const val PREF_MODE = "theme_mode"
 
-    val all: List<ThemeSpec> =
+    /** Stored theme ids that stand for the classic theme in a fixed mode. */
+    private val CLASSIC_MODES = ThemeMode.entries.associateBy { it.id }
+
+    val all: List<ThemeSpec> by lazy {
         listOf(
-            ThemeSpec(
-                DYNAMIC,
-                ThemeGroup.DEFAULT,
-                R.string.theme_dynamic,
-            ) { KeyboardPalette.dynamic(it, it.isNight()) },
-            ThemeSpec(SYSTEM, ThemeGroup.DEFAULT, R.string.theme_system) { KeyboardPalette.fromResources(it) },
-            ThemeSpec(LIGHT, ThemeGroup.DEFAULT, R.string.theme_light) { KeyboardPalette.fromResources(it, false) },
-            ThemeSpec(DARK, ThemeGroup.DEFAULT, R.string.theme_dark) { KeyboardPalette.fromResources(it, true) },
-            ThemeSpec(STRIPE, ThemeGroup.COLORS, R.string.theme_stripe) { stripePalette },
-            ThemeSpec(CORAL, ThemeGroup.COLORS, R.string.theme_coral) { coralPalette },
-            ThemeSpec(PLUM, ThemeGroup.COLORS, R.string.theme_plum) { plumPalette },
-            ThemeSpec(PISTACHIO, ThemeGroup.COLORS, R.string.theme_pistachio) { pistachioPalette },
-            ThemeSpec(MINT, ThemeGroup.COLORS, R.string.theme_mint) { mintPalette },
-            ThemeSpec(BLUEBERRY, ThemeGroup.COLORS, R.string.theme_blueberry) { blueberryPalette },
-            ThemeSpec(BROWNIE, ThemeGroup.COLORS, R.string.theme_brownie) { browniePalette },
-            ThemeSpec(DIETER, ThemeGroup.COLORS, R.string.theme_dieter) { dieterPalette },
+            ThemeSpec(CLASSIC, ThemeGroup.DEFAULT, R.string.theme_classic) { context, night ->
+                KeyboardPalette.fromResources(context, night)
+            },
+            ThemeSpec(DYNAMIC, ThemeGroup.DEFAULT, R.string.theme_dynamic) { context, night ->
+                KeyboardPalette.dynamic(context, night)
+            },
+            fixed(STRIPE, R.string.theme_stripe, stripeLight, stripeDark),
+            fixed(CORAL, R.string.theme_coral, coralLight, coralDark),
+            fixed(PLUM, R.string.theme_plum, plumLight, plumDark),
+            fixed(PISTACHIO, R.string.theme_pistachio, pistachioLight, pistachioDark),
+            fixed(MINT, R.string.theme_mint, mintLight, mintDark),
+            fixed(BLUEBERRY, R.string.theme_blueberry, blueberryLight, blueberryDark),
+            fixed(BROWNIE, R.string.theme_brownie, brownieLight, brownieDark),
+            fixed(DIETER, R.string.theme_dieter, dieterLight, dieterDark),
         )
+    }
 
-    private val byId = all.associateBy { it.id }
+    private val byId by lazy { all.associateBy { it.id } }
 
-    fun find(id: String?): ThemeSpec = byId[id] ?: byId.getValue(SYSTEM)
+    fun find(id: String?): ThemeSpec = byId[id] ?: byId.getValue(CLASSIC)
 
-    fun selected(context: Context): ThemeSpec = find(prefs(context).getString(PREF_THEME, null))
+    fun selected(context: Context): ThemeChoice {
+        val prefs = prefs(context)
+        val id = prefs.getString(PREF_THEME, null)
+        val mode =
+            ThemeMode.entries.firstOrNull { it.id == prefs.getString(PREF_MODE, null) }
+                ?: CLASSIC_MODES[id]
+                ?: ThemeMode.SYSTEM
+        return ThemeChoice(find(id), mode)
+    }
 
     fun select(
         context: Context,
         id: String,
     ) {
-        prefs(context).edit { putString(PREF_THEME, find(id).id) }
+        val mode = selected(context).mode
+        prefs(context).edit {
+            putString(PREF_THEME, find(id).id)
+            putString(PREF_MODE, mode.id)
+        }
+    }
+
+    fun selectMode(
+        context: Context,
+        mode: ThemeMode,
+    ) {
+        prefs(context).edit { putString(PREF_MODE, mode.id) }
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private fun Context.isNight(): Boolean =
-        resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    private fun fixed(
+        id: String,
+        @StringRes name: Int,
+        light: KeyboardPalette,
+        dark: KeyboardPalette,
+    ) = ThemeSpec(id, ThemeGroup.COLORS, name) { _, night -> if (night) dark else light }
 
-    private val stripePalette =
+    private val stripeLight =
+        KeyboardPalette.of(
+            background = 0xFFEEF0F4.toInt(),
+            key = Color.WHITE,
+            functionKey = 0xFFD3D8E2.toInt(),
+            actionKey = 0xFF3B63E0.toInt(),
+            actionIcon = Color.WHITE,
+            label = 0xFF111214.toInt(),
+            hint = 0xFFB25E0A.toInt(),
+            trail = 0xFFE8785A.toInt(),
+            divider = 0xFF8E2E3A.toInt(),
+            stripIcon = 0xFF4A4F5C.toInt(),
+            shadow = 0xFF111214.toInt(),
+        )
+
+    private val stripeDark =
         KeyboardPalette.of(
             background = 0xFF111214.toInt(),
             key = 0xFF24262C.toInt(),
@@ -95,7 +168,7 @@ object KeyboardThemes {
             stripIcon = 0xFFA9ADB6.toInt(),
         )
 
-    private val coralPalette =
+    private val coralLight =
         KeyboardPalette.of(
             background = 0xFFFFD9CC.toInt(),
             key = 0xFFFFF5F1.toInt(),
@@ -108,7 +181,33 @@ object KeyboardThemes {
             shadow = 0xFF7A2C16.toInt(),
         )
 
-    private val plumPalette =
+    private val coralDark =
+        KeyboardPalette.of(
+            background = 0xFF2A1512.toInt(),
+            key = 0xFF42221D.toInt(),
+            functionKey = 0xFF5C2F27.toInt(),
+            actionKey = 0xFFFF8A6B.toInt(),
+            actionIcon = 0xFF2A1512.toInt(),
+            label = 0xFFFFEDE7.toInt(),
+            hint = 0xFFF0B4A3.toInt(),
+            trail = 0xFFFF8A6B.toInt(),
+            shadow = 0xFF0C0403.toInt(),
+        )
+
+    private val plumLight =
+        KeyboardPalette.of(
+            background = 0xFFEADFF3.toInt(),
+            key = 0xFFFBF7FE.toInt(),
+            functionKey = 0xFFCDB6E2.toInt(),
+            actionKey = 0xFF5B2E86.toInt(),
+            actionIcon = Color.WHITE,
+            label = 0xFF241530.toInt(),
+            hint = 0xFF6B4F86.toInt(),
+            trail = 0xFFE0901C.toInt(),
+            shadow = 0xFF3C195A.toInt(),
+        )
+
+    private val plumDark =
         KeyboardPalette.of(
             background = 0xFF241530.toInt(),
             key = 0xFF3A2550.toInt(),
@@ -121,7 +220,7 @@ object KeyboardThemes {
             shadow = 0xFF0A0312.toInt(),
         )
 
-    private val pistachioPalette =
+    private val pistachioLight =
         KeyboardPalette.of(
             background = 0xFFD7E4C0.toInt(),
             key = 0xFFF6F9EE.toInt(),
@@ -134,7 +233,20 @@ object KeyboardThemes {
             shadow = 0xFF283C0F.toInt(),
         )
 
-    private val mintPalette =
+    private val pistachioDark =
+        KeyboardPalette.of(
+            background = 0xFF1A2210.toInt(),
+            key = 0xFF2A3519.toInt(),
+            functionKey = 0xFF3D4C24.toInt(),
+            actionKey = 0xFFB5D98A.toInt(),
+            actionIcon = 0xFF1A2210.toInt(),
+            label = 0xFFEEF5E2.toInt(),
+            hint = 0xFFAFC294.toInt(),
+            trail = 0xFFFF7A52.toInt(),
+            shadow = 0xFF060A02.toInt(),
+        )
+
+    private val mintLight =
         KeyboardPalette.of(
             background = 0xFFCFEDE3.toInt(),
             key = 0xFFF3FBF8.toInt(),
@@ -147,7 +259,33 @@ object KeyboardThemes {
             shadow = 0xFF0E4A3A.toInt(),
         )
 
-    private val blueberryPalette =
+    private val mintDark =
+        KeyboardPalette.of(
+            background = 0xFF0F2620.toInt(),
+            key = 0xFF1A3A31.toInt(),
+            functionKey = 0xFF275245.toInt(),
+            actionKey = 0xFF6FD6B4.toInt(),
+            actionIcon = 0xFF0F2620.toInt(),
+            label = 0xFFE6FAF3.toInt(),
+            hint = 0xFF9CCFBF.toInt(),
+            trail = 0xFFFF7A98.toInt(),
+            shadow = 0xFF030C09.toInt(),
+        )
+
+    private val blueberryLight =
+        KeyboardPalette.of(
+            background = 0xFFDDE3FA.toInt(),
+            key = 0xFFF7F8FF.toInt(),
+            functionKey = 0xFFB9C4F0.toInt(),
+            actionKey = 0xFF2F3F9E.toInt(),
+            actionIcon = Color.WHITE,
+            label = 0xFF141A33.toInt(),
+            hint = 0xFF4A5590.toInt(),
+            trail = 0xFF8A4FD6.toInt(),
+            shadow = 0xFF141E5A.toInt(),
+        )
+
+    private val blueberryDark =
         KeyboardPalette.of(
             background = 0xFF141A33.toInt(),
             key = 0xFF232C52.toInt(),
@@ -160,7 +298,20 @@ object KeyboardThemes {
             shadow = 0xFF05081A.toInt(),
         )
 
-    private val browniePalette =
+    private val brownieLight =
+        KeyboardPalette.of(
+            background = 0xFFEFE4D8.toInt(),
+            key = 0xFFFBF6F0.toInt(),
+            functionKey = 0xFFD9C4AE.toInt(),
+            actionKey = 0xFF6B4226.toInt(),
+            actionIcon = 0xFFFBF6F0.toInt(),
+            label = 0xFF2A1D16.toInt(),
+            hint = 0xFF7A5A44.toInt(),
+            trail = 0xFFC07A35.toInt(),
+            shadow = 0xFF462814.toInt(),
+        )
+
+    private val brownieDark =
         KeyboardPalette.of(
             background = 0xFF231915.toInt(),
             key = 0xFF3A2A23.toInt(),
@@ -174,7 +325,7 @@ object KeyboardThemes {
         )
 
     /** Warm greys of fifties and sixties household appliances with a single orange control. */
-    private val dieterPalette =
+    private val dieterLight =
         KeyboardPalette.of(
             background = 0xFFE4E2DD.toInt(),
             key = 0xFFF5F4F0.toInt(),
@@ -186,5 +337,18 @@ object KeyboardThemes {
             trail = 0xFFE8691E.toInt(),
             divider = 0xFFE8691E.toInt(),
             shadow = 0xFF3E3D3B.toInt(),
+        )
+
+    private val dieterDark =
+        KeyboardPalette.of(
+            background = 0xFF2B2A28.toInt(),
+            key = 0xFF3D3B38.toInt(),
+            functionKey = 0xFF55524D.toInt(),
+            actionKey = 0xFFE8691E.toInt(),
+            actionIcon = 0xFF1D1C1A.toInt(),
+            label = 0xFFF2F0EB.toInt(),
+            hint = 0xFFB5B1AA.toInt(),
+            trail = 0xFFE8691E.toInt(),
+            divider = 0xFFE8691E.toInt(),
         )
 }

@@ -24,9 +24,10 @@
     <string name="theme_group_default">По умолчанию</string>
     <string name="theme_group_colors">Цвета</string>
     <string name="theme_dynamic">Динамический цвет</string>
-    <string name="theme_system">Как в системе</string>
-    <string name="theme_light">Бумага</string>
-    <string name="theme_dark">Графит</string>
+    <string name="theme_classic">Классика</string>
+    <string name="theme_mode_system">Как в системе</string>
+    <string name="theme_mode_light">Светлая</string>
+    <string name="theme_mode_dark">Тёмная</string>
     <string name="theme_stripe">Полоса</string>
     <string name="theme_coral">Коралл</string>
     <string name="theme_plum">Слива</string>

@@ -24,9 +24,10 @@
     <string name="theme_group_default">Default</string>
     <string name="theme_group_colors">Colors</string>
     <string name="theme_dynamic">Dynamic color</string>
-    <string name="theme_system">System default</string>
-    <string name="theme_light">Paper</string>
-    <string name="theme_dark">Graphite</string>
+    <string name="theme_classic">Classic</string>
+    <string name="theme_mode_system">System</string>
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
     <string name="theme_stripe">Stripe</string>
     <string name="theme_coral">Coral</string>
     <string name="theme_plum">Plum</string>

@@ -120,7 +120,7 @@ class KeyboardService :
     private var profile = EditorProfile.from(null)
 
     /** The theme the current input view was built with; settings may select another one. */
-    private var themeId: String? = null
+    private var themeKey: String? = null
 
     private var gestureSequence = 0
     private var gestureInProgress = false
@@ -247,9 +247,9 @@ class KeyboardService :
     override fun onCreateInputView(): View = PerfTrace.section(PerfTrace.CREATE_VIEW) { createInputView() }
 
     private fun createInputView(): View {
-        val spec = KeyboardThemes.selected(this)
-        themeId = spec.id
-        val theme = KeyboardTheme(this, spec.palette(this))
+        val choice = KeyboardThemes.selected(this)
+        themeKey = choice.key
+        val theme = KeyboardTheme(this, choice.palette(this))
         val strip =
             SuggestionStripView(this, theme).also {
                 it.listener = this
@@ -335,7 +335,7 @@ class KeyboardService :
         PerfTrace.section(PerfTrace.START_INPUT) {
             profile = EditorProfile.from(info, suggestAlways = keyboardPrefs.suggestAlways)
             // A theme picked in the settings applies the next time the keyboard shows up.
-            if (themeId != null && KeyboardThemes.selected(this).id != themeId) setInputView(onCreateInputView())
+            if (themeKey != null && KeyboardThemes.selected(this).key != themeKey) setInputView(onCreateInputView())
             keyboardView?.emojiEnabled = emojiPrefs.enabled
             logic.reset()
             logic.shift.reset()

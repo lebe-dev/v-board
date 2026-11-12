@@ -18,6 +18,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ru.tinyops.android.vboard.ui.KeyboardThemes
 import ru.tinyops.android.vboard.ui.KeyboardView
+import ru.tinyops.android.vboard.ui.ThemeMode
 import java.io.File
 import kotlin.math.abs
 
@@ -71,7 +72,7 @@ class KeyboardThemeRenderTest {
 
         KeyboardThemes.select(service, "stripe")
         val bitmap = render(startInput(), "theme-stripe")
-        val palette = KeyboardThemes.find("stripe").palette(service)
+        val palette = KeyboardThemes.find("stripe").palette(service, night = true)
         assertNear(palette.background, bitmap.getPixel(2, 0))
         assertNear(palette.background, bitmap.getPixel(2, bitmap.height - 1))
         assertNotEquals(before.getPixel(2, 0), bitmap.getPixel(2, 0))
@@ -80,8 +81,12 @@ class KeyboardThemeRenderTest {
     @Test
     fun `every theme renders`() {
         for (theme in KeyboardThemes.all) {
-            KeyboardThemes.select(service, theme.id)
-            render(startInput(), "theme-${theme.id}")
+            for (mode in listOf(ThemeMode.LIGHT, ThemeMode.DARK)) {
+                KeyboardThemes.select(service, theme.id)
+                KeyboardThemes.selectMode(service, mode)
+                val bitmap = render(startInput(), "theme-${theme.id}-${mode.id}")
+                assertNear(theme.palette(service, mode == ThemeMode.DARK).background, bitmap.getPixel(2, 0))
+            }
         }
     }
 

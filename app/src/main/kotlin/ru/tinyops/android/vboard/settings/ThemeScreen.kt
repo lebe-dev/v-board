@@ -23,8 +23,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,17 +53,29 @@ import androidx.core.graphics.ColorUtils
 import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.ui.KeyboardPalette
 import ru.tinyops.android.vboard.ui.KeyboardThemes
+import ru.tinyops.android.vboard.ui.ThemeChoice
 import ru.tinyops.android.vboard.ui.ThemeGroup
+import ru.tinyops.android.vboard.ui.ThemeMode
 import ru.tinyops.android.vboard.ui.ThemeSpec
 
-/** The theme picker: groups of tiles, each a miniature of the keyboard colors. */
+/** The theme picker: the light or dark mode, then groups of tiles, each a miniature of the keyboard colors. */
 @Composable
 internal fun ThemeScreen(
-    selected: String,
-    onSelect: (String) -> Unit,
+    choice: MutableState<ThemeChoice>,
     onBack: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val selected = choice.value
+    val onSelect = { id: String ->
+        KeyboardThemes.select(context, id)
+        choice.value = KeyboardThemes.selected(context)
+    }
+    val onSelectMode = { mode: ThemeMode ->
+        KeyboardThemes.selectMode(context, mode)
+        choice.value = KeyboardThemes.selected(context)
+    }
     SettingsPage(title = stringResource(R.string.theme_title), onBack = onBack) {
+        item(key = "mode") { ModeChoice(selected.mode, onSelectMode) }
         for (group in ThemeGroup.entries) {
             item(key = group.name) {
                 ThemeGroupSection(group, KeyboardThemes.all.filter { it.group == group }, selected, onSelect)
@@ -69,10 +85,28 @@ internal fun ThemeScreen(
 }
 
 @Composable
+private fun ModeChoice(
+    selected: ThemeMode,
+    onSelected: (ThemeMode) -> Unit,
+) {
+    val modes = ThemeMode.entries
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        modes.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = mode == selected,
+                onClick = { onSelected(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                label = { Text(stringResource(mode.title), maxLines = 1) },
+            )
+        }
+    }
+}
+
+@Composable
 private fun ThemeGroupSection(
     group: ThemeGroup,
     themes: List<ThemeSpec>,
-    selected: String,
+    selected: ThemeChoice,
     onSelect: (String) -> Unit,
 ) {
     var expanded by rememberSaveable(group) { mutableStateOf(true) }
@@ -97,8 +131,9 @@ private fun ThemeGroupSection(
                     chunk.forEach { theme ->
                         ThemeTile(
                             theme = theme,
+                            mode = selected.mode,
                             description = stringResource(theme.name),
-                            selected = theme.id == selected,
+                            selected = theme.id == selected.spec.id,
                             onClick = { onSelect(theme.id) },
                             modifier = Modifier.weight(1f),
                         )
@@ -113,6 +148,7 @@ private fun ThemeGroupSection(
 @Composable
 private fun ThemeTile(
     theme: ThemeSpec,
+    mode: ThemeMode,
     description: String,
     selected: Boolean,
     onClick: () -> Unit,
@@ -121,11 +157,11 @@ private fun ThemeTile(
     val context = LocalContext.current
     val uiMode = LocalConfiguration.current.uiMode
     val palettes =
-        remember(theme.id, uiMode) {
-            if (theme.id == KeyboardThemes.SYSTEM) {
-                KeyboardPalette.fromResources(context, false) to KeyboardPalette.fromResources(context, true)
-            } else {
-                theme.palette(context).let { it to it }
+        remember(theme.id, mode, uiMode) {
+            when (mode) {
+                ThemeMode.SYSTEM -> theme.palette(context, false) to theme.palette(context, true)
+                ThemeMode.LIGHT -> theme.palette(context, false).let { it to it }
+                ThemeMode.DARK -> theme.palette(context, true).let { it to it }
             }
         }
     val selectedText = stringResource(R.string.theme_selected)
@@ -147,7 +183,7 @@ private fun ThemeTile(
                     .then(border),
         ) {
             TileContent(palettes.first)
-            // "System default" is half light, half dark.
+            // Following the system, a tile is half light, half dark.
             if (palettes.second !== palettes.first) {
                 Box(Modifier.fillMaxSize().clip(RightHalf)) { TileContent(palettes.second) }
             }
