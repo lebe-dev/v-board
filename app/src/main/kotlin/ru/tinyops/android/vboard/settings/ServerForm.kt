@@ -135,6 +135,7 @@ internal fun ColumnScope.EndpointFields(
             enabled = enabled,
             singleLine = true,
             label = { Text(stringResource(R.string.server_proxy_url)) },
+            // nosemgrep: cleartext-url - an example of the proxy address format
             placeholder = { Text("http://host:8080 · socks5://host:1080") },
             supportingText = {
                 Text(stringResource(if (proxyError) R.string.server_proxy_error else R.string.server_proxy_summary))

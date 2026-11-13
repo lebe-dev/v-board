@@ -16,6 +16,8 @@ osv_scanner_image := "ghcr.io/google/osv-scanner:v2.7.1@sha256:a70ffffc2bfd33482
 gitleaks_image := "ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f"
 trivy_image := "aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb"
 trivy_cache := env_var("HOME") + "/.cache/v-board/trivy"
+semgrep_image := "semgrep/semgrep:1.185.0@sha256:67518c174185a2043fdbed16c70631b79209499b3671178e7194379b48295a0d"
+semgrep_rules_dir := env_var("HOME") + "/.cache/v-board/semgrep-rules"
 bigrams_python := "PYTHONDONTWRITEBYTECODE=1 uv run --python 3.12 --no-project --with pyarrow==26.0.1 --with numpy==2.5.4 python -I"
 
 default:
@@ -29,8 +31,11 @@ test: voice-runtime
 lint: voice-runtime
     {{ gradle }} ktlintCheck detekt :app:lintDebug
 
-# Security scans in Docker: OSV-Scanner and Trivy check the shipped dependencies, Gitleaks the git history.
-security: voice-runtime
+# Security scans in Docker; fails on any finding.
+security: security-deps security-code security-secrets
+
+# OSV-Scanner and Trivy over the resolved runtime dependencies of the shipped modules.
+security-deps: voice-runtime
     #!/usr/bin/env bash
     set -euo pipefail
     rm -rf build/security
@@ -51,9 +56,36 @@ security: voice-runtime
     mkdir -p "{{ trivy_cache }}"
     "${run[@]}" -v "{{ trivy_cache }}:/cache" {{ trivy_image }} fs --cache-dir /cache --quiet \
         --scanners vuln --exit-code 1 build/security
+
+# Semgrep over the sources: the community Kotlin rules and the project rules in .semgrep/.
+security-code:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rules="$(scripts/fetch_semgrep_rules.sh "{{ semgrep_rules_dir }}")"
+    run=(docker run --rm -v "$PWD:/repo:ro" -v "$rules:/rules:ro" -w /repo {{ semgrep_image }})
+    echo "Semgrep: project rules"
+    "${run[@]}" semgrep --test --metrics=off --disable-version-check --config .semgrep/android.yaml .semgrep/android.kt
+    echo "Semgrep: sources"
+    # Not --strict: the Kotlin parser skips a few constructs (annotated catch parameters), the rest is scanned.
+    "${run[@]}" semgrep scan --metrics=off --disable-version-check --error --quiet \
+        --config /rules --config .semgrep/android.yaml --exclude .semgrep .
+
+# Gitleaks over the git history and over the working tree, without the files git ignores.
+security-secrets:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    run=(docker run --rm -v "$PWD:/repo:ro" -w /repo)
     echo "Gitleaks: git history"
     "${run[@]}" -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
         {{ gitleaks_image }} git --redact --no-banner /repo
+    echo "Gitleaks: working tree"
+    # A copy of what git would commit: .env and the downloaded assets stay out.
+    tree="build/security/tree"
+    rm -rf "$tree" && mkdir -p "$tree"
+    git ls-files -z --cached --others --exclude-standard | while IFS= read -r -d '' file; do
+        [ -f "$file" ] && printf '%s\0' "$file"
+    done | rsync -a --from0 --files-from=- . "$tree"
+    "${run[@]}" {{ gitleaks_image }} dir --redact --no-banner "/repo/$tree"
 
 # Auto-format Kotlin sources with ktlint.
 format:

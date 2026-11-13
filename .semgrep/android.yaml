@@ -1,0 +1,60 @@
+# Android checks the community Kotlin rules do not cover. `.semgrep/android.kt` holds the cases each rule
+# must and must not report; `just security` runs them first.
+rules:
+  - id: trust-all-certificates
+    languages: [kotlin]
+    severity: ERROR
+    message: A TrustManager that accepts every certificate turns off TLS server authentication.
+    pattern: |
+      override fun checkServerTrusted(...) {}
+
+  - id: hostname-verifier-allows-all
+    languages: [kotlin]
+    severity: ERROR
+    message: A HostnameVerifier that always returns true accepts a certificate issued for any host.
+    pattern-either:
+      - pattern: HostnameVerifier { $A, $B -> true }
+      - pattern: |
+          override fun verify($A: String?, $B: SSLSession?): Boolean = true
+      - pattern: |
+          override fun verify($A: String, $B: SSLSession): Boolean = true
+
+  - id: webview-unsafe-settings
+    languages: [kotlin]
+    severity: ERROR
+    message: WebView JavaScript, file access and JavaScript bridges expose the app to the loaded page.
+    pattern-either:
+      - pattern: $S.javaScriptEnabled = true
+      - pattern: $S.allowFileAccess = true
+      - pattern: $S.allowFileAccessFromFileURLs = true
+      - pattern: $S.allowUniversalAccessFromFileURLs = true
+      - pattern: $W.addJavascriptInterface(...)
+
+  - id: world-accessible-file
+    languages: [kotlin]
+    severity: ERROR
+    message: Files readable or writable by other apps leak what the keyboard stores.
+    pattern-either:
+      - pattern: Context.MODE_WORLD_READABLE
+      - pattern: Context.MODE_WORLD_WRITEABLE
+      - pattern: MODE_WORLD_READABLE
+      - pattern: MODE_WORLD_WRITEABLE
+      - pattern: $F.setReadable(true, false)
+      - pattern: $F.setWritable(true, false)
+
+  - id: mutable-pending-intent
+    languages: [kotlin]
+    severity: WARNING
+    message: A mutable PendingIntent lets the app that receives it change the intent; use FLAG_IMMUTABLE.
+    pattern: PendingIntent.FLAG_MUTABLE
+
+  - id: cleartext-url
+    languages: [kotlin]
+    severity: WARNING
+    message: A hard-coded http URL sends data without TLS.
+    patterns:
+      - pattern: |
+          "$URL"
+      - metavariable-regex:
+          metavariable: $URL
+          regex: ^http://(?!localhost|127\.0\.0\.1|10\.0\.2\.2)

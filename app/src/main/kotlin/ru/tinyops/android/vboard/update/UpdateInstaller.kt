@@ -38,6 +38,8 @@ internal object UpdateInstaller {
                     context,
                     0,
                     status,
+                    // The installer writes the status into the intent; it is explicit, so only this app receives it.
+                    // nosemgrep: mutable-pending-intent
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
                 )
             session.commit(pending.intentSender)
