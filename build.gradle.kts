@@ -32,6 +32,16 @@ subprojects {
         source.setFrom(files("src/main/kotlin", "src/test/kotlin"))
     }
 
+    // `just security` writes the shipped runtime classpaths as lockfiles for the vulnerability scanners.
+    if (providers.gradleProperty("securityLocks").isPresent) {
+        dependencyLocking {
+            lockFile.set(rootProject.layout.buildDirectory.file("security/${project.name}/gradle.lockfile"))
+        }
+        configurations
+            .matching { it.name == "releaseRuntimeClasspath" || it.name == "runtimeClasspath" }
+            .configureEach { resolutionStrategy.activateDependencyLocking() }
+    }
+
     tasks.withType<Detekt>().configureEach {
         jvmTarget = "17"
         reports {

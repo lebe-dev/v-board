@@ -11,6 +11,11 @@ release_apk := "app/build/outputs/apk/release/app-release.apk"
 word_pairs := "build/bigrams/assets/dict/ru.bigrams"
 # Russian Wikipedia for the word pair table: untrusted downloads, kept outside the repository.
 wiki_dir := env_var_or_default("WIKI_DIR", env_var("HOME") + "/.cache/v-board/wikipedia-ru")
+# Security scanners, pinned by version and digest.
+osv_scanner_image := "ghcr.io/google/osv-scanner:v2.7.1@sha256:a70ffffc2bfd33482953e5d6b64c6fcdb30239717a07b0f0d3ab2859ce3e4cde"
+gitleaks_image := "ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f"
+trivy_image := "aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb"
+trivy_cache := env_var("HOME") + "/.cache/v-board/trivy"
 bigrams_python := "PYTHONDONTWRITEBYTECODE=1 uv run --python 3.12 --no-project --with pyarrow==26.0.1 --with numpy==2.5.4 python -I"
 
 default:
@@ -24,6 +29,30 @@ test: voice-runtime
 lint: voice-runtime
     {{ gradle }} ktlintCheck detekt :app:lintDebug
 
+# Security scans in Docker: OSV-Scanner and Trivy check the shipped dependencies, Gitleaks the git history.
+security: voice-runtime
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rm -rf build/security
+    {{ gradle }} -PsecurityLocks --write-locks \
+        :app:dependencies --configuration releaseRuntimeClasspath \
+        :core:dependencies --configuration runtimeClasspath \
+        :stt:dependencies --configuration runtimeClasspath >/dev/null
+    lockfiles=()
+    for module in app core stt; do
+        lockfiles+=(--lockfile "gradle.lockfile:/repo/build/security/$module/gradle.lockfile")
+    done
+    run=(docker run --rm -v "$PWD:/repo:ro" -w /repo)
+    echo "OSV-Scanner: dependencies"
+    "${run[@]}" {{ osv_scanner_image }} scan source "${lockfiles[@]}"
+    echo "Trivy: dependencies"
+    mkdir -p "{{ trivy_cache }}"
+    "${run[@]}" -v "{{ trivy_cache }}:/cache" {{ trivy_image }} fs --cache-dir /cache --quiet \
+        --scanners vuln --exit-code 1 build/security
+    echo "Gitleaks: git history"
+    "${run[@]}" -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+        {{ gitleaks_image }} git --redact --no-banner /repo
+
 # Auto-format Kotlin sources with ktlint.
 format:
     {{ gradle }} ktlintFormat
@@ -35,7 +64,7 @@ build: voice emoji
 
 # Build the release APK (one universal APK, R8-minified, signed with the release key) and the word pair table
 # the app downloads from the GitHub release into dist/; attach both to the release.
-release: voice emoji
+release: security voice emoji
     #!/usr/bin/env bash
     set -euo pipefail
     if [ ! -f "{{ word_pairs }}" ]; then
