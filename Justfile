@@ -38,6 +38,8 @@ security: voice-runtime
         :app:dependencies --configuration releaseRuntimeClasspath \
         :core:dependencies --configuration runtimeClasspath \
         :stt:dependencies --configuration runtimeClasspath >/dev/null
+    # Written for the version catalog alone; nothing in the build reads it.
+    rm -f settings-gradle.lockfile
     lockfiles=()
     for module in app core stt; do
         lockfiles+=(--lockfile "gradle.lockfile:/repo/build/security/$module/gradle.lockfile")
