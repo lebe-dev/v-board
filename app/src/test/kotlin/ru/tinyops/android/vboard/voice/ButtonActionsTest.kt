@@ -352,4 +352,51 @@ class ButtonActionsTest {
         assertEquals(listOf("раз два"), requests)
         assertEquals(ProofreadState.IDLE, actions.stateOf("pick"))
     }
+
+    private fun reply(
+        mode: InsertMode,
+        reply: String = "да",
+    ) = actions.insertReply("reply", mode, reply)
+
+    @Test
+    fun `a quick reply goes to the cursor and the same row takes it back`() {
+        selection = 3 to 3
+        reply(InsertMode.AT_CURSOR)
+        assertEquals("раз да два", text)
+        assertEquals(ProofreadState.UNDO, actions.stateOf("reply"))
+        reply(InsertMode.AT_CURSOR)
+        assertEquals("раз два", text)
+        assertEquals(ProofreadState.IDLE, actions.stateOf("reply"))
+    }
+
+    @Test
+    fun `a quick reply replaces the whole text`() {
+        reply(InsertMode.REPLACE_ALL, "Спасибо!")
+        assertEquals("Спасибо!", text)
+    }
+
+    @Test
+    fun `a quick reply goes to an empty field`() {
+        text = ""
+        reply(InsertMode.REPLACE_SELECTION)
+        assertEquals("да", text)
+        assertEquals(ProofreadState.UNDO, actions.stateOf("reply"))
+    }
+
+    @Test
+    fun `a quick reply in a field that hides where its text is goes to the selection without an undo`() {
+        selection = 4 to 7
+        offset = -1
+        reply(InsertMode.APPEND)
+        assertEquals("раз да", text)
+        assertEquals(ProofreadState.IDLE, actions.stateOf("reply"))
+    }
+
+    @Test
+    fun `a quick reply waits for a running request`() {
+        prompt(InsertMode.REPLACE_ALL)
+        reply(InsertMode.AT_CURSOR)
+        assertEquals("раз два", text)
+        assertEquals(listOf(R.string.custom_button_busy), messages)
+    }
 }

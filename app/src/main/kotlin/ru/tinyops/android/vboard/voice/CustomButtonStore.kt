@@ -88,6 +88,7 @@ class CustomButtonStore(
                 .put("prompts", JSONArray(command.promptIds))
                 .put("insert", command.insert.id)
                 .put("pick", command.pickPrompt)
+                .put("replies", JSONArray(command.replyIds))
 
         fun parse(stored: String?): List<CustomButton> {
             stored ?: return emptyList()
@@ -121,12 +122,14 @@ class CustomButtonStore(
         fun parseCommand(item: JSONObject): ButtonCommand? {
             val action = ButtonAction.fromId(item.optString("action")) ?: return null
             val prompts = item.optJSONArray("prompts") ?: JSONArray()
+            val replies = item.optJSONArray("replies") ?: JSONArray()
             return ButtonCommand(
                 action = action,
                 serverId = item.optString("server").takeUnless { item.isNull("server") || it.isEmpty() },
                 promptIds = List(prompts.length()) { prompts.getString(it) },
                 insert = InsertMode.fromId(item.optString("insert")),
                 pickPrompt = item.optBoolean("pick", false),
+                replyIds = List(replies.length()) { replies.getString(it) },
             )
         }
     }

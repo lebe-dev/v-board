@@ -30,7 +30,8 @@ import kotlin.math.min
 /**
  * The small window a button group opens: the name of the group, then its members in a list, each with
  * its icon and its name, a row as high as the strip. A tap on a member closes the window and passes the
- * gesture on, so does a hold on a member that has one. A long list scrolls. The window takes no focus from the
+ * gesture on, so does a hold on a member that has one. A member with a list of its own, as a quick replies button,
+ * opens that list in the same place. A long list scrolls. The window takes no focus from the
  * field, and a touch outside it closes it and still reaches what it touched. Main thread only.
  *
  * @param onGesture a tap on the member [StripButton.id], or a hold when `held`
@@ -48,6 +49,15 @@ internal class ButtonGroupPopup(
 
     /** The group whose window is open. */
     private var shownId: String? = null
+
+    /** Where the open window was asked to stand, for the list of a member that replaces it. */
+    private var place: Place? = null
+
+    private class Place(
+        val anchor: View,
+        val centerX: Int,
+        val bottom: Int,
+    )
 
     /** The group whose window a touch outside it closed last, and when. */
     private var closedId: String? = null
@@ -87,9 +97,9 @@ internal class ButtonGroupPopup(
         dismiss()
         if (group.members.isEmpty()) return
         val content = content(group)
-        val place = IntArray(2)
-        anchor.getLocationInWindow(place)
-        val room = anchor.rootView.height - place[1] - bottom
+        val location = IntArray(2)
+        anchor.getLocationInWindow(location)
+        val room = anchor.rootView.height - location[1] - bottom
         val maxHeight = max(room, size * MIN_ROWS)
         content.measure(
             View.MeasureSpec.makeMeasureSpec(anchor.width, View.MeasureSpec.AT_MOST),
@@ -116,6 +126,7 @@ internal class ButtonGroupPopup(
             }
         window = popup
         shownId = group.id
+        this.place = Place(anchor, centerX, bottom)
         popup.showAsDropDown(anchor, left, bottom - anchor.height)
     }
 
@@ -195,6 +206,8 @@ internal class ButtonGroupPopup(
             background =
                 RippleDrawable(ColorStateList.valueOf(theme.suggestionPressed), null, Color.WHITE.toDrawable())
             setOnClickListener {
+                val at = place
+                if (button.group && at != null) return@setOnClickListener show(at.anchor, button, at.centerX, at.bottom)
                 dismiss()
                 onGesture(button.id, false)
             }

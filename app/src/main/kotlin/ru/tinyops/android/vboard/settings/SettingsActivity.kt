@@ -254,6 +254,7 @@ internal class TypingLinks(
     val clipboard: () -> Unit,
     val emoji: () -> Unit,
     val suggestions: () -> Unit,
+    val quickReplies: () -> Unit,
     val autocorrect: () -> Unit,
     val slideEngine: () -> Unit,
     val fullscreen: () -> Unit,
@@ -313,6 +314,7 @@ internal enum class Screen(
     REMOTE(VOICE),
     SLIDE_ENGINE(MAIN),
     SUGGESTIONS(MAIN),
+    QUICK_REPLIES(MAIN),
     AUTOCORRECT(MAIN),
     DELETE_KEY(MAIN),
     PROMPTS(MAIN),
@@ -351,6 +353,12 @@ private fun SettingsNavigation(
     // The list of servers opens from the main page and from every page that chooses a server.
     var serversFrom by rememberSaveable { mutableStateOf(Screen.MAIN) }
     var editedButton by rememberSaveable { mutableStateOf("") }
+    // The custom buttons open from the main page and from the quick replies.
+    var buttonsFrom by rememberSaveable { mutableStateOf(Screen.MAIN) }
+    val navigate: (Screen) -> Unit = { next ->
+        if (next == Screen.CUSTOM_BUTTONS) buttonsFrom = screen
+        screen = next
+    }
     val openServers: () -> Unit = {
         serversFrom = screen
         screen = Screen.SERVERS
@@ -358,17 +366,13 @@ private fun SettingsNavigation(
     val back: () -> Unit = {
         // The status line depends on where recognition runs, and a server may have been deleted.
         if (screen == Screen.REMOTE || screen == Screen.SERVERS) onRecognitionChanged()
-        if (screen == Screen.SERVERS) {
-            screen = serversFrom
-        } else {
-            screen.parent?.let { screen = it }
-        }
+        screen.backTo(serversFrom, buttonsFrom)?.let { screen = it }
     }
     // On the top level the back arrow and the system back both finish the activity.
     if (screen.parent != null) BackHandler(onBack = back)
     AnimatedContent(
         targetState = screen,
-        transitionSpec = { sharedAxisX(forward = targetState == Screen.SERVERS || targetState.parent == initialState) },
+        transitionSpec = { sharedAxisX(forward = targetState.backTo(serversFrom, buttonsFrom) == initialState) },
         label = "settings",
     ) { current ->
         when (current) {
@@ -376,7 +380,7 @@ private fun SettingsNavigation(
                 MainSettingsScreen(
                     state = state,
                     theme = theme.spec,
-                    links = mainLinks(navigate = { screen = it }, openServers),
+                    links = mainLinks(navigate, openServers),
                     onClose = { backDispatcher?.onBackPressed() },
                 )
             Screen.THEME, Screen.KEYS -> AppearancePage(current, theme, onTheme, back)
@@ -400,6 +404,8 @@ private fun SettingsNavigation(
             Screen.AUTOCORRECT, Screen.SUGGESTIONS, Screen.DELETE_KEY,
             ->
                 TypingPage(current, navigate = { screen = it }, onBack = back)
+            Screen.QUICK_REPLIES ->
+                QuickRepliesScreen(state, onOpenButtons = { navigate(Screen.CUSTOM_BUTTONS) }, onBack = back)
             Screen.CUSTOM_BUTTONS ->
                 CustomButtonsScreen(
                     state = state,
@@ -418,6 +424,17 @@ private fun SettingsNavigation(
     }
 }
 
+/** Where back leads: a page that opens from several places goes back to the one it was opened from. */
+private fun Screen.backTo(
+    serversFrom: Screen,
+    buttonsFrom: Screen,
+): Screen? =
+    when (this) {
+        Screen.SERVERS -> serversFrom
+        Screen.CUSTOM_BUTTONS -> buttonsFrom
+        else -> parent
+    }
+
 /** Where the rows of the settings root lead. */
 private fun mainLinks(
     navigate: (Screen) -> Unit,
@@ -434,6 +451,7 @@ private fun mainLinks(
             clipboard = { navigate(Screen.CLIPBOARD) },
             emoji = { navigate(Screen.EMOJI) },
             suggestions = { navigate(Screen.SUGGESTIONS) },
+            quickReplies = { navigate(Screen.QUICK_REPLIES) },
             autocorrect = { navigate(Screen.AUTOCORRECT) },
             slideEngine = { navigate(Screen.SLIDE_ENGINE) },
             fullscreen = { navigate(Screen.FULLSCREEN) },

@@ -9,7 +9,9 @@ import ru.tinyops.android.vboard.core.voice.ButtonAction
 import ru.tinyops.android.vboard.core.voice.ButtonCommand
 import ru.tinyops.android.vboard.core.voice.ButtonRequest
 import ru.tinyops.android.vboard.core.voice.EnhancementOutcome
+import ru.tinyops.android.vboard.core.voice.InsertMode
 import ru.tinyops.android.vboard.core.voice.ProofreadTarget
+import ru.tinyops.android.vboard.core.voice.ReplyInsertion
 
 /**
  * Runs the custom buttons of the strip. One button is at work at a time: while a request runs the
@@ -63,22 +65,63 @@ internal class ButtonActions(
         id: String,
         command: ButtonCommand?,
     ) {
-        if (id == active) {
-            if (state == ProofreadState.WORKING) reset() else undo()
-            return
-        }
-        if (command == null) return
-        if (state == ProofreadState.WORKING) {
-            onMessage(R.string.custom_button_busy)
-            return
-        }
-        reset()
-        when (command.action) {
+        if (!takeTurn(id, command != null)) return
+        when (requireNotNull(command).action) {
             ButtonAction.CLEAR -> clear(id)
             ButtonAction.COPY -> copyText()
             ButtonAction.PASTE -> pasteText(id)
             ButtonAction.PROMPT -> if (command.pickPrompt) offer(id, command) else start(id, command)
+            // The strip opens the list of replies itself, and a row of it comes to insertReply.
+            ButtonAction.QUICK_REPLIES -> Unit
         }
+    }
+
+    /**
+     * A tap on the row [id] of a quick replies list: [reply] goes into the field as [mode] says, and the same
+     * row offers to undo it. An editor that does not tell where its text starts gets it without an undo.
+     */
+    fun insertReply(
+        id: String,
+        mode: InsertMode,
+        reply: String,
+    ) {
+        if (!takeTurn(id, act = true)) return
+        val window = readWindow() ?: return
+        if (ReplyInsertion.tooLong(window, mode, READ_LENGTH)) {
+            onMessage(R.string.proofread_too_long)
+            return
+        }
+        val insertion = ReplyInsertion.of(window, mode, reply)
+        if (insertion == null) {
+            editor.commit(reply)
+            return
+        }
+        val from = insertion.start - window.offset
+        val original = window.text.substring(from, insertion.end - window.offset)
+        editor.replace(insertion.start, insertion.end, insertion.text)
+        applied = Applied(ProofreadTarget(insertion.start, insertion.text), original)
+        show(id, ProofreadState.UNDO)
+    }
+
+    /**
+     * Whether a gesture on the button [id] may go on to [act]: a gesture on the button at work cancels its
+     * request or undoes its change instead, and the others wait for a running request.
+     */
+    private fun takeTurn(
+        id: String,
+        act: Boolean,
+    ): Boolean {
+        if (id == active) {
+            if (state == ProofreadState.WORKING) reset() else undo()
+            return false
+        }
+        if (!act) return false
+        if (state == ProofreadState.WORKING) {
+            onMessage(R.string.custom_button_busy)
+            return false
+        }
+        reset()
+        return true
     }
 
     /** Asks for the prompt only when there is something to send it with. */

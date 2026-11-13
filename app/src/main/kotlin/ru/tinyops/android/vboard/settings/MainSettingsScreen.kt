@@ -81,7 +81,7 @@ internal fun MainSettingsScreen(
                 }
             }
         }
-        item { TypingSection(links.typing) }
+        item { TypingSection(state, links.typing) }
         item {
             SettingsSection(stringResource(R.string.settings_voice)) {
                 item {
@@ -209,11 +209,14 @@ private fun serversSummary(state: VoiceSettingsState): String {
 }
 
 /**
- * Typing: autocorrection, slide to type, the clipboard, the cursor movement on the space bar, fullscreen mode
- * and the delete key.
+ * Typing: suggestions, quick replies, autocorrection, slide to type, the clipboard, the cursor movement on the
+ * space bar, fullscreen mode and the delete key.
  */
 @Composable
-private fun TypingSection(links: TypingLinks) {
+private fun TypingSection(
+    state: VoiceSettingsState,
+    links: TypingLinks,
+) {
     val prefs = KeyboardPrefs(LocalContext.current)
     val engine = prefs.slideEngine
     val autocorrect = if (prefs.autoCapitalize) R.string.settings_fullscreen_on else R.string.feature_off
@@ -226,6 +229,15 @@ private fun TypingSection(links: TypingLinks) {
                 icon = R.drawable.ic_lightbulb,
                 prominent = true,
                 onClick = links.suggestions,
+            )
+        }
+        item {
+            SettingsLinkRow(
+                title = stringResource(R.string.quick_replies_title),
+                summary = quickRepliesSummary(state),
+                icon = R.drawable.ic_chat,
+                prominent = true,
+                onClick = links.quickReplies,
             )
         }
         item {

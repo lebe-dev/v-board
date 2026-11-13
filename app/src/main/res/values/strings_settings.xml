@@ -503,4 +503,37 @@
     <string name="updates_banner_title">Version %1$s is available</string>
     <string name="updates_banner_summary">Tap to see what is new and install it</string>
     <string name="updates_banner_dismiss">Hide</string>
+
+    <string name="quick_replies_title">Quick replies</string>
+    <plurals name="quick_replies_count">
+        <item quantity="one">%d phrase</item>
+        <item quantity="other">%d phrases</item>
+    </plurals>
+    <string name="quick_replies_note">Phrases you often type. Put them on a custom button with the «Quick replies» action: a tap on the button opens the list, and a tap on a phrase inserts it.</string>
+    <string name="quick_replies_section">Phrases</string>
+    <string name="quick_replies_empty">No phrases yet</string>
+    <string name="quick_reply_add">Add a phrase</string>
+    <string name="quick_reply_new">New phrase</string>
+    <string name="quick_reply_edit">Edit phrase</string>
+    <string name="quick_reply_text">Phrase</string>
+    <string name="quick_reply_delete">Delete</string>
+    <string name="quick_reply_move_up">Move up</string>
+    <string name="quick_reply_move_down">Move down</string>
+    <string name="quick_replies_buttons_section">Keyboard</string>
+    <string name="quick_replies_buttons_summary">Add a button with the «Quick replies» action</string>
+    <string name="quick_reply_example_thanks">Thank you!</string>
+    <string name="quick_reply_example_soon">I will be there soon</string>
+    <string name="quick_reply_example_call_back">I will call you back later</string>
+    <string name="quick_reply_example_agreed">OK, deal</string>
+    <string name="custom_button_action_quick_replies">Quick replies</string>
+    <string name="custom_button_action_quick_replies_summary">Opens the list of chosen phrases; a tap on one inserts it, and a second tap takes it back until you type again</string>
+    <string name="custom_button_replies">Phrases</string>
+    <string name="custom_button_replies_none">None chosen</string>
+    <string name="custom_button_replies_empty">There are no quick replies yet. Add them in the settings, under «Quick replies».</string>
+    <string name="custom_button_replies_not_ready">Choose at least one phrase: until then this action does nothing</string>
+    <string name="custom_button_reply_insert">Where the phrase goes</string>
+    <string name="custom_button_reply_insert_all_summary">The phrase replaces all the text</string>
+    <string name="custom_button_reply_insert_selection_summary">The phrase replaces the selection, or goes to the cursor without one</string>
+    <string name="custom_button_reply_insert_end_summary">The phrase goes to the end of the field</string>
+    <string name="custom_button_reply_insert_cursor_summary">The phrase goes to the cursor, after the selection</string>
 </resources>

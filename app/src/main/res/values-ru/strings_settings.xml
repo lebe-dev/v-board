@@ -509,4 +509,39 @@
     <string name="updates_banner_title">Доступна версия %1$s</string>
     <string name="updates_banner_summary">Нажмите, чтобы узнать, что нового, и установить</string>
     <string name="updates_banner_dismiss">Скрыть</string>
+
+    <string name="quick_replies_title">Быстрые ответы</string>
+    <plurals name="quick_replies_count">
+        <item quantity="one">%d фраза</item>
+        <item quantity="few">%d фразы</item>
+        <item quantity="many">%d фраз</item>
+        <item quantity="other">%d фразы</item>
+    </plurals>
+    <string name="quick_replies_note">Фразы, которые вы часто набираете. Поставьте их на настраиваемую кнопку с действием «Быстрые ответы»: нажатие на кнопку открывает список, нажатие на фразу вставляет её.</string>
+    <string name="quick_replies_section">Фразы</string>
+    <string name="quick_replies_empty">Фраз пока нет</string>
+    <string name="quick_reply_add">Добавить фразу</string>
+    <string name="quick_reply_new">Новая фраза</string>
+    <string name="quick_reply_edit">Изменить фразу</string>
+    <string name="quick_reply_text">Фраза</string>
+    <string name="quick_reply_delete">Удалить</string>
+    <string name="quick_reply_move_up">Выше</string>
+    <string name="quick_reply_move_down">Ниже</string>
+    <string name="quick_replies_buttons_section">Клавиатура</string>
+    <string name="quick_replies_buttons_summary">Добавьте кнопку с действием «Быстрые ответы»</string>
+    <string name="quick_reply_example_thanks">Спасибо!</string>
+    <string name="quick_reply_example_soon">Скоро буду</string>
+    <string name="quick_reply_example_call_back">Перезвоню позже</string>
+    <string name="quick_reply_example_agreed">Хорошо, договорились</string>
+    <string name="custom_button_action_quick_replies">Быстрые ответы</string>
+    <string name="custom_button_action_quick_replies_summary">Открывает список выбранных фраз; нажатие на фразу вставляет её, повторное нажатие убирает, пока вы не продолжили набор</string>
+    <string name="custom_button_replies">Фразы</string>
+    <string name="custom_button_replies_none">Не выбраны</string>
+    <string name="custom_button_replies_empty">Быстрых ответов пока нет. Добавьте их в настройках, в разделе «Быстрые ответы».</string>
+    <string name="custom_button_replies_not_ready">Выберите хотя бы одну фразу: до тех пор действие ничего не делает</string>
+    <string name="custom_button_reply_insert">Куда вставить фразу</string>
+    <string name="custom_button_reply_insert_all_summary">Фраза заменяет весь текст</string>
+    <string name="custom_button_reply_insert_selection_summary">Фраза заменяет выделенное, а без выделения вставляется у курсора</string>
+    <string name="custom_button_reply_insert_end_summary">Фраза добавляется в конец поля</string>
+    <string name="custom_button_reply_insert_cursor_summary">Фраза вставляется у курсора, после выделения</string>
 </resources>

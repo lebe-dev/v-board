@@ -10,6 +10,9 @@ enum class ButtonAction(
     COPY("copy"),
     PASTE("paste"),
     PROMPT("prompt"),
+
+    /** Opens the list of the chosen quick replies; a tap only, as the list stands under the button. */
+    QUICK_REPLIES("quick_replies"),
     ;
 
     companion object {
@@ -96,7 +99,8 @@ enum class ButtonColor(
 /**
  * One thing a button does. A prompt command sends its [promptIds] to the server [serverId], or to the
  * default server when that is null or was deleted. With [pickPrompt] it asks on every use which prompt
- * of the collection to send instead.
+ * of the collection to send instead. A quick replies command offers its [replyIds] and inserts the chosen
+ * one as [insert] says.
  */
 data class ButtonCommand(
     val action: ButtonAction,
@@ -104,6 +108,7 @@ data class ButtonCommand(
     val promptIds: List<String> = emptyList(),
     val insert: InsertMode = InsertMode.REPLACE_SELECTION,
     val pickPrompt: Boolean = false,
+    val replyIds: List<String> = emptyList(),
 ) {
     /** The same command sending only the prompt [id] that the user chose. */
     fun withPrompt(id: String): ButtonCommand = copy(promptIds = listOf(id), pickPrompt = false)

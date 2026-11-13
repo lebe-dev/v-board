@@ -382,7 +382,7 @@ internal fun CustomButtonScreen(
                 }
             }
             item {
-                CommandSection(R.string.custom_button_hold, button.hold, state, onOpenServers) {
+                CommandSection(R.string.custom_button_hold, button.hold, state, onOpenServers, tapOnly = false) {
                     save(button.copy(hold = it))
                 }
             }
@@ -635,13 +635,17 @@ private fun ColorOption(
     }
 }
 
-/** What a gesture does: nothing or an action, and for a prompt where it goes and how the answer returns. */
+/**
+ * What a gesture does: nothing or an action, for a prompt where it goes and how the answer returns, and for
+ * quick replies which of them are offered and where they go. Quick replies are offered only for a tap.
+ */
 @Composable
 private fun CommandSection(
     title: Int,
     command: ButtonCommand?,
     state: VoiceSettingsState,
     onOpenServers: () -> Unit,
+    tapOnly: Boolean = true,
     onChange: (ButtonCommand?) -> Unit,
 ) {
     val none =
@@ -651,9 +655,9 @@ private fun CommandSection(
             stringResource(R.string.custom_button_no_action_summary),
         )
     val actions =
-        ButtonAction.entries.map {
-            Choice<ButtonAction?>(it, stringResource(it.label), stringResource(it.summary))
-        }
+        ButtonAction.entries
+            .filter { tapOnly || it != ButtonAction.QUICK_REPLIES || command?.action == it }
+            .map { Choice<ButtonAction?>(it, stringResource(it.label), stringResource(it.summary)) }
     SettingsSection(stringResource(title)) {
         item {
             SettingsChoiceRow(
@@ -661,11 +665,19 @@ private fun CommandSection(
                 selected = command?.action,
                 choices = listOf(none) + actions,
                 onSelected = { action ->
-                    onChange(action?.let { command?.copy(action = it) ?: ButtonCommand(it) })
+                    val next = action?.let { command?.copy(action = it) ?: ButtonCommand(it) }
+                    // A new list of quick replies starts with all of them, which is what is usually wanted.
+                    val all = state.read { quickReplies.replies.map { it.id } }
+                    val filled = next?.takeIf { it.action == ButtonAction.QUICK_REPLIES && it.replyIds.isEmpty() }
+                    onChange(filled?.copy(replyIds = all) ?: next)
                 },
             )
         }
-        if (command?.action == ButtonAction.PROMPT) promptRows(command, state, onOpenServers, onChange)
+        when (command?.action) {
+            ButtonAction.PROMPT -> promptRows(command, state, onOpenServers, onChange)
+            ButtonAction.QUICK_REPLIES -> replyRows(command, state, onChange)
+            else -> Unit
+        }
     }
 }
 
@@ -763,6 +775,7 @@ private val ButtonAction.label: Int
             ButtonAction.COPY -> R.string.custom_button_action_copy
             ButtonAction.PASTE -> R.string.custom_button_action_paste
             ButtonAction.PROMPT -> R.string.custom_button_action_prompt
+            ButtonAction.QUICK_REPLIES -> R.string.custom_button_action_quick_replies
         }
 
 private val ButtonAction.summary: Int
@@ -772,9 +785,10 @@ private val ButtonAction.summary: Int
             ButtonAction.COPY -> R.string.custom_button_action_copy_summary
             ButtonAction.PASTE -> R.string.custom_button_action_paste_summary
             ButtonAction.PROMPT -> R.string.custom_button_action_prompt_summary
+            ButtonAction.QUICK_REPLIES -> R.string.custom_button_action_quick_replies_summary
         }
 
-private val InsertMode.label: Int
+internal val InsertMode.label: Int
     get() =
         when (this) {
             InsertMode.REPLACE_ALL -> R.string.custom_button_insert_all

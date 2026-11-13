@@ -123,6 +123,7 @@ object ButtonIcons {
             ButtonAction.CLEAR -> "broom"
             ButtonAction.COPY -> "copy"
             ButtonAction.PASTE -> "paste"
+            ButtonAction.QUICK_REPLIES -> "chat"
             ButtonAction.PROMPT, null -> "sparkles"
         }
 }

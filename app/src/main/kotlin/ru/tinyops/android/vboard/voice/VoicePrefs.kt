@@ -40,6 +40,9 @@ class VoicePrefs(
     /** The custom buttons of the strip. */
     val customButtons = CustomButtonStore(prefs)
 
+    /** The phrases quick replies buttons insert. */
+    val quickReplies = QuickReplyStore(context, prefs)
+
     /** False hides the microphone on the strip; dictation is on until the user switches it off. */
     var voiceEnabled: Boolean
         get() = prefs.getBoolean(KEY_VOICE_ENABLED, true)
@@ -254,10 +257,11 @@ class VoicePrefs(
     }
 
     /**
-     * The command can act: only a prompt needs a server and a prompt text, and one that asks for a prompt
-     * needs one in the collection to offer.
+     * The command can act: a prompt needs a server and a prompt text, and one that asks for a prompt
+     * needs one in the collection to offer; quick replies need a chosen reply that still exists.
      */
     fun commandReady(command: ButtonCommand): Boolean {
+        if (command.action == ButtonAction.QUICK_REPLIES) return quickReplies.choice(command).isNotEmpty()
         if (command.action != ButtonAction.PROMPT) return true
         if (command.pickPrompt) {
             val offered = prompts.library.pickable.firstOrNull() ?: return false
@@ -267,10 +271,14 @@ class VoicePrefs(
         return hasPrompt && commandConnection(command).server.isComplete
     }
 
-    /** The [button] with only the commands that can act, which may be none; null when it is turned off. */
+    /**
+     * The [button] with only the commands that can act, which may be none; null when it is turned off.
+     * Quick replies open under the button on a tap, so a hold never offers them.
+     */
     fun workingButton(button: CustomButton): CustomButton? {
         if (!button.enabled) return null
-        return button.copy(tap = button.tap?.takeIf(::commandReady), hold = button.hold?.takeIf(::commandReady))
+        val hold = button.hold?.takeIf { it.action != ButtonAction.QUICK_REPLIES && commandReady(it) }
+        return button.copy(tap = button.tap?.takeIf(::commandReady), hold = hold)
     }
 
     /** A hold on the proofread button acts: a prompt is chosen for it and still exists. */

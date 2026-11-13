@@ -10,7 +10,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.voice.ButtonAction
+import ru.tinyops.android.vboard.core.voice.ButtonCommand
 import ru.tinyops.android.vboard.core.voice.CustomButton
+import ru.tinyops.android.vboard.core.voice.QuickReply
+import ru.tinyops.android.vboard.core.voice.ReplyMember
 import ru.tinyops.android.vboard.core.voice.SavedPrompt
 import ru.tinyops.android.vboard.core.voice.membersOf
 import ru.tinyops.android.vboard.core.voice.topLevel
@@ -38,6 +41,7 @@ internal class CustomButtonsControl(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val enhancer = TextEnhancer()
     private var ready: List<CustomButton> = emptyList()
+    private var replies: List<QuickReply> = emptyList()
     private var fieldHasText = false
 
     private val actions =
@@ -88,10 +92,10 @@ internal class CustomButtonsControl(
         hidden: Boolean = false,
     ): StripButton {
         val members =
-            if (button.group) {
-                ready.membersOf(button.id).map(::stripButton)
-            } else {
-                emptyList()
+            when {
+                button.group -> ready.membersOf(button.id).map(::stripButton)
+                button.tap?.action == ButtonAction.QUICK_REPLIES -> replyRows(button)
+                else -> emptyList()
             }
         // A group shows the work of its members, so that a request is seen with the popup closed.
         val state = members.map { it.state }.firstOrNull { it != ProofreadState.IDLE } ?: actions.stateOf(button.id)
@@ -101,11 +105,12 @@ internal class CustomButtonsControl(
             state = state,
             color = button.color,
             placement = button.placement,
+            // The undo of a member is held on its row: the button that opens the list has none of its own.
             holds =
                 if (state ==
                     ProofreadState.UNDO
                 ) {
-                    !button.group
+                    members.isEmpty()
                 } else {
                     button.hold != null && state == ProofreadState.IDLE
                 },
@@ -116,6 +121,24 @@ internal class CustomButtonsControl(
         )
     }
 
+    /** The rows of the replies a quick replies button offers, each with an undo of its own. */
+    private fun replyRows(button: CustomButton): List<StripButton> {
+        val command = button.tap ?: return emptyList()
+        return replyChoice(command).map { reply ->
+            val id = ReplyMember.id(button.id, reply.id)
+            StripButton(
+                id = id,
+                icon = R.drawable.ic_chat,
+                state = actions.stateOf(id),
+                color = button.color,
+                holds = actions.stateOf(id) == ProofreadState.UNDO,
+                description = reply.text.replace(WHITESPACE, " "),
+            )
+        }
+    }
+
+    private fun replyChoice(command: ButtonCommand) = replies.choiceOf(command)
+
     private fun description(button: CustomButton): String =
         button.name.trim().ifEmpty {
             context.getString(
@@ -124,6 +147,7 @@ internal class CustomButtonsControl(
                     ButtonAction.COPY -> R.string.custom_button_action_copy
                     ButtonAction.PASTE -> R.string.custom_button_action_paste
                     ButtonAction.PROMPT -> R.string.custom_button_action_prompt
+                    ButtonAction.QUICK_REPLIES -> R.string.custom_button_action_quick_replies
                     null -> if (button.group) R.string.custom_button_group_title else R.string.custom_button_title
                 },
             )
@@ -140,6 +164,7 @@ internal class CustomButtonsControl(
     ) {
         actions.reset()
         ready = if (textField) prefs.customButtons.buttons.mapNotNull(prefs::workingButton) else emptyList()
+        replies = if (ready.isEmpty()) emptyList() else prefs.quickReplies.replies
         fieldHasText = false
         onSelectionChanged(selectionEnd)
         if (!fieldHasText) publish()
@@ -159,8 +184,21 @@ internal class CustomButtonsControl(
         id: String,
         held: Boolean,
     ) {
+        val reply = ReplyMember.parse(id)
+        if (reply != null) return onReply(id, reply.first, reply.second)
         val button = ready.firstOrNull { it.id == id } ?: return
         actions.trigger(id, if (held) button.hold else button.tap)
+    }
+
+    /** A tap on the row [id] of the reply [replyId] in the list of the button [buttonId]. */
+    private fun onReply(
+        id: String,
+        buttonId: String,
+        replyId: String,
+    ) {
+        val command = ready.firstOrNull { it.id == buttonId }?.tap ?: return
+        val reply = replyChoice(command).firstOrNull { it.id == replyId } ?: return
+        actions.insertReply(id, command.insert, reply.text)
     }
 
     /** What the field would hold after the undo of the button [id], for the preview of a held undo arrow. */
@@ -174,7 +212,7 @@ internal class CustomButtonsControl(
      */
     fun onFullscreenLeft() {
         val id = actions.activeId ?: return
-        if (visible.none { it.id == id || it.members.any { member -> member.id == id } }) actions.reset()
+        if (visible.none { it.holdsId(id) }) actions.reset()
     }
 
     fun destroy() = scope.cancel()
@@ -209,3 +247,8 @@ internal class ButtonField(
         connection()?.commitText(replacement, 1)
     }
 }
+
+private val WHITESPACE = Regex("\\s+")
+
+/** Whether this button, or a row of a list it opens, is the button [id]. */
+private fun StripButton.holdsId(id: String): Boolean = this.id == id || members.any { it.holdsId(id) }
