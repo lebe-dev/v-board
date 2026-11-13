@@ -31,7 +31,8 @@ import kotlin.math.min
  * The small window a button group opens: the name of the group, then its members in a list, each with
  * its icon and its name, a row as high as the strip. A tap on a member closes the window and passes the
  * gesture on, so does a hold on a member that has one. A member with a list of its own, as a quick replies button,
- * opens that list in the same place. A long list scrolls. The window takes no focus from the
+ * opens that list in the same place. The list of quick replies opens above the button and shows only the phrases,
+ * each on as many lines as it needs up to a few. A long list scrolls. The window takes no focus from the
  * field, and a touch outside it closes it and still reaches what it touched. Main thread only.
  *
  * @param onGesture a tap on the member [StripButton.id], or a hold when `held`
@@ -99,7 +100,11 @@ internal class ButtonGroupPopup(
         val content = content(group)
         val location = IntArray(2)
         anchor.getLocationInWindow(location)
-        val room = anchor.rootView.height - location[1] - bottom
+        // The button is a row of the strip high and ends at bottom.
+        val top = bottom - size
+        val roomAbove = location[1] + top
+        val above = group.phrases && roomAbove >= size * MIN_ROWS
+        val room = if (above) roomAbove else anchor.rootView.height - location[1] - bottom
         val maxHeight = max(room, size * MIN_ROWS)
         content.measure(
             View.MeasureSpec.makeMeasureSpec(anchor.width, View.MeasureSpec.AT_MOST),
@@ -111,9 +116,10 @@ internal class ButtonGroupPopup(
             View.MeasureSpec.makeMeasureSpec(maxHeight, View.MeasureSpec.AT_MOST),
         )
         val left = max(0, min(centerX - width / 2, anchor.width - width))
+        val height = content.measuredHeight
         val popup =
             // Focusable, it would take the focus from the field and keep the touch that closes it to itself.
-            PopupWindow(content, width, content.measuredHeight, false).apply {
+            PopupWindow(content, width, height, false).apply {
                 isOutsideTouchable = true
                 elevation = density * ELEVATION_DP
                 setBackgroundDrawable(null)
@@ -127,7 +133,7 @@ internal class ButtonGroupPopup(
         window = popup
         shownId = group.id
         this.place = Place(anchor, centerX, bottom)
-        popup.showAsDropDown(anchor, left, bottom - anchor.height)
+        popup.showAsDropDown(anchor, left, if (above) top - anchor.height - height else bottom - anchor.height)
     }
 
     /** Closes the window on purpose, which is no touch outside it. */
@@ -147,11 +153,30 @@ internal class ButtonGroupPopup(
                 orientation = LinearLayout.VERTICAL
                 background =
                     GradientDrawable().apply {
-                        setColor(theme.raised)
+                        if (group.phrases) {
+                            // Above the keyboard the window covers the app, which must not show through.
+                            setColor(ColorUtils.setAlphaComponent(theme.raised, OPAQUE))
+                            setStroke(dp(1), theme.suggestionDivider)
+                        } else {
+                            setColor(theme.raised)
+                        }
                         cornerRadius = density * RADIUS_DP
                     }
                 clipToOutline = true
             }
+        val list = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        if (group.phrases) {
+            group.members.forEach {
+                list.addView(phrase(it), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, WRAP))
+            }
+            list.setPadding(0, dp(LIST_BOTTOM_DP), 0, dp(LIST_BOTTOM_DP))
+            return column.apply {
+                addView(
+                    scroller(list),
+                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, WRAP),
+                )
+            }
+        }
         val title =
             TextView(context).apply {
                 text = group.description
@@ -162,20 +187,39 @@ internal class ButtonGroupPopup(
                 setPadding(dp(SIDE_DP), dp(TITLE_TOP_DP), dp(SIDE_DP), dp(TITLE_BOTTOM_DP))
             }
         column.addView(title, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, WRAP))
-        val list = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         group.members.forEach {
             list.addView(item(it, column), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, size))
         }
         list.setPadding(0, 0, 0, dp(LIST_BOTTOM_DP))
-        val scroller =
-            ScrollView(context).apply {
-                isVerticalScrollBarEnabled = false
-                overScrollMode = View.OVER_SCROLL_NEVER
-                addView(list, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP))
-            }
-        column.addView(scroller, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, WRAP))
+        column.addView(scroller(list), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, WRAP))
         return column
     }
+
+    private fun scroller(list: View): View =
+        ScrollView(context).apply {
+            isVerticalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            addView(list, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP))
+        }
+
+    /** A quick reply: only its text, at least as high as the strip; a tap passes it on. */
+    private fun phrase(reply: StripButton): View =
+        TextView(context).apply {
+            text = reply.description
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, NAME_SIZE_SP)
+            setTextColor(theme.suggestion)
+            maxLines = PHRASE_LINES
+            ellipsize = TextUtils.TruncateAt.END
+            gravity = Gravity.CENTER_VERTICAL
+            minHeight = size
+            setPadding(dp(SIDE_DP), dp(PHRASE_VERTICAL_DP), dp(SIDE_DP), dp(PHRASE_VERTICAL_DP))
+            background =
+                RippleDrawable(ColorStateList.valueOf(theme.suggestionPressed), null, Color.WHITE.toDrawable())
+            setOnClickListener {
+                dismiss()
+                onGesture(reply.id, false)
+            }
+        }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun item(
@@ -273,5 +317,8 @@ internal class ButtonGroupPopup(
         const val LIST_BOTTOM_DP = 4
         const val TITLE_SIZE_SP = 14f
         const val NAME_SIZE_SP = 16f
+        const val PHRASE_LINES = 3
+        const val PHRASE_VERTICAL_DP = 8
+        const val OPAQUE = 255
     }
 }

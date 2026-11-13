@@ -122,6 +122,7 @@ internal class CustomButtonsControl(
             secondRow = button.secondRow,
             description = description(button),
             members = members,
+            phrases = button.tap?.action == ButtonAction.QUICK_REPLIES,
         )
     }
 

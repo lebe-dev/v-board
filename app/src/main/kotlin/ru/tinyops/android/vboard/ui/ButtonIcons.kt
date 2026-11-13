@@ -24,8 +24,12 @@ data class StripButton(
     val members: List<StripButton> = emptyList(),
     val hidden: Boolean = false,
     val secondRow: Boolean = false,
+    val phrases: Boolean = false,
 ) {
-    /** A tap opens the popup with the [members] instead of doing something. */
+    /**
+     * A tap opens the popup with the [members] instead of doing something. With [phrases] the members are quick
+     * replies: the popup opens above the button and lists only their texts.
+     */
     val group: Boolean get() = members.isNotEmpty()
 }
 

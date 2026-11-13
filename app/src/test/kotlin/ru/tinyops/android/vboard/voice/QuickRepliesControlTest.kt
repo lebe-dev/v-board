@@ -1,7 +1,11 @@
 package ru.tinyops.android.vboard.voice
 
+import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
+import android.widget.ImageView
+import android.widget.TextView
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -15,6 +19,8 @@ import ru.tinyops.android.vboard.core.voice.ButtonCommand
 import ru.tinyops.android.vboard.core.voice.ButtonVisibility
 import ru.tinyops.android.vboard.core.voice.CustomButton
 import ru.tinyops.android.vboard.core.voice.InsertMode
+import ru.tinyops.android.vboard.ui.ButtonGroupPopup
+import ru.tinyops.android.vboard.ui.KeyboardTheme
 import ru.tinyops.android.vboard.ui.StripButton
 
 /** A quick replies button on a real editor: the list it offers, and the undo after a reply went in. */
@@ -54,6 +60,15 @@ class QuickRepliesControlTest {
     fun `the button offers its replies`() {
         start()
         assertEquals(listOf(reply.text), button().members.map { it.description })
+        assertTrue(button().phrases)
+    }
+
+    @Test
+    fun `the list shows only the phrases, without a title or icons`() {
+        start()
+        val content = ButtonGroupPopup(context, KeyboardTheme(context)) { _, _ -> }.content(button())
+        assertEquals(listOf(reply.text), content.texts())
+        assertTrue(content.all().none { it is ImageView })
     }
 
     @Test
@@ -73,3 +88,8 @@ class QuickRepliesControlTest {
         assertEquals(1, button().members.size)
     }
 }
+
+private fun View.all(): List<View> =
+    listOf(this) + if (this is ViewGroup) (0 until childCount).flatMap { getChildAt(it).all() } else emptyList()
+
+private fun View.texts(): List<String> = all().filterIsInstance<TextView>().map { it.text.toString() }
