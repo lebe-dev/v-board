@@ -85,7 +85,7 @@ internal fun ThemeScreen(
                         checked = selected.enterOnly,
                         onCheckedChange = {
                             KeyboardThemes.setEnterOnly(context, it)
-                            choice.value = KeyboardThemes.selected(context)
+                            onChoice(KeyboardThemes.selected(context))
                         },
                     )
                 }
