@@ -19,11 +19,14 @@ import ru.tinyops.android.vboard.core.input.SpaceDragMode
 import ru.tinyops.android.vboard.core.voice.TextFeature
 import ru.tinyops.android.vboard.core.voice.find
 import ru.tinyops.android.vboard.ui.ThemeSpec
+import ru.tinyops.android.vboard.update.UpdateCheck
+import ru.tinyops.android.vboard.update.UpdatePrefs
 
 /**
  * The settings root, in sections: appearance (theme, emoji), typing (slide to type, clipboard, the space bar,
  * the fullscreen mode), voice input, text improvement (dictation, proofreading, prompts, servers) and the app
- * itself (language, backup of all settings, diagnostics, version); the back arrow closes settings.
+ * itself (language, backup of all settings, diagnostics, updates, version); the back arrow closes settings.
+ * A newer release found by a check is announced by a banner above the sections.
  */
 @Composable
 internal fun MainSettingsScreen(
@@ -32,7 +35,21 @@ internal fun MainSettingsScreen(
     links: MainSettingsLinks,
     onClose: () -> Unit,
 ) {
+    val context = LocalContext.current
+    var announced by remember { mutableStateOf(UpdateCheck.announced(context)) }
     SettingsPage(title = stringResource(R.string.settings_title), onBack = onClose) {
+        announced?.let { release ->
+            item {
+                UpdateBanner(
+                    release = release,
+                    onOpen = links.app.updates,
+                    onDismiss = {
+                        UpdatePrefs(context).dismissedVersion = release.version
+                        announced = null
+                    },
+                )
+            }
+        }
         item {
             SettingsSection(stringResource(R.string.settings_appearance)) {
                 item {
@@ -79,7 +96,7 @@ internal fun MainSettingsScreen(
             }
         }
         item { EnhancementSection(state, links) }
-        item { ApplicationSection(links.diagnostics) }
+        item { ApplicationSection(links.app) }
     }
 }
 
@@ -284,9 +301,9 @@ private fun SpaceDragRow() {
     )
 }
 
-/** The app itself: the language, the backup of all settings, diagnostics, the project page and the version. */
+/** The app itself: the language, the backup of all settings, diagnostics, updates, the project page and the version. */
 @Composable
-private fun ApplicationSection(onOpenDiagnostics: () -> Unit) {
+private fun ApplicationSection(links: AppLinks) {
     val context = LocalContext.current
     val backup = rememberBackupActions()
     val uri = LocalUriHandler.current
@@ -318,7 +335,16 @@ private fun ApplicationSection(onOpenDiagnostics: () -> Unit) {
                 summary = stringResource(R.string.diagnostics_link_summary),
                 icon = R.drawable.ic_bug_report,
                 prominent = true,
-                onClick = onOpenDiagnostics,
+                onClick = links.diagnostics,
+            )
+        }
+        item {
+            SettingsLinkRow(
+                title = stringResource(R.string.updates_title),
+                summary = updatesSummary(),
+                icon = R.drawable.ic_download,
+                prominent = true,
+                onClick = links.updates,
             )
         }
         item {

@@ -3,8 +3,12 @@
 
     <!-- Voice input: needed by the system recognizer and for recording for Govorun or a server. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- Only for the optional text improvement on the user's own server. -->
+    <!-- The optional text improvement on the user's own server and the downloads from GitHub releases. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Installs an update downloaded from GitHub releases, after the user confirms it. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Keeps the background update check, when it is on, scheduled after a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Package visibility for the system recognizer and for Govorun's recognition service. -->
     <queries>
@@ -53,6 +57,15 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/clip_paths" />
         </provider>
+
+        <service
+            android:name=".update.UpdateCheckJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <receiver
+            android:name=".update.UpdateInstallReceiver"
+            android:exported="false" />
 
         <activity
             android:name=".settings.SettingsActivity"

@@ -56,6 +56,7 @@ import ru.tinyops.android.vboard.diagnostics.ErrorReporting
 import ru.tinyops.android.vboard.ui.KeyboardThemes
 import ru.tinyops.android.vboard.ui.ThemeChoice
 import ru.tinyops.android.vboard.ui.ThemeMode
+import ru.tinyops.android.vboard.update.UpdateSchedule
 import ru.tinyops.android.vboard.voice.VoicePrefs
 import ru.tinyops.android.vboard.voice.govorun.GovorunConnection
 
@@ -91,6 +92,8 @@ class SettingsActivity : ComponentActivity() {
                 else -> Screen.entries.firstOrNull { it.name == intent.getStringExtra(EXTRA_SCREEN) } ?: Screen.MAIN
             }
         theme.value = KeyboardThemes.selected(this)
+        // Also picks up the update settings of an imported backup.
+        UpdateSchedule.sync(this)
         setContent {
             SettingsTheme(theme.value) {
                 SettingsNavigation(
@@ -266,7 +269,13 @@ internal class MainSettingsLinks(
     val customButtons: () -> Unit,
     val typing: TypingLinks,
     val text: TextLinks,
+    val app: AppLinks,
+)
+
+/** The pages about the app itself the settings root links to. */
+internal class AppLinks(
     val diagnostics: () -> Unit,
+    val updates: () -> Unit,
 )
 
 /** The pages of text improvement the settings root links to. */
@@ -308,6 +317,7 @@ internal enum class Screen(
     SERVERS(MAIN),
     DIAGNOSTICS(MAIN),
     APP_LOG(DIAGNOSTICS),
+    UPDATES(MAIN),
 }
 
 @Composable
@@ -379,7 +389,7 @@ private fun SettingsNavigation(
                     onBack = back,
                 )
             Screen.DIAGNOSTICS -> DiagnosticsScreen(onOpenLog = { screen = Screen.APP_LOG }, onBack = back)
-            Screen.FULLSCREEN, Screen.APP_LOG -> StandalonePage(current, back)
+            Screen.FULLSCREEN, Screen.APP_LOG, Screen.UPDATES -> StandalonePage(current, back)
             Screen.CLIPBOARD, Screen.EMOJI, Screen.EMOJI_GROUPS, Screen.EMOJI_SINGLE, Screen.SLIDE_ENGINE,
             Screen.AUTOCORRECT, Screen.SUGGESTIONS,
             ->
@@ -428,16 +438,24 @@ private fun mainLinks(
             servers = openServers,
             dictionary = { navigate(Screen.DICTIONARY) },
         ),
-    diagnostics = { navigate(Screen.DIAGNOSTICS) },
+    app =
+        AppLinks(
+            diagnostics = { navigate(Screen.DIAGNOSTICS) },
+            updates = { navigate(Screen.UPDATES) },
+        ),
 )
 
-/** The pages without sub-pages: the fullscreen mode and the application log. */
+/** The pages without sub-pages: the fullscreen mode, the application log and the updates. */
 @Composable
 private fun StandalonePage(
     page: Screen,
     onBack: () -> Unit,
 ) {
-    if (page == Screen.APP_LOG) AppLogScreen(onBack) else FullscreenScreen(onBack)
+    when (page) {
+        Screen.APP_LOG -> AppLogScreen(onBack)
+        Screen.UPDATES -> UpdatesScreen(onBack)
+        else -> FullscreenScreen(onBack)
+    }
 }
 
 /** The pages of typing and the emoji picker. */

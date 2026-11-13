@@ -6,6 +6,7 @@ import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import ru.tinyops.android.vboard.update.UpdatePrefs
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -29,6 +30,7 @@ internal object SettingsBackup {
             "voice" to emptySet(),
             "emoji_prefs" to setOf("recents"),
             "clipboard_prefs" to emptySet(),
+            "updates" to UpdatePrefs.LOCAL_KEYS,
         )
 
     private val FILE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
