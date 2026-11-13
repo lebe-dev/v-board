@@ -39,6 +39,20 @@ internal object WordPairs {
     fun installed(context: Context): File? =
         File(directory(context), release.fileName).takeIf { release.configured && it.length() == release.size }
 
+    /**
+     * Whether the user has downloaded the table of another version: after an update the app fetches its own
+     * one in its place. A user who never downloaded the table gets nothing.
+     */
+    fun needsRefresh(
+        release: WordPairsRelease = this.release,
+        directory: File,
+    ): Boolean {
+        if (!release.configured) return false
+        val current = File(directory, release.fileName)
+        if (current.length() == release.size) return false
+        return directory.listFiles().orEmpty().any { it.name.endsWith(".bigrams") && it != current }
+    }
+
     fun isAvailable(
         context: Context,
         language: Language,

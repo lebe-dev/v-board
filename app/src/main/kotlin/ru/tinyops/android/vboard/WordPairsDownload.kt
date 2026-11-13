@@ -36,8 +36,10 @@ internal object WordPairsDownload {
             val total: Long,
         ) : State
 
+        /** [missing] means the release has no table: trying again will not help. */
         data class Failed(
             val noSpace: Boolean,
+            val missing: Boolean = false,
         ) : State
     }
 
@@ -64,6 +66,9 @@ internal object WordPairsDownload {
                         download(release, directory) { publish(self, it) }
                         Log.i(TAG, "Word pair table downloaded")
                         State.Idle
+                    } catch (missing: WordPairsMissing) {
+                        AppLog.error(TAG, "The release has no word pair table", missing)
+                        State.Failed(noSpace = false, missing = true)
                     } catch (full: WordPairsNoSpace) {
                         AppLog.error(TAG, "No room for the word pair table", full)
                         State.Failed(noSpace = true)
@@ -95,6 +100,8 @@ internal object WordPairsDownload {
         mutableState.value = State.Idle
     }
 
+    private class WordPairsMissing : IOException("the release has no word pair table")
+
     private suspend fun download(
         release: WordPairsRelease,
         directory: File,
@@ -109,6 +116,7 @@ internal object WordPairsDownload {
             connection.readTimeout = READ_TIMEOUT_MS
             connection.instanceFollowRedirects = true
             val code = connection.responseCode
+            if (code == HttpURLConnection.HTTP_NOT_FOUND) throw WordPairsMissing()
             if (code != HttpURLConnection.HTTP_OK) throw IOException("word pair table download answered HTTP $code")
             connection.inputStream.use { stream ->
                 WordPairsInstaller.install(stream, release, directory) { done ->

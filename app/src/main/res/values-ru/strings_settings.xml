@@ -482,6 +482,7 @@
     <string name="updates_release_section">Версия %1$s</string>
     <string name="updates_install">Скачать и установить</string>
     <string name="updates_install_summary">%1$d МБ с GitHub</string>
+    <string name="updates_install_summary_pairs">%1$d МБ с GitHub. Словарь пар слов обновится вместе с приложением.</string>
     <string name="updates_permission_summary">Android один раз попросит разрешить установку из этого приложения. Разрешите, вернитесь и нажмите снова.</string>
     <string name="updates_downloading">Загрузка: %1$d%%</string>
     <string name="updates_downloading_summary">Нажмите, чтобы отменить</string>

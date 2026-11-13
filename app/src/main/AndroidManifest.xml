@@ -67,6 +67,20 @@
             android:name=".update.UpdateInstallReceiver"
             android:exported="false" />
 
+        <!-- After an update, fetches the word pair table of the new version in place of the old one. -->
+        <receiver
+            android:name=".WordPairsRefreshReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".WordPairsRefreshJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
         <activity
             android:name=".settings.SettingsActivity"
             android:exported="true"

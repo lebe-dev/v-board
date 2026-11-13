@@ -81,7 +81,10 @@ class WordPairsDownloadTest {
 
     @Test
     fun `a missing asset is a failure and leaves nothing behind`() {
-        assertEquals(WordPairsDownload.State.Failed(noSpace = false), download(release(path = "/download/missing.gz")))
+        assertEquals(
+            WordPairsDownload.State.Failed(noSpace = false, missing = true),
+            download(release(path = "/download/missing.gz")),
+        )
         assertTrue(directory.listFiles().orEmpty().isEmpty())
     }
 

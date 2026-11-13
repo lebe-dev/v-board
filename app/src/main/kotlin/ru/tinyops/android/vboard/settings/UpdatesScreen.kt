@@ -30,6 +30,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import ru.tinyops.android.vboard.BuildConfig
 import ru.tinyops.android.vboard.R
+import ru.tinyops.android.vboard.WordPairs
 import ru.tinyops.android.vboard.core.update.ReleaseNotes
 import ru.tinyops.android.vboard.update.AvailableRelease
 import ru.tinyops.android.vboard.update.CheckInterval
@@ -183,6 +184,8 @@ private fun InstallRow(
     val state by UpdateDownload.state.collectAsState()
     var allowed by remember { mutableStateOf(UpdateInstaller.allowed(context)) }
     var askedToAllow by remember { mutableStateOf(false) }
+    // The new version fetches its own word pairs in place of the downloaded ones.
+    val withPairs = remember { WordPairs.installed(context) != null }
     // The user comes back from the system screen that allows installs.
     LifecycleResumeEffect(Unit) {
         allowed = UpdateInstaller.allowed(context)
@@ -220,6 +223,7 @@ private fun InstallRow(
                     when {
                         current is UpdateDownload.State.Failed -> stringResource(current.reason.message())
                         !allowed && askedToAllow -> stringResource(R.string.updates_permission_summary)
+                        withPairs -> stringResource(R.string.updates_install_summary_pairs, megabytes(size))
                         else -> stringResource(R.string.updates_install_summary, megabytes(size))
                     },
                 icon = R.drawable.ic_download,

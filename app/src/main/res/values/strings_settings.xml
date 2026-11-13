@@ -476,6 +476,7 @@
     <string name="updates_release_section">Version %1$s</string>
     <string name="updates_install">Download and install</string>
     <string name="updates_install_summary">%1$d MB from GitHub</string>
+    <string name="updates_install_summary_pairs">%1$d MB from GitHub. The word pairs are updated together with the app.</string>
     <string name="updates_permission_summary">Android asks once to allow installs from this app. Allow it, come back and tap again.</string>
     <string name="updates_downloading">Downloading: %1$d%%</string>
     <string name="updates_downloading_summary">Tap to cancel</string>
