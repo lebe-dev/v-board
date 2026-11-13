@@ -15,6 +15,16 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import ru.tinyops.android.vboard.KeyboardPrefs
+import ru.tinyops.android.vboard.core.input.DeleteHoldMode
+import ru.tinyops.android.vboard.core.voice.ButtonAction
+import ru.tinyops.android.vboard.core.voice.ButtonCommand
+import ru.tinyops.android.vboard.core.voice.QuickReply
+import ru.tinyops.android.vboard.ui.KeyboardThemes
+import ru.tinyops.android.vboard.ui.ThemeMode
+import ru.tinyops.android.vboard.update.CheckInterval
+import ru.tinyops.android.vboard.update.UpdatePrefs
+import ru.tinyops.android.vboard.voice.VoicePrefs
 import java.io.File
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -123,14 +133,18 @@ class SettingsBackupTest {
     @Test
     fun `every preference file of the app is in the backup`() {
         val name = Regex("""const val (?:FILE|PREFS) = "([^"]+)"""")
-        val files =
+        val opened = Regex("""getSharedPreferences\(\s*([^,]+),""")
+        val sources =
             File("src/main/kotlin")
                 .walk()
-                .filter { it.extension == "kt" }
+                .filter { it.extension == "kt" && it.name != "SettingsBackup.kt" }
                 .map { it.readText() }
                 .filter { "getSharedPreferences(" in it }
-                .flatMap { source -> name.findAll(source).map { it.groupValues[1] } }
-                .toSet()
+                .toList()
+        // Any other way to name a file would slip past the list below.
+        val names = sources.flatMap { source -> opened.findAll(source).map { it.groupValues[1].trim() } }.toSet()
+        assertEquals(setOf("FILE", "PREFS"), names)
+        val files = sources.flatMap { source -> name.findAll(source).map { it.groupValues[1] } }.toSet()
         assertTrue("no preference files found", files.isNotEmpty())
         assertEquals(files, SettingsBackup.FILES.keys)
     }
@@ -167,6 +181,71 @@ class SettingsBackupTest {
         assertEquals("[{\"id\":\"a\",\"apiKey\":\"secret\"}]", voice.getString("servers", null))
         assertEquals(setOf("x", "y"), voice.getStringSet("some_set", null))
         assertEquals("dark", prefs("keyboard").getString("theme", null))
+    }
+
+    @Test
+    fun `the settings of every screen survive the round trip`() {
+        val voice = VoicePrefs(context)
+        val reply = QuickReply(voice.quickReplies.newId(), "On my way")
+        voice.quickReplies.save(reply)
+        val button =
+            voice.customButtons.add().copy(
+                tap = ButtonCommand(ButtonAction.QUICK_REPLIES, replyIds = listOf(reply.id)),
+                name = "Replies",
+            )
+        voice.customButtons.save(button)
+        KeyboardPrefs(context).deleteHold = DeleteHoldMode.WORDS
+        KeyboardThemes.select(context, KeyboardThemes.MINT)
+        KeyboardThemes.selectMode(context, ThemeMode.entries.last())
+        KeyboardThemes.setEnterOnly(context, true)
+        KeyboardThemes.setContrastIcons(context, night = true, on = true)
+        KeyboardThemes.setSquareModeKey(context, true)
+        KeyboardThemes.setSquareActionKey(context, true)
+        UpdatePrefs(context).apply {
+            autoCheck = true
+            interval = CheckInterval.WEEKLY
+        }
+        val replies = voice.quickReplies.replies
+        val theme = KeyboardThemes.selected(context)
+        val text = export()
+        clear()
+
+        SettingsBackup.write(context, SettingsBackup.decode(text))
+
+        val restored = VoicePrefs(context)
+        assertEquals(replies, restored.quickReplies.replies)
+        assertEquals(listOf(reply), restored.quickReplies.choice(button.tap!!))
+        assertEquals(listOf(button), restored.customButtons.buttons)
+        assertEquals(DeleteHoldMode.WORDS, KeyboardPrefs(context).deleteHold)
+        assertEquals(theme, KeyboardThemes.selected(context))
+        assertTrue(theme.enterOnly && theme.whiteIcons && theme.shapes.squareMode && theme.shapes.squareAction)
+        assertEquals(listOf(KeyboardThemes.MINT), KeyboardThemes.recent(context).map { it.id })
+        assertTrue(UpdatePrefs(context).autoCheck)
+        assertEquals(CheckInterval.WEEKLY, UpdatePrefs(context).interval)
+    }
+
+    @Test
+    fun `an emptied list of quick replies stays empty after an import`() {
+        val replies = VoicePrefs(context).quickReplies
+        replies.replies.forEach { replies.delete(it.id) }
+        val text = export()
+        clear()
+
+        SettingsBackup.write(context, SettingsBackup.decode(text))
+
+        assertEquals(emptyList<QuickReply>(), VoicePrefs(context).quickReplies.replies)
+    }
+
+    @Test
+    fun `the update check of this phone stays out of the file`() {
+        prefs("updates").edit(commit = true) {
+            putBoolean("auto_check", true)
+            putString("latest_release", "{}")
+            putLong("last_check", 42)
+            putString("dismissed_version", "9.9.9")
+        }
+        val updates = JSONObject(export()).getJSONObject("preferences").getJSONObject("updates")
+        assertEquals(setOf("auto_check"), updates.keys().asSequence().toSet())
     }
 
     @Test
