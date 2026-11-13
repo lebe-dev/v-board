@@ -94,11 +94,15 @@ internal class CustomButtonsControl(
         val members =
             when {
                 button.group -> ready.membersOf(button.id).map(::stripButton)
+                // While a reply can be undone, the button undoes it instead of offering the list again.
+                activeReplyOf(button.id) != null -> emptyList()
                 button.tap?.action == ButtonAction.QUICK_REPLIES -> replyRows(button)
                 else -> emptyList()
             }
         // A group shows the work of its members, so that a request is seen with the popup closed.
-        val state = members.map { it.state }.firstOrNull { it != ProofreadState.IDLE } ?: actions.stateOf(button.id)
+        val state =
+            members.map { it.state }.firstOrNull { it != ProofreadState.IDLE }
+                ?: actions.stateOf(activeReplyOf(button.id) ?: button.id)
         return StripButton(
             id = button.id,
             icon = ButtonIcons.of(button),
@@ -186,6 +190,7 @@ internal class CustomButtonsControl(
     ) {
         val reply = ReplyMember.parse(id)
         if (reply != null) return onReply(id, reply.first, reply.second)
+        activeReplyOf(id)?.let { return actions.trigger(it, null) }
         val button = ready.firstOrNull { it.id == id } ?: return
         actions.trigger(id, if (held) button.hold else button.tap)
     }
@@ -202,7 +207,11 @@ internal class CustomButtonsControl(
     }
 
     /** What the field would hold after the undo of the button [id], for the preview of a held undo arrow. */
-    fun undoPreview(id: String): String? = actions.undoPreview(id)
+    fun undoPreview(id: String): String? = actions.undoPreview(activeReplyOf(id) ?: id)
+
+    /** The row of the button [buttonId] whose reply is at work or can be undone, if any. */
+    private fun activeReplyOf(buttonId: String): String? =
+        actions.activeId?.takeIf { ReplyMember.parse(it)?.first == buttonId }
 
     fun reset() = actions.reset()
 
