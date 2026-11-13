@@ -75,6 +75,22 @@ internal fun ThemeScreen(
     }
     SettingsPage(title = stringResource(R.string.theme_title), onBack = onBack) {
         item(key = "mode") { ModeChoice(selected.mode, onSelectMode) }
+        item(key = "enter_only") {
+            SettingsSection(null) {
+                item {
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.theme_enter_only),
+                        supporting = { Text(stringResource(R.string.theme_enter_only_summary)) },
+                        dimWhenOff = true,
+                        checked = selected.enterOnly,
+                        onCheckedChange = {
+                            KeyboardThemes.setEnterOnly(context, it)
+                            choice.value = KeyboardThemes.selected(context)
+                        },
+                    )
+                }
+            }
+        }
         item(key = "icons") {
             val night = selected.night(context)
             SettingsSection(null) {
@@ -161,6 +177,7 @@ private fun ThemeGroupSection(
                         ThemeTile(
                             theme = theme,
                             mode = selected.mode,
+                            enterOnly = selected.enterOnly,
                             description = stringResource(theme.name),
                             selected = theme.id == selected.spec.id,
                             onClick = { onSelect(theme.id) },
@@ -178,6 +195,7 @@ private fun ThemeGroupSection(
 private fun ThemeTile(
     theme: ThemeSpec,
     mode: ThemeMode,
+    enterOnly: Boolean,
     description: String,
     selected: Boolean,
     onClick: () -> Unit,
@@ -186,11 +204,13 @@ private fun ThemeTile(
     val context = LocalContext.current
     val uiMode = LocalConfiguration.current.uiMode
     val palettes =
-        remember(theme.id, mode, uiMode) {
+        remember(theme.id, mode, enterOnly, uiMode) {
+            val choice = ThemeChoice(theme, mode, enterOnly = enterOnly)
             when (mode) {
-                ThemeMode.SYSTEM -> theme.palette(context, false) to theme.palette(context, true)
-                ThemeMode.LIGHT -> theme.palette(context, false).let { it to it }
-                ThemeMode.DARK -> theme.palette(context, true).let { it to it }
+                ThemeMode.SYSTEM ->
+                    choice.copy(mode = ThemeMode.LIGHT).palette(context) to
+                        choice.copy(mode = ThemeMode.DARK).palette(context)
+                else -> choice.palette(context).let { it to it }
             }
         }
     val selectedText = stringResource(R.string.theme_selected)

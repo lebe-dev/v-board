@@ -31,6 +31,8 @@
     <string name="theme_group_recent">Недавние</string>
     <string name="theme_group_colors">Цвета</string>
     <string name="theme_dynamic">Динамический цвет</string>
+    <string name="theme_enter_only">Менять цвет только у Enter</string>
+    <string name="theme_enter_only_summary">С любой темой остаются цвета Классики, а клавиша Enter получает основной цвет выбранной темы</string>
     <string name="theme_icons_white">Использовать белый цвет для иконок</string>
     <string name="theme_icons_dark">Использовать тёмный цвет для иконок</string>
     <string name="theme_icons_summary">Иконки без своего цвета: панель над клавишами, Shift, удаление и смена языка</string>

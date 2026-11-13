@@ -54,9 +54,10 @@ data class ThemeChoice(
     val whiteIcons: Boolean = false,
     val darkIcons: Boolean = false,
     val shapes: KeyShapes = KeyShapes(),
+    val enterOnly: Boolean = false,
 ) {
     /** Changes whenever the keyboard has to be rebuilt with other colors. */
-    val key: String get() = "${spec.id}:${mode.id}:$whiteIcons:$darkIcons:$shapes"
+    val key: String get() = "${spec.id}:${mode.id}:$whiteIcons:$darkIcons:$shapes:$enterOnly"
 
     fun night(context: Context): Boolean =
         when (mode) {
@@ -67,7 +68,7 @@ data class ThemeChoice(
 
     fun palette(context: Context): KeyboardPalette {
         val night = night(context)
-        val palette = spec.palette(context, night)
+        val palette = themed(context, night)
         val icon =
             when {
                 night && whiteIcons -> Color.WHITE
@@ -76,6 +77,20 @@ data class ThemeChoice(
             }
         return palette.copy(stripIcon = icon, keyIcon = icon)
     }
+}
+
+/** In the enter-only mode the classic colors stay and only the action key comes from the theme. */
+private fun ThemeChoice.themed(
+    context: Context,
+    night: Boolean,
+): KeyboardPalette {
+    val palette = spec.palette(context, night)
+    if (!enterOnly) return palette
+    return KeyboardThemes.find(KeyboardThemes.CLASSIC).palette(context, night).copy(
+        actionKey = palette.actionKey,
+        actionKeyPressed = palette.actionKeyPressed,
+        actionIcon = palette.actionIcon,
+    )
 }
 
 private fun Context.isNight(): Boolean =
@@ -99,6 +114,7 @@ object KeyboardThemes {
     private const val PREF_MODE = "theme_mode"
     private const val PREF_WHITE_ICONS = "icons_white"
     private const val PREF_DARK_ICONS = "icons_dark"
+    private const val PREF_ENTER_ONLY = "theme_enter_only"
     private const val PREF_SQUARE_MODE = "keys_square_mode"
     private const val PREF_SQUARE_ACTION = "keys_square_action"
     private const val PREF_COLLAPSED = "theme_collapsed"
@@ -143,6 +159,7 @@ object KeyboardThemes {
             mode = mode,
             whiteIcons = prefs.getBoolean(PREF_WHITE_ICONS, false),
             darkIcons = prefs.getBoolean(PREF_DARK_ICONS, false),
+            enterOnly = prefs.getBoolean(PREF_ENTER_ONLY, false),
             shapes =
                 KeyShapes(
                     squareMode = prefs.getBoolean(PREF_SQUARE_MODE, false),
@@ -178,6 +195,14 @@ object KeyboardThemes {
         mode: ThemeMode,
     ) {
         prefs(context).edit { putString(PREF_MODE, mode.id) }
+    }
+
+    /** Turns the mode on or off in which every theme recolors only the action key. */
+    fun setEnterOnly(
+        context: Context,
+        on: Boolean,
+    ) {
+        prefs(context).edit { putBoolean(PREF_ENTER_ONLY, on) }
     }
 
     /** Turns the contrast icons of the dark ([night]) or light variant on or off. */

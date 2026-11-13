@@ -31,6 +31,8 @@
     <string name="theme_group_recent">Recent</string>
     <string name="theme_group_colors">Colors</string>
     <string name="theme_dynamic">Dynamic color</string>
+    <string name="theme_enter_only">Change only the Enter key color</string>
+    <string name="theme_enter_only_summary">With any theme, the Classic colors stay and only the Enter key takes the color of the chosen theme</string>
     <string name="theme_icons_white">Use white for icons</string>
     <string name="theme_icons_dark">Use a dark color for icons</string>
     <string name="theme_icons_summary">Icons without a color of their own: the panel above the keys, Shift, delete and the language key</string>

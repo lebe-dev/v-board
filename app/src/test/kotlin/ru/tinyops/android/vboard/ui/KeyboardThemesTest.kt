@@ -154,4 +154,34 @@ class KeyboardThemesTest {
         assertTrue(!KeyboardThemes.isCollapsed(context, "colors"))
         assertTrue(KeyboardThemes.isCollapsed(context, "recent"))
     }
+
+    @Test
+    fun `enter only mode keeps the classic colors and takes the action key from the theme`() {
+        KeyboardThemes.select(context, KeyboardThemes.MINT)
+        assertEquals(false, KeyboardThemes.selected(context).enterOnly)
+        val before = KeyboardThemes.selected(context).key
+
+        KeyboardThemes.setEnterOnly(context, true)
+        val choice = KeyboardThemes.selected(context)
+        assertTrue(choice.enterOnly)
+        assertNotEquals(before, choice.key)
+
+        val classic = KeyboardThemes.find(KeyboardThemes.CLASSIC)
+        val mint = KeyboardThemes.find(KeyboardThemes.MINT)
+        for (night in listOf(false, true)) {
+            val mode = if (night) ThemeMode.DARK else ThemeMode.LIGHT
+            val palette = choice.copy(mode = mode).palette(context)
+            val base = classic.palette(context, night)
+            val accent = mint.palette(context, night)
+            assertEquals(
+                base.copy(
+                    actionKey = accent.actionKey,
+                    actionKeyPressed = accent.actionKeyPressed,
+                    actionIcon = accent.actionIcon,
+                ),
+                palette,
+            )
+            assertEquals(base.background, palette.background)
+        }
+    }
 }
