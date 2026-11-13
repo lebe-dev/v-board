@@ -1,5 +1,7 @@
 import com.android.build.api.variant.BuildConfigField
+import io.gitlab.arturbosch.detekt.Detekt
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.security.MessageDigest
 import javax.inject.Inject
 
@@ -304,6 +306,22 @@ androidComponents {
             wordPairsFingerprint.map { BuildConfigField("long", "${it.substringAfter(':', "0")}L", null) },
         )
     }
+}
+
+// The detekt plugin registers no type-resolving tasks for the variants of this Android plugin, so the debug
+// variant gets its own: rules that need types (unsafe calls, ignored results, coroutines) run only here.
+// The classpath is that of the Kotlin compiler plus the generated Java classes (AIDL, BuildConfig).
+tasks.register<Detekt>("detektDebug") {
+    description = "Runs detekt with type resolution over the debug variant."
+    group = "verification"
+    val kotlinCompile = tasks.named<KotlinCompile>("compileDebugKotlin")
+    val javaCompile = tasks.named<JavaCompile>("compileDebugJavaWithJavac")
+    setSource(files("src/main/kotlin"))
+    classpath.from(kotlinCompile.map { it.libraries }, javaCompile.flatMap { it.destinationDirectory })
+    config.setFrom(rootProject.files("config/detekt/detekt.yml"))
+    buildUponDefaultConfig = true
+    parallel = true
+    basePath = rootDir.absolutePath
 }
 
 // Regenerated on a device by `just profile`, not by every build: the result is kept in the sources.

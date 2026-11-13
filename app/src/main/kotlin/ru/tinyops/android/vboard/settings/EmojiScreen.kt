@@ -80,13 +80,13 @@ internal fun EmojiScreen(
                     item {
                         val shown = hidden.isShown(catalog, category)
                         // The picker keeps at least one category.
-                        val enabled = !shown || hidden.categoriesIn(catalog).size > 1
+                        val switchable = !shown || hidden.categoriesIn(catalog).size > 1
                         SettingsSwitchRow(
                             title = stringResource(category.title),
                             checked = shown,
-                            enabled = enabled,
+                            enabled = switchable,
                             onCheckedChange = { change(hidden.toggleCategory(category, catalog)) },
-                            supporting = { EmojiSamples(category, assets, dimmed = !enabled || !shown) },
+                            supporting = { EmojiSamples(category, assets, dimmed = !switchable || !shown) },
                         )
                     }
                 }

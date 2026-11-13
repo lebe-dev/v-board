@@ -8,6 +8,8 @@ complexity:
   LongParameterList:
     functionThreshold: 8
     constructorThreshold: 10
+    # Composables take their optional parameters with defaults.
+    ignoreDefaultParameters: true
   TooManyFunctions:
     thresholdInFiles: 25
     thresholdInClasses: 25
@@ -30,3 +32,8 @@ style:
     ignoreCompanionObjectPropertyDeclaration: true
     excludes:
       - "**/test/**"
+
+coroutines:
+  # The app has no dependency injection; dispatchers are chosen where the work runs.
+  InjectDispatcher:
+    active: false

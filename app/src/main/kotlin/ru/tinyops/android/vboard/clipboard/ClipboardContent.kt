@@ -21,8 +21,7 @@ object ClipboardContent {
         clip: ClipData?,
         typeOf: (Uri) -> String?,
     ): ClipPayload? {
-        if (clip == null || clip.itemCount == 0) return null
-        val item = clip.getItemAt(0)
+        val item = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0) ?: return null
         val text = item.text?.toString().orEmpty()
         if (text.isNotEmpty()) return ClipPayload.Text(text)
         val uri = item.uri ?: return null

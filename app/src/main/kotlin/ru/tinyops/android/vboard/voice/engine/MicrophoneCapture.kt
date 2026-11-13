@@ -164,7 +164,7 @@ internal class MicrophoneReader(
     ): Int {
         repeat(2) {
             if (stopped) return 0
-            val current = device.get() ?: (open() ?: return 0).also { device.set(it) }
+            val current = device.get() ?: (open() ?: return 0).also(device::set)
             if (stopped) {
                 release()
                 return 0

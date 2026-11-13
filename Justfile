@@ -27,9 +27,11 @@ default:
 test: voice-runtime
     {{ gradle }} :stt:test :core:test :app:testDebugUnitTest
 
-# Static analysis: ktlint, detekt and Android Lint with the Compose checks, also over :core and :stt; fails on any finding.
+# Static analysis over all modules: ktlint, detekt (with type resolution) and Android Lint with the Compose checks;
+# fails on any finding. `just release` also lints the release variant.
 lint: voice-runtime
-    {{ gradle }} ktlintCheck detekt :app:lintDebug
+    {{ gradle }} ktlintCheck detekt :app:detektDebug :core:detektMain :core:detektTest :stt:detektMain :stt:detektTest \
+        :app:lintDebug
 
 # Security scans in Docker; fails on any finding.
 security: security-deps security-code security-secrets
@@ -105,7 +107,7 @@ release: security voice emoji
         echo "No word pair table: run 'just bigrams' first, the release offers it for download." >&2
         exit 1
     fi
-    {{ gradle }} :app:assembleRelease
+    {{ gradle }} :app:lintRelease :app:assembleRelease
     # ExecuTorch aborts the process on any native error when R8 strips fbjni (seen in 0.14.1).
     for class in com.facebook.jni.HybridData\$Destructor com.facebook.jni.UnknownCppException; do
         if ! grep -qF "$class -> $class:" app/build/outputs/mapping/release/mapping.txt; then

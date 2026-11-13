@@ -60,8 +60,8 @@ internal object SettingsBackup {
                         .getSharedPreferences(file, Context.MODE_PRIVATE)
                         .all
                         .filterKeys { it !in local }
-                        .filterValues { it != null }
-                        .mapValues { it.value!! }
+                        .mapNotNull { (key, value) -> value?.let { key to it } }
+                        .toMap()
                 }.mapValues { (file, values) -> if (file == VOICE && !apiKeys) withoutKeys(values) else values }
         return Backup(preferences, language, apiKeys, appVersion = null, exportedAt = null)
     }
@@ -235,8 +235,7 @@ internal object SettingsBackup {
                     }
                 else -> null
             }
-        valid(decoded != null) { "value does not match type $type" }
-        return decoded!!
+        return decoded ?: throw InvalidBackup("value does not match type $type")
     }
 
     private fun SharedPreferences.Editor.put(

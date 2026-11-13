@@ -267,7 +267,8 @@ class SuggestionStripView(
             when {
                 zone == Zone.PROOFREAD && proofreadState == ProofreadState.UNDO -> undoPeek.begin(UndoPeek.PROOFREAD)
                 zone == Zone.PROOFREAD -> listener?.onProofreadHeld()
-                button!!.state == ProofreadState.UNDO -> undoPeek.begin(button.id)
+                button == null -> Unit
+                button.state == ProofreadState.UNDO -> undoPeek.begin(button.id)
                 else -> listener?.onCustomButtonUsed(button.id, held = true)
             }
         }
