@@ -257,6 +257,7 @@ internal class TypingLinks(
     val autocorrect: () -> Unit,
     val slideEngine: () -> Unit,
     val fullscreen: () -> Unit,
+    val deleteKey: () -> Unit,
 )
 
 /** Where the rows of the settings root lead. */
@@ -313,6 +314,7 @@ internal enum class Screen(
     SLIDE_ENGINE(MAIN),
     SUGGESTIONS(MAIN),
     AUTOCORRECT(MAIN),
+    DELETE_KEY(MAIN),
     PROMPTS(MAIN),
     SERVERS(MAIN),
     DIAGNOSTICS(MAIN),
@@ -391,7 +393,7 @@ private fun SettingsNavigation(
             Screen.DIAGNOSTICS -> DiagnosticsScreen(onOpenLog = { screen = Screen.APP_LOG }, onBack = back)
             Screen.FULLSCREEN, Screen.APP_LOG, Screen.UPDATES -> StandalonePage(current, back)
             Screen.CLIPBOARD, Screen.EMOJI, Screen.EMOJI_GROUPS, Screen.EMOJI_SINGLE, Screen.SLIDE_ENGINE,
-            Screen.AUTOCORRECT, Screen.SUGGESTIONS,
+            Screen.AUTOCORRECT, Screen.SUGGESTIONS, Screen.DELETE_KEY,
             ->
                 TypingPage(current, navigate = { screen = it }, onBack = back)
             Screen.CUSTOM_BUTTONS ->
@@ -431,6 +433,7 @@ private fun mainLinks(
             autocorrect = { navigate(Screen.AUTOCORRECT) },
             slideEngine = { navigate(Screen.SLIDE_ENGINE) },
             fullscreen = { navigate(Screen.FULLSCREEN) },
+            deleteKey = { navigate(Screen.DELETE_KEY) },
         ),
     text =
         TextLinks(
@@ -477,6 +480,7 @@ private fun TypingPage(
         Screen.EMOJI_SINGLE -> EmojiSinglePickScreen(onBack)
         Screen.AUTOCORRECT -> AutocorrectScreen(onBack)
         Screen.SUGGESTIONS -> SuggestionsScreen(onBack)
+        Screen.DELETE_KEY -> DeleteKeyScreen(onBack)
         else -> SlideEngineScreen(onBack)
     }
 }

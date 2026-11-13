@@ -21,6 +21,29 @@ class TextRulesTest {
     }
 
     @Test
+    fun `a word is deleted together with the spaces after it`() {
+        assertEquals("world ".length, TextRules.wordBeforeLength("hello world "))
+        assertEquals("мир".length, TextRules.wordBeforeLength("привет мир"))
+        assertEquals("кто-то".length, TextRules.wordBeforeLength("вот кто-то"))
+        assertEquals("don't".length, TextRules.wordBeforeLength("I don't"))
+    }
+
+    @Test
+    fun `punctuation goes apart from the word before it`() {
+        assertEquals(", ".length, TextRules.wordBeforeLength("hello, "))
+        assertEquals("...".length, TextRules.wordBeforeLength("wait..."))
+        assertEquals("-".length, TextRules.wordBeforeLength("a -"))
+    }
+
+    @Test
+    fun `a line break is deleted alone`() {
+        assertEquals(1, TextRules.wordBeforeLength("first\n"))
+        assertEquals("  ".length, TextRules.wordBeforeLength("first\n  "))
+        assertEquals(0, TextRules.wordBeforeLength(""))
+        assertEquals(0, TextRules.wordBeforeLength(null))
+    }
+
+    @Test
     fun `double space period only after a word`() {
         assertTrue(TextRules.isDoubleSpacePeriod("привет "))
         assertFalse(TextRules.isDoubleSpacePeriod("end. "))

@@ -208,7 +208,10 @@ private fun serversSummary(state: VoiceSettingsState): String {
     }
 }
 
-/** Typing: autocorrection, slide to type, the clipboard, the cursor movement on the space bar, fullscreen mode. */
+/**
+ * Typing: autocorrection, slide to type, the clipboard, the cursor movement on the space bar, fullscreen mode
+ * and the delete key.
+ */
 @Composable
 private fun TypingSection(links: TypingLinks) {
     val prefs = KeyboardPrefs(LocalContext.current)
@@ -260,6 +263,15 @@ private fun TypingSection(links: TypingLinks) {
                 icon = R.drawable.ic_fullscreen,
                 prominent = true,
                 onClick = links.fullscreen,
+            )
+        }
+        item {
+            SettingsLinkRow(
+                title = stringResource(R.string.delete_key_title),
+                summary = stringResource(deleteHoldLabel(prefs.deleteHold)),
+                icon = R.drawable.ic_backspace,
+                prominent = true,
+                onClick = links.deleteKey,
             )
         }
     }

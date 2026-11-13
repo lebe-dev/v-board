@@ -32,6 +32,7 @@ import ru.tinyops.android.vboard.core.gesture.GestureLayoutFactory
 import ru.tinyops.android.vboard.core.input.CursorEditor
 import ru.tinyops.android.vboard.core.input.CursorLines
 import ru.tinyops.android.vboard.core.input.CursorMotion
+import ru.tinyops.android.vboard.core.input.DeleteHoldMode
 import ru.tinyops.android.vboard.core.input.InputLogic
 import ru.tinyops.android.vboard.core.input.LineSpan
 import ru.tinyops.android.vboard.core.input.ShiftState
@@ -422,9 +423,11 @@ class KeyboardService :
         syncShift()
     }
 
-    override fun onBackspace() {
+    override fun onBackspace() = onDelete(DeleteHoldMode.CHARACTERS)
+
+    override fun onDelete(step: DeleteHoldMode) {
         textActions.reset()
-        editor()?.let { logic.backspace(it) }
+        editor()?.let { logic.deleteBy(it, step) }
     }
 
     override fun onShiftLongPress() {
@@ -780,6 +783,7 @@ class KeyboardService :
         view.enterAction = profile.enterAction
         view.gestureEnabled = gesturesAvailable()
         view.spaceDragMode = keyboardPrefs.spaceDragMode
+        view.deleteHold = keyboardPrefs.deleteHold
         decoder.setSlideEngine(keyboardPrefs.slideEngine)
         // A table downloaded or deleted in the settings since the last field.
         decoder.refreshBigrams()

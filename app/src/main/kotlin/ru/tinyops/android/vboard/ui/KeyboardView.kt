@@ -15,6 +15,7 @@ import ru.tinyops.android.vboard.EnterAction
 import ru.tinyops.android.vboard.PerfTrace
 import ru.tinyops.android.vboard.core.input.CursorDrag
 import ru.tinyops.android.vboard.core.input.CursorEdgeScroll
+import ru.tinyops.android.vboard.core.input.DeleteHoldMode
 import ru.tinyops.android.vboard.core.input.ShiftState
 import ru.tinyops.android.vboard.core.input.SpaceDragMode
 import ru.tinyops.android.vboard.core.layout.GeometryMetrics
@@ -59,7 +60,8 @@ class KeyboardView(
     interface Listener : SpaceDragListener {
         fun onKey(key: KeySpec)
 
-        fun onBackspace()
+        /** The delete key deletes by [step]: a press always deletes a character, holding it goes on as set. */
+        fun onDelete(step: DeleteHoldMode)
 
         fun onAlternate(text: String)
 
@@ -120,6 +122,9 @@ class KeyboardView(
 
     /** Whether a finger sliding across letters is decoded as a gesture. */
     var gestureEnabled: Boolean = false
+
+    /** What holding the delete key does after the first character. */
+    var deleteHold: DeleteHoldMode = DeleteHoldMode.CHARACTERS
 
     /** How a finger on the space bar moves the cursor. */
     var spaceDragMode: SpaceDragMode = SpaceDragMode.LINEAR
@@ -270,8 +275,8 @@ class KeyboardView(
         performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
 
         if (key.spec.type == KeyType.BACKSPACE) {
-            listener?.onBackspace()
-            scheduleRepeat()
+            listener?.onDelete(DeleteHoldMode.CHARACTERS)
+            scheduleDeleteHold()
         } else if (hasLongPress(key.spec)) {
             scheduleLongPress(pointer)
         }
@@ -522,17 +527,26 @@ class KeyboardView(
         longPress = null
     }
 
-    private fun scheduleRepeat() {
+    private fun scheduleDeleteHold() {
         cancelRepeat()
+        val mode = deleteHold
+        if (mode == DeleteHoldMode.NONE) return
         val runnable =
             object : Runnable {
                 override fun run() {
-                    listener?.onBackspace()
-                    handler.postDelayed(this, REPEAT_INTERVAL_MILLIS)
+                    listener?.onDelete(mode)
+                    when (mode) {
+                        DeleteHoldMode.ALL -> {
+                            repeat = null
+                            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        }
+                        DeleteHoldMode.WORDS -> handler.postDelayed(this, WORD_REPEAT_INTERVAL_MILLIS)
+                        else -> handler.postDelayed(this, REPEAT_INTERVAL_MILLIS)
+                    }
                 }
             }
         repeat = runnable
-        handler.postDelayed(runnable, REPEAT_START_MILLIS)
+        handler.postDelayed(runnable, if (mode == DeleteHoldMode.ALL) CLEAR_HOLD_MILLIS else REPEAT_START_MILLIS)
     }
 
     private fun cancelRepeat() {
@@ -581,6 +595,10 @@ class KeyboardView(
         const val LONG_PRESS_MILLIS = 350L
         const val REPEAT_START_MILLIS = 400L
         const val REPEAT_INTERVAL_MILLIS = 50L
+        const val WORD_REPEAT_INTERVAL_MILLIS = 150L
+
+        /** Clearing the field cannot be stopped halfway, so it waits longer than the repeat. */
+        const val CLEAR_HOLD_MILLIS = 800L
         const val TRAIL_FADE_MILLIS = 250L
 
         /** Travel, as a fraction of the key width, that turns a press into a gesture. */

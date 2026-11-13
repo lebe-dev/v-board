@@ -26,6 +26,35 @@ object TextRules {
         return textBefore.last() == ' ' && beforeSpace.isLetterOrDigit()
     }
 
+    /**
+     * How many characters before the cursor make up the last word together with the spaces after it.
+     * A run of punctuation counts as a word, and a line break goes alone.
+     */
+    fun wordBeforeLength(textBefore: CharSequence?): Int {
+        if (textBefore.isNullOrEmpty()) return 0
+        val end = textBefore.length
+        if (textBefore[end - 1] == '\n') return 1
+        var i = end
+        while (i > 0 && textBefore[i - 1].isWhitespace() && textBefore[i - 1] != '\n') i--
+        if (i == 0 || textBefore[i - 1] == '\n') return end - i
+        if (textBefore[i - 1].isWordPart()) {
+            while (i > 0 && (textBefore[i - 1].isWordPart() || isJoiner(textBefore, i - 1))) i--
+        } else {
+            while (i > 0 && !textBefore[i - 1].isWhitespace() && !textBefore[i - 1].isWordPart()) i--
+        }
+        return end - i
+    }
+
+    private fun Char.isWordPart(): Boolean = isLetterOrDigit() || this == '_' || isCombiningMark()
+
+    /** A hyphen or an apostrophe inside a word, as in "кто-то" or "don't". */
+    private fun isJoiner(
+        text: CharSequence,
+        index: Int,
+    ): Boolean = text[index] in WORD_JOINERS && index > 0 && text[index - 1].isWordPart()
+
+    private const val WORD_JOINERS = "-'’"
+
     /** Applies the shift state to a lowercase word. */
     fun applyShift(
         word: String,

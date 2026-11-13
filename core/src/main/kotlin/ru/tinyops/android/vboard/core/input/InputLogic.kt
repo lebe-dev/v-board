@@ -138,6 +138,43 @@ class InputLogic(
         }
     }
 
+    /** One step of the delete key: a character, a word or the whole text. */
+    fun deleteBy(
+        editor: TextEditor,
+        mode: DeleteHoldMode,
+    ) {
+        when (mode) {
+            DeleteHoldMode.CHARACTERS -> backspace(editor)
+            DeleteHoldMode.WORDS -> deleteWord(editor)
+            DeleteHoldMode.ALL -> deleteAll(editor)
+            DeleteHoldMode.NONE -> Unit
+        }
+    }
+
+    /** Deletes the word before the cursor with the spaces after it; a word being typed goes as a whole. */
+    private fun deleteWord(editor: TextEditor) {
+        phantomSpace = false
+        if (composing.isNotEmpty()) {
+            editor.setComposingText("")
+            resetComposing()
+            return
+        }
+        val length = TextRules.wordBeforeLength(editor.textBeforeCursor(WORD_LOOKBACK))
+        if (length > 0) editor.replaceAroundCursor(length, 0, "")
+    }
+
+    /** Deletes the selection and up to [CLEAR_LOOKAROUND] characters on each side of it. */
+    private fun deleteAll(editor: TextEditor) {
+        phantomSpace = false
+        editor.beginBatchEdit()
+        editor.finishComposingText()
+        resetComposing()
+        val before = editor.textBeforeCursor(CLEAR_LOOKAROUND)?.length ?: 0
+        val after = editor.textAfterCursor(CLEAR_LOOKAROUND)?.length ?: 0
+        editor.replaceAroundCursor(before, after, "")
+        editor.endBatchEdit()
+    }
+
     fun pickSuggestion(
         editor: TextEditor,
         word: String,
@@ -325,6 +362,10 @@ class InputLogic(
         const val SUGGESTIONS = 3
         private const val MIN_CORRECTED = 2
         private const val MAX_WORD = 40
+
+        /** A longer word is deleted in several steps. */
+        private const val WORD_LOOKBACK = 64
+        private const val CLEAR_LOOKAROUND = 100_000
         const val DOUBLE_SPACE_MILLIS = 500L
     }
 }

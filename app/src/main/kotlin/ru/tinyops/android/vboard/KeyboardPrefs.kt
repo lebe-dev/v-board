@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import ru.tinyops.android.vboard.core.gesture.SlideEngine
+import ru.tinyops.android.vboard.core.input.DeleteHoldMode
 import ru.tinyops.android.vboard.core.input.SpaceDragMode
 import ru.tinyops.android.vboard.core.input.SuggestionTimeout
 import ru.tinyops.android.vboard.core.voice.ButtonColor
@@ -18,6 +19,11 @@ class KeyboardPrefs(
     var spaceDragMode: SpaceDragMode
         get() = SpaceDragMode.fromCode(prefs.getString(KEY_SPACE_DRAG, null))
         set(value) = prefs.edit { putString(KEY_SPACE_DRAG, value.code) }
+
+    /** What holding the delete key does; deletes characters one by one by default. */
+    var deleteHold: DeleteHoldMode
+        get() = DeleteHoldMode.fromCode(prefs.getString(KEY_DELETE_HOLD, null))
+        set(value) = prefs.edit { putString(KEY_DELETE_HOLD, value.code) }
 
     /** Whether a finger sliding across letters types a word; on by default. */
     var slideEnabled: Boolean
@@ -96,6 +102,7 @@ class KeyboardPrefs(
 
         private const val FILE = "keyboard_prefs"
         private const val KEY_AUTO_CAPITALIZE = "auto_capitalize"
+        private const val KEY_DELETE_HOLD = "delete_hold"
         private const val KEY_FULLSCREEN = "fullscreen_enabled"
         private const val KEY_FULLSCREEN_COLOR = "fullscreen_color"
         private const val KEY_FULLSCREEN_PLACEMENT = "fullscreen_placement"

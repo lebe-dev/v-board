@@ -109,6 +109,31 @@ class InputLogicTest {
     }
 
     @Test
+    fun `deleting a word removes the committed word before the cursor`() {
+        placeCursor("say hello now", 10)
+        logic.deleteBy(editor, DeleteHoldMode.WORDS)
+        assertEquals("say now", editor.toString())
+        assertEquals(4, editor.cursor)
+    }
+
+    @Test
+    fun `deleting a word drops the word being typed as a whole`() {
+        type("say hel")
+        logic.deleteBy(editor, DeleteHoldMode.WORDS)
+        assertEquals("say ", editor.toString())
+        assertTrue(suggestions.isEmpty())
+    }
+
+    @Test
+    fun `deleting all clears the field and the word being typed`() {
+        placeCursor("say hello now", 4)
+        type("wo")
+        logic.deleteBy(editor, DeleteHoldMode.ALL)
+        assertEquals("", editor.toString())
+        assertTrue(suggestions.isEmpty())
+    }
+
+    @Test
     fun `a cursor inside a misspelled word offers corrections`() {
         placeCursor("say helo now", 6)
         assertEquals(listOf("hello", "help"), suggestions)

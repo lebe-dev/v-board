@@ -197,6 +197,17 @@
     <string name="settings_fullscreen_enabled">Show the button on the strip</string>
     <string name="settings_fullscreen_summary">Adds a button to the strip that opens the text of the field above the keys, up to the top of the screen. It may not work properly in some apps.</string>
     <string name="settings_fullscreen_icon_place">Full screen icon position</string>
+    <string name="delete_key_title">Deleting text</string>
+    <string name="delete_key_note">A tap on the delete key always removes one character. Below you choose what happens if you keep holding it.</string>
+    <string name="delete_key_hold">Holding the delete key</string>
+    <string name="delete_hold_characters">Character by character</string>
+    <string name="delete_hold_characters_summary">Default. Characters go one after another, quickly, while the key is held.</string>
+    <string name="delete_hold_words">Word by word</string>
+    <string name="delete_hold_words_summary">Whole words go one after another together with the spaces after them. Punctuation and line breaks go apart.</string>
+    <string name="delete_hold_all">All the text</string>
+    <string name="delete_hold_all_summary">After a long hold the whole text of the field is deleted at once, including the text after the cursor.</string>
+    <string name="delete_hold_none">Nothing</string>
+    <string name="delete_hold_none_summary">Holding does nothing, the key removes one character per tap. Protects from deleting too much by accident.</string>
     <string name="slide_engine_title">Slide to type</string>
     <string name="slide_engine_section">Engine</string>
     <string name="slide_enabled">Slide to type</string>

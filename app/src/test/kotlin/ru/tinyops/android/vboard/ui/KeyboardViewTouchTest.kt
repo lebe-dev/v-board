@@ -12,6 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
+import ru.tinyops.android.vboard.core.input.DeleteHoldMode
 import ru.tinyops.android.vboard.core.input.SpaceDragMode
 import ru.tinyops.android.vboard.core.layout.KeySpec
 import ru.tinyops.android.vboard.core.layout.KeyType
@@ -51,8 +52,8 @@ class KeyboardViewTouchTest {
                     events += "key:${key.type}:${key.output}"
                 }
 
-                override fun onBackspace() {
-                    events += "backspace"
+                override fun onDelete(step: DeleteHoldMode) {
+                    events += "delete:$step"
                 }
 
                 override fun onAlternate(text: String) {
@@ -205,7 +206,42 @@ class KeyboardViewTouchTest {
         touch(MotionEvent.ACTION_DOWN, center(KeyType.BACKSPACE.name))
         ShadowLooper.idleMainLooper(400 + 50 * 3, TimeUnit.MILLISECONDS)
         touch(MotionEvent.ACTION_UP, center(KeyType.BACKSPACE.name), 600)
-        assertTrue("events=$events", events.size >= 4 && events.all { it == "backspace" })
+        assertTrue("events=$events", events.size >= 4 && events.all { it == "delete:CHARACTERS" })
+    }
+
+    @Test
+    fun `holding delete in the word mode deletes words after the first character`() {
+        view.deleteHold = DeleteHoldMode.WORDS
+        holdBackspace(400 + 150 * 2)
+        assertEquals("delete:CHARACTERS", events.first())
+        assertTrue("events=$events", events.size >= 3 && events.drop(1).all { it == "delete:WORDS" })
+    }
+
+    @Test
+    fun `holding delete in the clear mode deletes everything once`() {
+        view.deleteHold = DeleteHoldMode.ALL
+        holdBackspace(2000)
+        assertEquals(listOf("delete:CHARACTERS", "delete:ALL"), events)
+    }
+
+    @Test
+    fun `a short press in the clear mode deletes one character`() {
+        view.deleteHold = DeleteHoldMode.ALL
+        holdBackspace(300)
+        assertEquals(listOf("delete:CHARACTERS"), events)
+    }
+
+    @Test
+    fun `holding delete does nothing more when the hold is off`() {
+        view.deleteHold = DeleteHoldMode.NONE
+        holdBackspace(2000)
+        assertEquals(listOf("delete:CHARACTERS"), events)
+    }
+
+    private fun holdBackspace(millis: Long) {
+        touch(MotionEvent.ACTION_DOWN, center(KeyType.BACKSPACE.name))
+        ShadowLooper.idleMainLooper(millis, TimeUnit.MILLISECONDS)
+        touch(MotionEvent.ACTION_UP, center(KeyType.BACKSPACE.name), millis + 10)
     }
 
     @Test

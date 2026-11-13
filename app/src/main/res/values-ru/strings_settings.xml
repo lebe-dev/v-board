@@ -199,6 +199,17 @@
     <string name="settings_fullscreen_enabled">Показывать кнопку в полосе</string>
     <string name="settings_fullscreen_summary">Добавляет в полосу кнопку, которая открывает текст поля над клавишами, до верхнего края экрана. В некоторых приложениях может работать неправильно.</string>
     <string name="settings_fullscreen_icon_place">Место значка полного экрана</string>
+    <string name="delete_key_title">Удаление текста</string>
+    <string name="delete_key_note">Нажатие на клавишу удаления всегда стирает один символ. Здесь выбирается, что происходит, если её удерживать.</string>
+    <string name="delete_key_hold">Удержание клавиши удаления</string>
+    <string name="delete_hold_characters">Удаление по символам</string>
+    <string name="delete_hold_characters_summary">По умолчанию. Пока клавиша зажата, символы быстро стираются один за другим.</string>
+    <string name="delete_hold_words">Удаление по словам</string>
+    <string name="delete_hold_words_summary">Стираются целые слова вместе с пробелами после них. Знаки препинания и переносы строк удаляются отдельно.</string>
+    <string name="delete_hold_all">Удаление всего текста</string>
+    <string name="delete_hold_all_summary">После долгого удержания весь текст поля стирается разом, в том числе текст после курсора.</string>
+    <string name="delete_hold_none">Ничего</string>
+    <string name="delete_hold_none_summary">Удержание ничего не делает, каждое нажатие стирает один символ. Защищает от случайного удаления лишнего.</string>
     <string name="slide_engine_title">Slide to type</string>
     <string name="slide_engine_section">Движок</string>
     <string name="slide_enabled">Slide to type</string>
