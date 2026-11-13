@@ -1,6 +1,7 @@
 package ru.tinyops.android.vboard.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -74,14 +75,14 @@ internal fun plainKeyboard(type: KeyboardType = KeyboardType.Text) =
  * already [storedApiKey] is never shown: it can only be replaced.
  */
 @Composable
-internal fun EndpointFields(
+internal fun ColumnScope.EndpointFields(
     draft: EndpointDraft,
     enabled: Boolean,
     errors: EndpointErrors,
     style: EndpointFormStyle,
     onDraft: (EndpointDraft) -> Unit,
     storedApiKey: String = "",
-    extra: @Composable () -> Unit = {},
+    extra: @Composable ColumnScope.() -> Unit = {},
 ) {
     val endpointError = draft.endpoint.isNotBlank() && errors.endpoint
     OutlinedTextField(

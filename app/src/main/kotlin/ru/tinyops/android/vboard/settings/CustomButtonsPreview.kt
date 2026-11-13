@@ -222,11 +222,11 @@ internal fun FullscreenPanelPreview(
 private fun RowPreview(
     row: PreviewRow,
     buttons: List<CustomButton>,
-    widthScale: Float = 1f,
-    secondRow: Boolean = false,
     names: @Composable (CustomButton) -> String,
     onArrange: (List<CustomButton>) -> Unit,
     onOpen: (String) -> Unit,
+    widthScale: Float = 1f,
+    secondRow: Boolean = false,
 ) {
     val screenWidth = LocalResources.current.displayMetrics.widthPixels
     val stripHeight = with(LocalDensity.current) { dimensionResource(R.dimen.kb_suggestion_height).toPx() }

@@ -20,8 +20,10 @@ androidx-test-runner = "1.7.0"
 sentry = "8.63.0"
 sentry-plugin = "6.26.0"
 executorch = "1.5.1"
+compose-lints = "1.6.1"
 
 [libraries]
+compose-lint-checks = { module = "com.slack.lint.compose:compose-lint-checks", version.ref = "compose-lints" }
 executorch-android = { module = "org.pytorch:executorch-android", version.ref = "executorch" }
 sentry-android = { module = "io.sentry:sentry-android", version.ref = "sentry" }
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "androidx-annotation" }
@@ -45,6 +47,7 @@ activity-compose = { module = "androidx.activity:activity-compose", version.ref 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-test = { id = "com.android.test", version.ref = "agp" }
+android-lint = { id = "com.android.lint", version.ref = "agp" }
 baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

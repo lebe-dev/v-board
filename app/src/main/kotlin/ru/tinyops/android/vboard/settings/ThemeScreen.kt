@@ -28,7 +28,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,18 +59,19 @@ import ru.tinyops.android.vboard.ui.ThemeSpec
 /** The theme picker: the light or dark mode, then groups of tiles, each a miniature of the keyboard colors. */
 @Composable
 internal fun ThemeScreen(
-    choice: MutableState<ThemeChoice>,
+    choice: ThemeChoice,
+    onChoice: (ThemeChoice) -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val selected = choice.value
+    val selected = choice
     val onSelect = { id: String ->
         KeyboardThemes.select(context, id)
-        choice.value = KeyboardThemes.selected(context)
+        onChoice(KeyboardThemes.selected(context))
     }
     val onSelectMode = { mode: ThemeMode ->
         KeyboardThemes.selectMode(context, mode)
-        choice.value = KeyboardThemes.selected(context)
+        onChoice(KeyboardThemes.selected(context))
     }
     SettingsPage(title = stringResource(R.string.theme_title), onBack = onBack) {
         item(key = "mode") { ModeChoice(selected.mode, onSelectMode) }
@@ -86,7 +86,7 @@ internal fun ThemeScreen(
                         checked = if (night) selected.whiteIcons else selected.darkIcons,
                         onCheckedChange = {
                             KeyboardThemes.setContrastIcons(context, night, it)
-                            choice.value = KeyboardThemes.selected(context)
+                            onChoice(KeyboardThemes.selected(context))
                         },
                     )
                 }

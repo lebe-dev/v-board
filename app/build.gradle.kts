@@ -316,6 +316,7 @@ dependencies {
     baselineProfile(project(":benchmark"))
     dictionaryImagesDependencies(project(path = ":core", configuration = "dictionaryImagesElements"))
     implementation(project(":core"))
+    lintChecks(libs.compose.lint.checks)
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.core.ktx)
     implementation(libs.profileinstaller)

@@ -273,8 +273,8 @@ private fun EmojiCell(
     emoji: Emoji,
     assets: EmojiAssets,
     removed: Boolean,
-    modifier: Modifier,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val picture = remember(emoji.image) { assets.picture(emoji)?.asImageBitmap() }
     val label = stringResource(if (removed) R.string.settings_emoji_show else R.string.settings_emoji_hide)

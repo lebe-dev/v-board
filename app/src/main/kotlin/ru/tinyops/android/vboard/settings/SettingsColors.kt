@@ -38,5 +38,9 @@ internal fun badgeColors(
     return BadgeColors(Color(palette.actionKey).copy(alpha = 1f), Color(palette.actionIcon).copy(alpha = 1f))
 }
 
-/** The badge colors in effect; null means the primary container of the system scheme. */
+/**
+ * The badge colors in effect; null means the primary container of the system scheme. Part of the settings
+ * theme, provided once at the root like the Material color scheme.
+ */
+@Suppress("ComposeCompositionLocalUsage")
 internal val LocalBadgeColors = staticCompositionLocalOf<BadgeColors?> { null }

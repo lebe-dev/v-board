@@ -30,7 +30,6 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -98,7 +97,8 @@ class SettingsActivity : ComponentActivity() {
             SettingsTheme(theme.value) {
                 SettingsNavigation(
                     start = start,
-                    theme = theme,
+                    theme = theme.value,
+                    onTheme = { theme.value = it },
                     state = state,
                     voiceStatus = VoiceStatus(microphoneGranted.value, recognition.value),
                     onRequestMicrophone = ::requestMicrophone,
@@ -325,16 +325,20 @@ internal enum class Screen(
 @Composable
 private fun AppearancePage(
     screen: Screen,
-    theme: MutableState<ThemeChoice>,
+    theme: ThemeChoice,
+    onTheme: (ThemeChoice) -> Unit,
     onBack: () -> Unit,
 ) {
-    if (screen == Screen.THEME) ThemeScreen(theme, onBack) else KeysScreen(theme, onBack)
+    if (screen == Screen.THEME) ThemeScreen(theme, onTheme, onBack) else KeysScreen(theme, onTheme, onBack)
 }
 
+// The root of the settings takes everything the pages get from the activity.
+@Suppress("LongParameterList")
 @Composable
 private fun SettingsNavigation(
     start: Screen,
-    theme: MutableState<ThemeChoice>,
+    theme: ThemeChoice,
+    onTheme: (ThemeChoice) -> Unit,
     state: VoiceSettingsState,
     voiceStatus: VoiceStatus,
     onRequestMicrophone: () -> Unit,
@@ -371,11 +375,11 @@ private fun SettingsNavigation(
             Screen.MAIN ->
                 MainSettingsScreen(
                     state = state,
-                    theme = theme.value.spec,
+                    theme = theme.spec,
                     links = mainLinks(navigate = { screen = it }, openServers),
                     onClose = { backDispatcher?.onBackPressed() },
                 )
-            Screen.THEME, Screen.KEYS -> AppearancePage(current, theme, back)
+            Screen.THEME, Screen.KEYS -> AppearancePage(current, theme, onTheme, back)
             Screen.VOICE ->
                 VoiceSettingsScreen(
                     state = state,

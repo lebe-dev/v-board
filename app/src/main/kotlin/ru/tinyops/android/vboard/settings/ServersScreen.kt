@@ -1,5 +1,6 @@
 package ru.tinyops.android.vboard.settings
 
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -361,7 +362,7 @@ private fun KindChoice(
 
 /** "Уровень усилий": three levels visible at once, with the explanation under them. */
 @Composable
-private fun EffortChoice(
+private fun ColumnScope.EffortChoice(
     selected: EnhancementEffort,
     onSelected: (EnhancementEffort) -> Unit,
 ) {

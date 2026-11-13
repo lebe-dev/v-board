@@ -197,10 +197,10 @@ private fun RowIcon(
 @Composable
 private fun SettingsRow(
     title: String,
-    modifier: Modifier,
     supporting: (@Composable () -> Unit)?,
     @DrawableRes icon: Int?,
     colors: ListItemColors,
+    modifier: Modifier = Modifier,
     prominent: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {

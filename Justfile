@@ -25,7 +25,7 @@ default:
 test: voice-runtime
     {{ gradle }} :stt:test :core:test :app:testDebugUnitTest
 
-# Static analysis: ktlint, detekt and Android Lint; fails on any finding.
+# Static analysis: ktlint, detekt and Android Lint with the Compose checks, also over :core and :stt; fails on any finding.
 lint: voice-runtime
     {{ gradle }} ktlintCheck detekt :app:lintDebug
 
