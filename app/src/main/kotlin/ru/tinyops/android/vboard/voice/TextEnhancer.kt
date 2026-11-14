@@ -8,6 +8,7 @@ import ru.tinyops.android.vboard.core.voice.EnhancementOutcome
 import ru.tinyops.android.vboard.core.voice.SelfHostedServer
 import ru.tinyops.android.vboard.diagnostics.AppLog
 import ru.tinyops.android.vboard.diagnostics.ErrorReporting
+import ru.tinyops.android.vboard.diagnostics.Problems
 import ru.tinyops.android.vboard.voice.ServerHttp.authorize
 import ru.tinyops.android.vboard.voice.ServerHttp.successBody
 import java.io.IOException
@@ -34,8 +35,7 @@ class TextEnhancer {
         return try {
             val (output, outcome) = EnhancementOutcome.resolve(text, complete(server, text, effort))
             if (outcome == EnhancementOutcome.FAILED) {
-                AppLog.error(TAG, "The server sent an empty or unusable answer")
-                ErrorReporting.capture(IllegalStateException("The server sent an empty or unusable answer"))
+                Problems.report(TAG, "The server sent an empty or unusable answer")
             }
             Result(output, outcome)
         } catch (cancelled: CancellationException) {

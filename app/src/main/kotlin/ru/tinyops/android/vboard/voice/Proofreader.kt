@@ -7,7 +7,7 @@ import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.input.CursorWindow
 import ru.tinyops.android.vboard.core.voice.EnhancementOutcome
 import ru.tinyops.android.vboard.core.voice.ProofreadTarget
-import ru.tinyops.android.vboard.diagnostics.AppLog
+import ru.tinyops.android.vboard.diagnostics.Problems
 
 /** What the proofread button of the strip does on the next tap. */
 enum class ProofreadState {
@@ -99,7 +99,7 @@ internal class Proofreader(
     private fun start(send: suspend (String) -> TextEnhancer.Result) {
         val window = editor.window(READ_LENGTH)
         if (window == null) {
-            AppLog.error(TAG, "The field did not give its text, so there is nothing to proofread")
+            Problems.report(TAG, "The field did not give its text, so there is nothing to proofread")
             onMessage(R.string.proofread_failed)
             return
         }
@@ -119,7 +119,7 @@ internal class Proofreader(
     /** An editor that does not tell where its text starts is a failure; a blank field only has nothing to fix. */
     private fun onNothingToSend(window: CursorWindow) {
         if (window.offset >= 0) return onMessage(R.string.proofread_no_changes)
-        AppLog.error(TAG, "The field does not tell where its text starts, so it cannot be replaced")
+        Problems.report(TAG, "The field does not tell where its text starts, so it cannot be replaced")
         onMessage(R.string.proofread_failed)
     }
 
