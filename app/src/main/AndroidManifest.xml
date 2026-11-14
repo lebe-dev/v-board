@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- The optional text improvement on the user's own server and the downloads from GitHub releases. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Required by the background jobs that wait for a network connection. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Installs an update downloaded from GitHub releases, after the user confirms it. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Keeps the background update check, when it is on, scheduled after a reboot. -->
