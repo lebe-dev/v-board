@@ -10,10 +10,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.input.CursorWindow
 import ru.tinyops.android.vboard.core.voice.EnhancementOutcome
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [36])
 class ProofreaderTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
     private val messages = ArrayList<Int>()
@@ -25,10 +30,12 @@ class ProofreaderTest {
 
     private var text = "привет мир"
     private var selection = 0 to 0
+    private var offset = 0
+    private var failure: RuntimeException? = null
 
     private val editor =
         object : Proofreader.Editor {
-            override fun window(length: Int) = CursorWindow(text, selection.first, selection.second, 0)
+            override fun window(length: Int) = CursorWindow(text, selection.first, selection.second, offset)
 
             override fun replace(
                 start: Int,
@@ -45,6 +52,7 @@ class ProofreaderTest {
             editor = editor,
             enhance = {
                 requests += it
+                failure?.let { error -> throw error }
                 answer.await()
             },
             enhanceHeld =
@@ -238,6 +246,23 @@ class ProofreaderTest {
         text = "   "
         proofreader.onTap()
         assertTrue(requests.isEmpty())
+        assertEquals(ProofreadState.IDLE, proofreader.state)
+    }
+
+    @Test
+    fun `a field that does not tell where its text starts is a failure the user hears about`() {
+        offset = -1
+        proofreader.onTap()
+        assertTrue(requests.isEmpty())
+        assertEquals(listOf(R.string.proofread_failed), messages)
+    }
+
+    @Test
+    fun `an unexpected error in the request keeps the text and tells about it`() {
+        failure = IllegalArgumentException("broken")
+        proofreader.onTap()
+        assertEquals("привет мир", text)
+        assertEquals(listOf(R.string.proofread_failed), messages)
         assertEquals(ProofreadState.IDLE, proofreader.state)
     }
 

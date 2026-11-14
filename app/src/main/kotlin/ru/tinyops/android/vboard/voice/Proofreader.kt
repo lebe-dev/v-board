@@ -7,6 +7,7 @@ import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.input.CursorWindow
 import ru.tinyops.android.vboard.core.voice.EnhancementOutcome
 import ru.tinyops.android.vboard.core.voice.ProofreadTarget
+import ru.tinyops.android.vboard.diagnostics.AppLog
 
 /** What the proofread button of the strip does on the next tap. */
 enum class ProofreadState {
@@ -98,6 +99,7 @@ internal class Proofreader(
     private fun start(send: suspend (String) -> TextEnhancer.Result) {
         val window = editor.window(READ_LENGTH)
         if (window == null) {
+            AppLog.error(TAG, "The field did not give its text, so there is nothing to proofread")
             onMessage(R.string.proofread_failed)
             return
         }
@@ -105,9 +107,20 @@ internal class Proofreader(
             onMessage(R.string.proofread_too_long)
             return
         }
-        val target = ProofreadTarget.of(window) ?: return
+        val target = ProofreadTarget.of(window)
+        if (target == null) {
+            onNothingToSend(window)
+            return
+        }
         state = ProofreadState.WORKING
-        request = scope.launch { finish(target, send(target.text)) }
+        request = scope.launch { finish(target, guardedRequest(target.text) { send(target.text) }) }
+    }
+
+    /** An editor that does not tell where its text starts is a failure; a blank field only has nothing to fix. */
+    private fun onNothingToSend(window: CursorWindow) {
+        if (window.offset >= 0) return onMessage(R.string.proofread_no_changes)
+        AppLog.error(TAG, "The field does not tell where its text starts, so it cannot be replaced")
+        onMessage(R.string.proofread_failed)
     }
 
     private fun finish(
@@ -147,6 +160,8 @@ internal class Proofreader(
     private fun stillThere(target: ProofreadTarget): Boolean = editor.window(READ_LENGTH)?.let(target::matches) == true
 
     companion object {
+        private const val TAG = "Proofreader"
+
         /** Past this many characters on a side of the cursor the whole text is too long to send. */
         const val MAX_CHARS_AROUND_CURSOR = 16_000
 

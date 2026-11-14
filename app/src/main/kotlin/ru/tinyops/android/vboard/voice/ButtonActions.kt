@@ -12,6 +12,7 @@ import ru.tinyops.android.vboard.core.voice.EnhancementOutcome
 import ru.tinyops.android.vboard.core.voice.InsertMode
 import ru.tinyops.android.vboard.core.voice.ProofreadTarget
 import ru.tinyops.android.vboard.core.voice.ReplyInsertion
+import ru.tinyops.android.vboard.diagnostics.AppLog
 
 /**
  * Runs the custom buttons of the strip. One button is at work at a time: while a request runs the
@@ -232,7 +233,11 @@ internal class ButtonActions(
         val target = requestOf(window, command) ?: return
         val before = ProofreadTarget(window.offset, window.text.toString())
         show(id, ProofreadState.WORKING)
-        request = scope.launch { finish(id, target, before, enhance(command, target.text)) }
+        request =
+            scope.launch {
+                val answer = guardedRequest(target.text) { enhance(command, target.text) }
+                finish(id, target, before, answer)
+            }
     }
 
     private fun requestOf(
@@ -289,7 +294,10 @@ internal class ButtonActions(
 
     private fun readWindow(): CursorWindow? {
         val window = editor.window(READ_LENGTH)
-        if (window == null) onMessage(R.string.proofread_failed)
+        if (window == null) {
+            AppLog.error(TAG, "The field did not give its text")
+            onMessage(R.string.proofread_failed)
+        }
         return window
     }
 
@@ -307,6 +315,8 @@ internal class ButtonActions(
     }
 
     private companion object {
+        const val TAG = "ButtonActions"
+
         /** Reads further than the limit: an answer may be longer than the text it replaces. */
         const val READ_LENGTH = Proofreader.MAX_CHARS_AROUND_CURSOR * 4
     }

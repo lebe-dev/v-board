@@ -1,12 +1,13 @@
 package ru.tinyops.android.vboard.voice
 
-import android.util.Log
 import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
 import ru.tinyops.android.vboard.core.voice.EnhancementEffort
 import ru.tinyops.android.vboard.core.voice.EnhancementOutcome
 import ru.tinyops.android.vboard.core.voice.SelfHostedServer
+import ru.tinyops.android.vboard.diagnostics.AppLog
+import ru.tinyops.android.vboard.diagnostics.ErrorReporting
 import ru.tinyops.android.vboard.voice.ServerHttp.authorize
 import ru.tinyops.android.vboard.voice.ServerHttp.successBody
 import java.io.IOException
@@ -32,19 +33,33 @@ class TextEnhancer {
         if (text.isBlank()) return Result(text, EnhancementOutcome.UNCHANGED)
         return try {
             val (output, outcome) = EnhancementOutcome.resolve(text, complete(server, text, effort))
+            if (outcome == EnhancementOutcome.FAILED) {
+                AppLog.error(TAG, "The server sent an empty or unusable answer")
+                ErrorReporting.capture(IllegalStateException("The server sent an empty or unusable answer"))
+            }
             Result(output, outcome)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: ServerHttpException) {
-            Log.w(TAG, "server answered HTTP ${failure.status}")
-            Result(text, EnhancementOutcome.failure(failure.status))
+            val outcome = EnhancementOutcome.failure(failure.status)
+            fail(text, "The server answered with HTTP status ${failure.status}", failure, outcome)
         } catch (failure: IOException) {
-            Log.w(TAG, "request failed: ${failure.javaClass.simpleName}")
-            Result(text, EnhancementOutcome.FAILED)
+            fail(text, "The request to the server failed: ${failure.javaClass.simpleName}", failure)
         } catch (failure: IllegalStateException) {
-            Log.w(TAG, "unusable response: ${failure.message}")
-            Result(text, EnhancementOutcome.FAILED)
+            fail(text, "The request could not be built or read: ${failure.message}", failure)
         }
+    }
+
+    /** Every failure is written to the app log and reported, and the original text is kept. */
+    private fun fail(
+        text: String,
+        message: String,
+        failure: Throwable,
+        outcome: EnhancementOutcome = EnhancementOutcome.FAILED,
+    ): Result {
+        AppLog.error(TAG, message, failure)
+        ErrorReporting.capture(failure)
+        return Result(text, outcome)
     }
 
     /** The raw completion; the connection is dropped when the coroutine is cancelled. */
@@ -111,3 +126,18 @@ class TextEnhancer {
         }
     }
 }
+
+/**
+ * Runs [request] for [text] and turns anything unexpected it throws into a failed result, written to the app
+ * log and reported, so that a bug in a request never ends silently.
+ */
+internal suspend fun guardedRequest(
+    text: String,
+    request: suspend () -> TextEnhancer.Result,
+): TextEnhancer.Result =
+    runCatching { request() }.getOrElse { failure ->
+        if (failure is CancellationException) throw failure
+        AppLog.error("TextEnhancer", "The request failed unexpectedly: ${failure.javaClass.simpleName}", failure)
+        ErrorReporting.capture(failure)
+        TextEnhancer.Result(text, EnhancementOutcome.FAILED)
+    }
