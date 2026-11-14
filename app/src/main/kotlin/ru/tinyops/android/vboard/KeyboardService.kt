@@ -455,7 +455,7 @@ class KeyboardService :
         if (chip.kind == ClipKind.IMAGE && payload is ClipPayload.Image) {
             pasteImage(payload.source.toUri(), payload.mimeType)
         } else {
-            chip.insert?.let(::insertText)
+            chip.insert?.let { insertText(keyboardPrefs.cleanedLinks(it)) }
         }
         clipChips.refresh()
     }
@@ -603,7 +603,7 @@ class KeyboardService :
     override fun onClipboardPick(entry: ClipEntry) {
         closeClipboardPanel()
         when (val payload = entry.payload) {
-            is ClipPayload.Text -> insertText(payload.text)
+            is ClipPayload.Text -> insertText(keyboardPrefs.cleanedLinks(payload.text))
             is ClipPayload.Image -> pasteImage(clipStore.imageUri(payload.source), payload.mimeType)
         }
     }

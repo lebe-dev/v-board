@@ -15,6 +15,7 @@ import ru.tinyops.android.vboard.R
 internal fun AutocorrectScreen(onBack: () -> Unit) {
     val prefs = KeyboardPrefs(LocalContext.current)
     var autoCapitalize by remember { mutableStateOf(prefs.autoCapitalize) }
+    var cleanLinks by remember { mutableStateOf(prefs.cleanLinks) }
     SettingsPage(title = stringResource(R.string.settings_autocorrect), onBack = onBack) {
         item {
             SettingsSection(null) {
@@ -26,6 +27,17 @@ internal fun AutocorrectScreen(onBack: () -> Unit) {
                         onCheckedChange = {
                             autoCapitalize = it
                             prefs.autoCapitalize = it
+                        },
+                    )
+                }
+                item {
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.autocorrect_clean_links),
+                        summary = stringResource(R.string.autocorrect_clean_links_summary),
+                        checked = cleanLinks,
+                        onCheckedChange = {
+                            cleanLinks = it
+                            prefs.cleanLinks = it
                         },
                     )
                 }

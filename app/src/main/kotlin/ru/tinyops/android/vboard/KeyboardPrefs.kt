@@ -3,6 +3,7 @@ package ru.tinyops.android.vboard
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import ru.tinyops.android.vboard.core.clipboard.LinkCleaner
 import ru.tinyops.android.vboard.core.gesture.SlideEngine
 import ru.tinyops.android.vboard.core.input.DeleteHoldMode
 import ru.tinyops.android.vboard.core.input.SpaceDragMode
@@ -34,6 +35,14 @@ class KeyboardPrefs(
     var autoCapitalize: Boolean
         get() = prefs.getBoolean(KEY_AUTO_CAPITALIZE, true)
         set(value) = prefs.edit { putBoolean(KEY_AUTO_CAPITALIZE, value) }
+
+    /** Whether links pasted from the keyboard lose their ad tracking parameters; off by default. */
+    var cleanLinks: Boolean
+        get() = prefs.getBoolean(KEY_CLEAN_LINKS, false)
+        set(value) = prefs.edit { putBoolean(KEY_CLEAN_LINKS, value) }
+
+    /** The text with ad tracking removed from its links when [cleanLinks] is on. */
+    fun cleanedLinks(text: String): String = if (cleanLinks) LinkCleaner.clean(text) else text
 
     var slideEngine: SlideEngine
         get() = SlideEngine.fromCode(prefs.getString(KEY_SLIDE_ENGINE, null))
@@ -102,6 +111,7 @@ class KeyboardPrefs(
 
         private const val FILE = "keyboard_prefs"
         private const val KEY_AUTO_CAPITALIZE = "auto_capitalize"
+        private const val KEY_CLEAN_LINKS = "clean_links"
         private const val KEY_DELETE_HOLD = "delete_hold"
         private const val KEY_FULLSCREEN = "fullscreen_enabled"
         private const val KEY_FULLSCREEN_COLOR = "fullscreen_color"

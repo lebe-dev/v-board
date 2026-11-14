@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import ru.tinyops.android.vboard.KeyboardPrefs
 import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.voice.ButtonAction
 import ru.tinyops.android.vboard.core.voice.ButtonCommand
@@ -230,7 +231,8 @@ internal class CustomButtonsControl(
     private fun textFromClipboard(): String? {
         val clip = context.getSystemService(ClipboardManager::class.java)?.primaryClip ?: return null
         if (clip.itemCount == 0) return null
-        return clip.getItemAt(0).coerceToText(context)?.toString()
+        val text = clip.getItemAt(0).coerceToText(context)?.toString() ?: return null
+        return KeyboardPrefs(context).cleanedLinks(text)
     }
 
     private fun copyToClipboard(text: String) {

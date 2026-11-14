@@ -196,6 +196,8 @@
     <string name="settings_autocorrect">Автокоррекция</string>
     <string name="autocorrect_capitalize">Заглавная буква автоматически</string>
     <string name="autocorrect_capitalize_summary">Включать Shift в начале предложения или поля, если поле этого просит, и выключать после буквы</string>
+    <string name="autocorrect_clean_links">Убирать рекламные метки из ссылок</string>
+    <string name="autocorrect_clean_links_summary">Удалять utm_source, gclid и похожие параметры из ссылок, вставленных из буфера клавиатуры</string>
     <string name="settings_fullscreen">Полноэкранный режим</string>
     <string name="settings_fullscreen_on">Вкл</string>
     <string name="settings_fullscreen_enabled">Показывать кнопку в полосе</string>

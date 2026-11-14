@@ -194,6 +194,8 @@
     <string name="settings_autocorrect">Autocorrect</string>
     <string name="autocorrect_capitalize">Capitalize automatically</string>
     <string name="autocorrect_capitalize_summary">Turn Shift on at the start of a sentence or field when the field asks for it, and turn it off after a letter</string>
+    <string name="autocorrect_clean_links">Remove ad tracking from links</string>
+    <string name="autocorrect_clean_links_summary">Strip utm_source, gclid and similar parameters from links pasted from the keyboard clipboard</string>
     <string name="settings_fullscreen">Full screen text editing</string>
     <string name="settings_fullscreen_on">On</string>
     <string name="settings_fullscreen_enabled">Show the button on the strip</string>
