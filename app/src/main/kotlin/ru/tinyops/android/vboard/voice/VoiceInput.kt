@@ -16,13 +16,15 @@ import kotlinx.coroutines.launch
 import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.voice.AutoStop
 import ru.tinyops.android.vboard.core.voice.DictationFailure
+import ru.tinyops.android.vboard.core.voice.DictationPlan
 import ru.tinyops.android.vboard.core.voice.DictationResults
 import ru.tinyops.android.vboard.core.voice.EnhancementOutcome
+import ru.tinyops.android.vboard.core.voice.FeatureConnection
 import ru.tinyops.android.vboard.core.voice.GovorunApi
+import ru.tinyops.android.vboard.core.voice.Improvement
 import ru.tinyops.android.vboard.core.voice.PromptTag
 import ru.tinyops.android.vboard.core.voice.RecognitionEngine
 import ru.tinyops.android.vboard.core.voice.ServerCheck
-import ru.tinyops.android.vboard.core.voice.TextFeature
 import ru.tinyops.android.vboard.core.voice.Transcript
 import ru.tinyops.android.vboard.core.voice.VoiceDictionary
 import ru.tinyops.android.vboard.voice.engine.DictationListener
@@ -53,13 +55,13 @@ data class VoiceState(
 }
 
 /**
- * Dictation in the keyboard: a tap on the microphone starts recording, the next one stops it, ×
- * cancels. Recognition is the phone's default recognizer ([SystemSpeechRecorder]), the installed
- * Govorun app when chosen in the settings ([GovorunRecorder]) or, when "Распознавание на сервере"
- * is on, the local VAD ([VadRecorder]) with every phrase sent to the user's [RemoteTranscriber].
- * The recognized text goes through the dictionary and, when enabled, the user's text improvement
- * server ([EnhancementQueue]) before it reaches the editor, in any recording mode and with any
- * recognizer.
+ * Dictation in the keyboard: a tap on the microphone, or a mode of the menu its hold opens, starts
+ * recording, the next tap stops it, × cancels. Recognition is the phone's default recognizer
+ * ([SystemSpeechRecorder]), the installed Govorun app when chosen in the settings ([GovorunRecorder])
+ * or, when "Распознавание на сервере" is on, the local VAD ([VadRecorder]) with every phrase sent to
+ * the user's [RemoteTranscriber]. The recognized text goes through the dictionary and, when the mode
+ * asks for it, the user's text improvement server ([EnhancementQueue]) before it reaches the editor,
+ * in any recording mode and with any recognizer.
  * Main thread only.
  */
 class VoiceInput(
@@ -124,13 +126,19 @@ class VoiceInput(
             if (!state.active) releaseEngines()
         }
 
-    /** The microphone key: starts a dictation, or ends the current one. */
+    /** The microphone key: starts a dictation the way a tap does, or ends the current one. */
     fun toggle() {
         when (state.phase) {
-            VoiceState.Phase.IDLE -> start()
+            VoiceState.Phase.IDLE -> start(prefs.micTapPlan())
             VoiceState.Phase.LISTENING -> stop()
             VoiceState.Phase.RECOGNIZING, VoiceState.Phase.ENHANCING -> Unit
         }
+    }
+
+    /** The mode [id] of the hold menu: starts a dictation the way it says, unless one is going on. */
+    fun dictate(id: String) {
+        if (state.phase != VoiceState.Phase.IDLE) return
+        prefs.micHoldChoices().firstOrNull { it.mode.id == id }?.let { start(it.plan) }
     }
 
     /** × : drops the recording (or the improvement request) and everything not inserted yet. */
@@ -161,7 +169,7 @@ class VoiceInput(
         releaseEngines()
     }
 
-    private fun start() {
+    private fun start(plan: DictationPlan) {
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             host.openSettings(requestPermission = true)
             return
@@ -177,7 +185,7 @@ class VoiceInput(
             return
         }
         main.removeCallbacks(releaseEngine)
-        val mode = prefs.recordingMode
+        val mode = plan.mode
         val next = Transcript(mode.deferred)
         dictionary = prefs.dictionary()
         val listener = Listener(next, remote)
@@ -205,8 +213,8 @@ class VoiceInput(
             return
         }
         transcript = next
-        enhancements = if (prefs.enhancementReady) newEnhancementQueue() else null
-        startResults()
+        enhancements = prefs.improvementConnection(plan.improvement)?.let(::newEnhancementQueue)
+        startResults(plan.improvement)
         state = VoiceState(VoiceState.Phase.LISTENING, preparing = !remote && engine == RecognitionEngine.GOVORUN)
         if (prefs.keepScreenOn) host.setKeepScreenOn(true)
         AutoStop
@@ -284,8 +292,8 @@ class VoiceInput(
         }
     }
 
-    private fun newEnhancementQueue(): EnhancementQueue {
-        val (server, effort) = prefs.connection(TextFeature.DICTATION)
+    private fun newEnhancementQueue(connection: FeatureConnection): EnhancementQueue {
+        val (server, effort) = connection
         val threshold = prefs.enhancementThreshold
         return EnhancementQueue(
             scope = scope,
@@ -305,11 +313,11 @@ class VoiceInput(
     }
 
     /** A dictation that goes through text improvement is kept in the buffer of prompt results, when it is on. */
-    private fun startResults() {
+    private fun startResults(improvement: Improvement) {
         val kept = enhancements != null && prefs.promptResultsEnabled
         dictationResults = if (kept) DictationResults() else null
         dictationPrompts =
-            if (kept) prefs.prompts.library.tags(prefs.chosenPrompts(TextFeature.DICTATION)) else emptyList()
+            if (kept) prefs.prompts.library.tags(prefs.improvementPromptIds(improvement)) else emptyList()
     }
 
     /** Recognized text on its way to the editor: straight there, or through text improvement. */

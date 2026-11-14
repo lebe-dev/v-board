@@ -29,6 +29,10 @@ import ru.tinyops.android.vboard.core.voice.ButtonCommand
 import ru.tinyops.android.vboard.core.voice.ButtonPlacement
 import ru.tinyops.android.vboard.core.voice.ButtonVisibility
 import ru.tinyops.android.vboard.core.voice.CustomButton
+import ru.tinyops.android.vboard.core.voice.MicButton
+import ru.tinyops.android.vboard.core.voice.MicEnding
+import ru.tinyops.android.vboard.core.voice.MicMode
+import ru.tinyops.android.vboard.core.voice.MicProcessing
 import ru.tinyops.android.vboard.core.voice.ServerProfile
 import ru.tinyops.android.vboard.core.voice.TextFeature
 import ru.tinyops.android.vboard.emoji.EmojiPrefs
@@ -79,6 +83,32 @@ class SettingsActivityRenderTest {
         Robolectric.buildActivity(SettingsActivity::class.java, open("VOICE")).setup().use { controller ->
             ShadowLooper.idleMainLooper()
             render(controller.get().window.decorView, "settings-voice-light")
+        }
+    }
+
+    @Test
+    fun `the microphone button page renders with a mode the menu hides`() {
+        VoicePrefs(RuntimeEnvironment.getApplication()).micButton.button =
+            MicButton(
+                tap = MicMode(MicButton.TAP_ID, MicProcessing.PROMPTS, ending = MicEnding.REPEAT_TAP),
+                hold =
+                    listOf(
+                        MicMode("plain", MicProcessing.NONE, ending = MicEnding.AFTER_PAUSE),
+                        MicMode("improved", MicProcessing.ENHANCE),
+                    ),
+            )
+        Robolectric.buildActivity(SettingsActivity::class.java, open("MIC_BUTTON")).setup().use { controller ->
+            ShadowLooper.idleMainLooper()
+            render(controller.get().window.decorView, "settings-mic-button-light")
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun `the microphone button page renders in the dark theme with the default modes`() {
+        Robolectric.buildActivity(SettingsActivity::class.java, open("MIC_BUTTON")).setup().use { controller ->
+            ShadowLooper.idleMainLooper()
+            render(controller.get().window.decorView, "settings-mic-button-dark")
         }
     }
 

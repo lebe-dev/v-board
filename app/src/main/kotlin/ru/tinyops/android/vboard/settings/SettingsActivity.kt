@@ -265,13 +265,19 @@ internal class TypingLinks(
 internal class MainSettingsLinks(
     val theme: () -> Unit,
     val keys: () -> Unit,
-    val voice: () -> Unit,
+    val voice: VoiceLinks,
     val dictation: () -> Unit,
     val proofread: () -> Unit,
     val customButtons: () -> Unit,
     val typing: TypingLinks,
     val text: TextLinks,
     val app: AppLinks,
+)
+
+/** The voice pages the settings root links to. */
+internal class VoiceLinks(
+    val settings: () -> Unit,
+    val micButton: () -> Unit,
 )
 
 /** The pages about the app itself the settings root links to. */
@@ -301,6 +307,7 @@ internal enum class Screen(
     THEME(MAIN),
     KEYS(MAIN),
     VOICE(MAIN),
+    MIC_BUTTON(MAIN),
     CLIPBOARD(MAIN),
     FULLSCREEN(MAIN),
     EMOJI(MAIN),
@@ -384,11 +391,11 @@ private fun SettingsNavigation(
                     onClose = { backDispatcher?.onBackPressed() },
                 )
             Screen.THEME, Screen.KEYS -> AppearancePage(current, theme, onTheme, back)
-            Screen.VOICE ->
-                VoiceSettingsScreen(
+            Screen.VOICE, Screen.MIC_BUTTON ->
+                VoicePage(
+                    page = current,
                     state = state,
-                    microphoneGranted = voiceStatus.microphoneGranted,
-                    recognition = voiceStatus.recognition,
+                    status = voiceStatus,
                     onRequestMicrophone = onRequestMicrophone,
                     links =
                         SettingsLinks(
@@ -424,6 +431,27 @@ private fun SettingsNavigation(
     }
 }
 
+/** The voice settings and the page of the microphone button. */
+@Composable
+private fun VoicePage(
+    page: Screen,
+    state: VoiceSettingsState,
+    status: VoiceStatus,
+    onRequestMicrophone: () -> Unit,
+    links: SettingsLinks,
+    onBack: () -> Unit,
+) {
+    if (page == Screen.MIC_BUTTON) return MicButtonScreen(state, onBack)
+    VoiceSettingsScreen(
+        state = state,
+        microphoneGranted = status.microphoneGranted,
+        recognition = status.recognition,
+        onRequestMicrophone = onRequestMicrophone,
+        links = links,
+        onBack = onBack,
+    )
+}
+
 /** Where back leads: a page that opens from several places goes back to the one it was opened from. */
 private fun Screen.backTo(
     serversFrom: Screen,
@@ -442,7 +470,7 @@ private fun mainLinks(
 ) = MainSettingsLinks(
     theme = { navigate(Screen.THEME) },
     keys = { navigate(Screen.KEYS) },
-    voice = { navigate(Screen.VOICE) },
+    voice = VoiceLinks(settings = { navigate(Screen.VOICE) }, micButton = { navigate(Screen.MIC_BUTTON) }),
     dictation = { navigate(Screen.DICTATION_FEATURE) },
     proofread = { navigate(Screen.PROOFREAD_FEATURE) },
     customButtons = { navigate(Screen.CUSTOM_BUTTONS) },

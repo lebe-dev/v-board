@@ -90,7 +90,16 @@ internal fun MainSettingsScreen(
                         summary = stringResource(R.string.settings_voice_link_summary),
                         icon = R.drawable.ic_microphone,
                         prominent = true,
-                        onClick = links.voice,
+                        onClick = links.voice.settings,
+                    )
+                }
+                item {
+                    SettingsLinkRow(
+                        title = stringResource(R.string.settings_mic_button),
+                        summary = stringResource(R.string.settings_mic_button_summary),
+                        icon = R.drawable.ic_mic_spark,
+                        prominent = true,
+                        onClick = links.voice.micButton,
                     )
                 }
             }

@@ -43,6 +43,9 @@ class VoicePrefs(
     /** The phrases quick replies buttons insert. */
     val quickReplies = QuickReplyStore(context, prefs)
 
+    /** What a tap and a hold on the microphone do. */
+    val micButton = MicButtonStore(prefs)
+
     /** False hides the microphone on the strip; dictation is on until the user switches it off. */
     var voiceEnabled: Boolean
         get() = prefs.getBoolean(KEY_VOICE_ENABLED, true)

@@ -46,7 +46,7 @@ class SuggestionStripTapTest {
 
                 override fun onChipClicked(chip: ClipChip) = Unit
 
-                override fun onMicClicked() {
+                override fun onMicUsed(modeId: String?) {
                     events += "mic"
                 }
 

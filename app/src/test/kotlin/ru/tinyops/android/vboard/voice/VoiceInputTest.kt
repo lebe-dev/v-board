@@ -23,6 +23,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
 import org.robolectric.shadows.ShadowSpeechRecognizer
 import ru.tinyops.android.vboard.R
+import ru.tinyops.android.vboard.core.voice.MicButton
+import ru.tinyops.android.vboard.core.voice.MicEnding
+import ru.tinyops.android.vboard.core.voice.MicMode
+import ru.tinyops.android.vboard.core.voice.MicProcessing
 import ru.tinyops.android.vboard.core.voice.RecognitionEngine
 import ru.tinyops.android.vboard.core.voice.RecordingMode
 import java.util.Locale
@@ -208,5 +212,61 @@ class VoiceInputTest {
 
         assertEquals(listOf(R.string.voice_system_unavailable), host.messages)
         assertFalse(host.state.active)
+    }
+
+    @Test
+    fun `a mode of the hold menu dictates with its own way to end`() {
+        VoicePrefs(context).apply {
+            recordingMode = RecordingMode.AFTER_PAUSE
+            micButton.button =
+                MicButton(hold = listOf(MicMode("held", MicProcessing.NONE, ending = MicEnding.REPEAT_TAP)))
+        }
+
+        voice.dictate("held")
+        heard("первая")
+        assertEquals("", host.field.toString())
+
+        voice.toggle()
+        heard("вторая")
+
+        assertEquals(listOf("первая", "вторая"), host.field.split(Regex("\\s+")))
+        assertEquals(VoiceState.Phase.IDLE, host.state.phase)
+    }
+
+    @Test
+    fun `a tap dictates the way the microphone button says`() {
+        VoicePrefs(context).micButton.button =
+            MicButton(tap = MicMode(MicButton.TAP_ID, MicProcessing.NONE, ending = MicEnding.REPEAT_TAP))
+
+        voice.toggle()
+        heard("фраза")
+
+        assertEquals("", host.field.toString())
+        assertTrue(host.state.preview.contains("фраза"))
+    }
+
+    @Test
+    fun `a mode the menu does not offer starts nothing`() {
+        VoicePrefs(context).micButton.button = MicButton(hold = listOf(MicMode("improved", MicProcessing.ENHANCE)))
+
+        voice.dictate("improved")
+        voice.dictate("deleted")
+
+        assertFalse(host.state.active)
+    }
+
+    @Test
+    fun `a mode of the menu does not interrupt a dictation`() {
+        VoicePrefs(context).micButton.button =
+            MicButton(hold = listOf(MicMode("held", MicProcessing.NONE, ending = MicEnding.REPEAT_TAP)))
+        voice.toggle()
+        val listening = recognizer
+
+        voice.dictate("held")
+        heard("фраза")
+
+        assertEquals(listening, recognizer)
+        assertEquals("фраза", host.field.toString())
+        assertEquals(VoiceState.Phase.LISTENING, host.state.phase)
     }
 }

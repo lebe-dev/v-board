@@ -19,6 +19,10 @@ import ru.tinyops.android.vboard.KeyboardPrefs
 import ru.tinyops.android.vboard.core.input.DeleteHoldMode
 import ru.tinyops.android.vboard.core.voice.ButtonAction
 import ru.tinyops.android.vboard.core.voice.ButtonCommand
+import ru.tinyops.android.vboard.core.voice.MicButton
+import ru.tinyops.android.vboard.core.voice.MicEnding
+import ru.tinyops.android.vboard.core.voice.MicMode
+import ru.tinyops.android.vboard.core.voice.MicProcessing
 import ru.tinyops.android.vboard.core.voice.QuickReply
 import ru.tinyops.android.vboard.ui.KeyboardThemes
 import ru.tinyops.android.vboard.ui.ThemeMode
@@ -194,6 +198,12 @@ class SettingsBackupTest {
                 name = "Replies",
             )
         voice.customButtons.save(button)
+        val micButton =
+            MicButton(
+                tap = MicMode(MicButton.TAP_ID, MicProcessing.NONE, ending = MicEnding.REPEAT_TAP),
+                hold = listOf(MicMode("english", MicProcessing.PROMPTS, listOf("p"), MicEnding.AFTER_PAUSE)),
+            )
+        voice.micButton.button = micButton
         KeyboardPrefs(context).deleteHold = DeleteHoldMode.WORDS
         KeyboardThemes.select(context, KeyboardThemes.MINT)
         KeyboardThemes.selectMode(context, ThemeMode.entries.last())
@@ -216,6 +226,7 @@ class SettingsBackupTest {
         assertEquals(replies, restored.quickReplies.replies)
         assertEquals(listOf(reply), restored.quickReplies.choice(button.tap!!))
         assertEquals(listOf(button), restored.customButtons.buttons)
+        assertEquals(micButton, restored.micButton.button)
         assertEquals(DeleteHoldMode.WORDS, KeyboardPrefs(context).deleteHold)
         assertEquals(theme, KeyboardThemes.selected(context))
         assertTrue(theme.enterOnly && theme.whiteIcons && theme.shapes.squareMode && theme.shapes.squareAction)

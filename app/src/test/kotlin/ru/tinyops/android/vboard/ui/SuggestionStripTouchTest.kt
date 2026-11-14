@@ -55,8 +55,8 @@ class SuggestionStripTouchTest {
                     events += "chip:${chip.label}"
                 }
 
-                override fun onMicClicked() {
-                    events += "mic"
+                override fun onMicUsed(modeId: String?) {
+                    events += if (modeId == null) "mic" else "mode:$modeId"
                 }
 
                 override fun onVoiceCancel() {

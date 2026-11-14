@@ -56,7 +56,8 @@ class SuggestionStripView(
 
         fun onChipClicked(chip: ClipChip)
 
-        fun onMicClicked()
+        /** A tap on the microphone, or the mode [modeId] picked in the menu its hold opens. */
+        fun onMicUsed(modeId: String?)
 
         fun onVoiceCancel()
 
@@ -172,6 +173,14 @@ class SuggestionStripView(
             invalidate()
         }
 
+    /** The modes a hold on the microphone offers; without any a hold is a tap. */
+    var micMenu: List<MicMenuItem> = emptyList()
+
+    private val micPopup = MicModePopup(context, theme)
+
+    /** Whether the menu of the microphone is open. */
+    internal val micMenuShown: Boolean get() = micPopup.isShowing
+
     /** The color of the microphone icon; null keeps it like the other icons. */
     var micColor: ButtonColor? = null
         set(value) {
@@ -269,10 +278,11 @@ class SuggestionStripView(
         Runnable {
             val zone = pressed.zone
             val button = pressed.id?.let { id -> customButtons.firstOrNull { it.id == id } }
-            if (zone != Zone.PROOFREAD && button?.holds != true) return@Runnable
+            if (zone != Zone.PROOFREAD && zone != Zone.MIC && button?.holds != true) return@Runnable
             setPressed(Hit.NONE)
             performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             when {
+                zone == Zone.MIC -> micPopup.show(this, micMenu)
                 zone == Zone.PROOFREAD && proofreadState == ProofreadState.UNDO -> undoPeek.begin(UndoPeek.PROOFREAD)
                 zone == Zone.PROOFREAD -> listener?.onProofreadHeld()
                 button == null -> Unit
@@ -683,19 +693,12 @@ class SuggestionStripView(
         ) {
             undoPeek.end()
         }
+        if (micPopup.isShowing) return trackMicMenu(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 tap.down(event)
                 setPressed(hit)
-                val holdable =
-                    when (hit.zone) {
-                        Zone.CUSTOM -> customButtons.firstOrNull { it.id == hit.id }?.holds == true
-                        Zone.PROOFREAD ->
-                            proofreadState == ProofreadState.UNDO ||
-                                (proofreadHolds && proofreadState == ProofreadState.IDLE)
-                        else -> false
-                    }
-                if (holdable) postDelayed(holdAction, HOLD_MILLIS)
+                if (holds(hit)) postDelayed(holdAction, HOLD_MILLIS)
             }
             MotionEvent.ACTION_MOVE -> if (!tap.keeps(event, pressed, hit, ::hitAt)) setPressed(Hit.NONE)
             MotionEvent.ACTION_UP -> {
@@ -707,6 +710,27 @@ class SuggestionStripView(
                 }
             }
             MotionEvent.ACTION_CANCEL -> setPressed(Hit.NONE)
+        }
+        return true
+    }
+
+    /** Whether a hold on [hit] does something other than a tap. */
+    private fun holds(hit: Hit): Boolean =
+        when (hit.zone) {
+            Zone.CUSTOM -> customButtons.firstOrNull { it.id == hit.id }?.holds == true
+            Zone.PROOFREAD ->
+                proofreadState == ProofreadState.UNDO ||
+                    (proofreadHolds && proofreadState == ProofreadState.IDLE)
+            Zone.MIC -> !voiceState.active && micMenu.isNotEmpty()
+            else -> false
+        }
+
+    /** The finger that opened the menu of the microphone moves over it, and its release picks a mode. */
+    private fun trackMicMenu(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_MOVE -> micPopup.track(event.x, event.y)
+            MotionEvent.ACTION_UP -> micPopup.release(event.x, event.y)?.let { listener?.onMicUsed(it) }
+            MotionEvent.ACTION_CANCEL -> micPopup.dismiss()
         }
         return true
     }
@@ -723,7 +747,7 @@ class SuggestionStripView(
             Zone.CLIPBOARD -> listener.onClipboardClicked()
             Zone.FULLSCREEN -> listener.onFullscreenClicked()
             Zone.PROOFREAD -> listener.onProofreadClicked()
-            Zone.MIC -> listener.onMicClicked()
+            Zone.MIC -> listener.onMicUsed(null)
             Zone.CHIP_0, Zone.CHIP_1, Zone.CHIP_2 ->
                 clipChips.chips
                     .getOrNull(
@@ -753,12 +777,16 @@ class SuggestionStripView(
         visibility: Int,
     ) {
         super.onVisibilityChanged(changedView, visibility)
-        if (visibility != VISIBLE) groupPopup.dismiss()
+        if (visibility != VISIBLE) {
+            groupPopup.dismiss()
+            micPopup.dismiss()
+        }
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         groupPopup.dismiss()
+        micPopup.dismiss()
         undoPeek.end()
         removeCallbacks(holdAction)
         removeCallbacks(hideSuggestions)
