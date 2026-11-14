@@ -160,7 +160,7 @@ class FullscreenEditorView(
     }
 
     private fun customButton(button: StripButton): View {
-        val tint = button.color?.tint(darkTheme) ?: theme.stripIcon
+        val tint = button.color?.tint(darkTheme, theme.accent) ?: theme.stripIcon
         return iconButton(stateIcon(button, tint), button.description).apply {
             setOnClickListener {
                 if (button.group) {

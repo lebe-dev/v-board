@@ -432,7 +432,8 @@ private fun DraggableIcon(
 ) {
     val colors = MaterialTheme.colorScheme
     val dark = colors.surface.luminance() < HALF_LUMINANCE
-    val tint = button.color?.let { Color(it.tint(dark)) } ?: colors.onSurface
+    val accent = rememberThemeAccent()
+    val tint = button.color?.let { Color(it.tint(dark, accent)) } ?: colors.onSurface
     val x by animateFloatAsState(target.x.toFloat(), label = "button x")
     val y by animateFloatAsState(target.y.toFloat(), label = "button y")
     // The gesture outlives recompositions, and what it does depends on the latest arrangement.

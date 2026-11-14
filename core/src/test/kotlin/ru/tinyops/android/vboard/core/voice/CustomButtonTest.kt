@@ -262,10 +262,18 @@ class CustomButtonTest {
 
     @Test
     fun `every color stands out on the keyboard it is meant for`() {
-        ButtonColor.entries.forEach {
-            assertTrue(contrast(it.tint(dark = false), 0xFFFFFFFF.toInt()) >= MIN_CONTRAST, "$it on light")
-            assertTrue(contrast(it.tint(dark = true), 0xFF202124.toInt()) >= MIN_CONTRAST, "$it on dark")
+        ButtonColor.entries.filter { it != ButtonColor.THEME }.forEach {
+            assertTrue(contrast(it.tint(dark = false, accent = 0), 0xFFFFFFFF.toInt()) >= MIN_CONTRAST, "$it on light")
+            assertTrue(contrast(it.tint(dark = true, accent = 0), 0xFF202124.toInt()) >= MIN_CONTRAST, "$it on dark")
         }
+    }
+
+    @Test
+    fun `the theme color is the accent of the keyboard theme on either background`() {
+        val accent = 0xFF3B63E0.toInt()
+        assertEquals(accent, ButtonColor.THEME.tint(dark = false, accent = accent))
+        assertEquals(accent, ButtonColor.THEME.tint(dark = true, accent = accent))
+        assertEquals(ButtonColor.THEME, ButtonColor.fromId("theme"))
     }
 
     private fun contrast(

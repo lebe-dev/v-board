@@ -72,7 +72,10 @@ enum class ButtonVisibility(
     }
 }
 
-/** A color of a custom button's icon, in the tones that stand out on a light and on a dark keyboard. */
+/**
+ * A color of a custom button's icon, in the tones that stand out on a light and on a dark keyboard.
+ * [THEME] is the accent of the keyboard theme in use and so changes along with it.
+ */
 enum class ButtonColor(
     val id: String,
     private val onLight: Int,
@@ -86,10 +89,19 @@ enum class ButtonColor(
     BLUE("blue", 0xFF1565C0.toInt(), 0xFF64B5F6.toInt()),
     PURPLE("purple", 0xFF6A1B9A.toInt(), 0xFFBA68C8.toInt()),
     PINK("pink", 0xFFC2185B.toInt(), 0xFFF48FB1.toInt()),
+    THEME("theme", 0, 0),
     ;
 
-    /** The ARGB color for a keyboard or a page with a dark background or a light one. */
-    fun tint(dark: Boolean): Int = if (dark) onDark else onLight
+    /** The ARGB color for a keyboard or a page with a dark background or a light one; [accent] is that of the theme. */
+    fun tint(
+        dark: Boolean,
+        accent: Int,
+    ): Int =
+        when {
+            this == THEME -> accent
+            dark -> onDark
+            else -> onLight
+        }
 
     companion object {
         fun fromId(id: String?): ButtonColor? = entries.firstOrNull { it.id == id }

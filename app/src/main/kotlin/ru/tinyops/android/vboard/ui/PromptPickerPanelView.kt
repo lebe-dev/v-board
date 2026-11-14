@@ -111,7 +111,7 @@ class PromptPickerPanelView(
                 TextView(context).apply {
                     text = prompt.title
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, CARD_TITLE_SIZE)
-                    setTextColor(prompt.color?.tint(darkTheme) ?: theme.suggestion)
+                    setTextColor(prompt.color?.tint(darkTheme, theme.accent) ?: theme.suggestion)
                     maxLines = 1
                     ellipsize = TextUtils.TruncateAt.END
                 },

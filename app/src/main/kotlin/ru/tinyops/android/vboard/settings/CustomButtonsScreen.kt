@@ -55,6 +55,7 @@ import ru.tinyops.android.vboard.core.voice.find
 import ru.tinyops.android.vboard.core.voice.membersOf
 import ru.tinyops.android.vboard.core.voice.withArrangedPart
 import ru.tinyops.android.vboard.ui.ButtonIcons
+import ru.tinyops.android.vboard.ui.KeyboardThemes
 import kotlin.math.roundToInt
 
 /** "Настраиваемые кнопки": the buttons of each row, on a model of it and in a list. */
@@ -291,7 +292,7 @@ private fun ButtonRow(
 /** The round badge of a button with a color: filled with it, so that the buttons are told apart at a glance. */
 @Composable
 private fun colorBadge(color: ButtonColor): BadgeColors {
-    val fill = Color(color.tint(MaterialTheme.colorScheme.surface.luminance() < HALF_LUMINANCE))
+    val fill = Color(color.tint(MaterialTheme.colorScheme.surface.luminance() < HALF_LUMINANCE, rememberThemeAccent()))
     return BadgeColors(container = fill, content = if (fill.luminance() < HALF_LUMINANCE) Color.White else Color.Black)
 }
 
@@ -586,6 +587,13 @@ private fun IconOption(
     }
 }
 
+/** The accent of the keyboard theme that is selected, which is what a button of the theme color shows. */
+@Composable
+internal fun rememberThemeAccent(): Int {
+    val context = LocalContext.current
+    return remember(context) { KeyboardThemes.selected(context).palette(context).actionKey }
+}
+
 /** The colors as circles in the tone the keyboard of this theme will show; first comes the absence of one. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -594,12 +602,13 @@ internal fun IconColorRow(
     onChange: (ButtonColor?) -> Unit,
 ) {
     val dark = MaterialTheme.colorScheme.surface.luminance() < HALF_LUMINANCE
+    val accent = rememberThemeAccent()
     Column(Modifier.fillMaxWidth().padding(SettingsSpacing.Row)) {
         Text(stringResource(R.string.custom_button_color), style = MaterialTheme.typography.bodyLarge)
         FlowRow(Modifier.fillMaxWidth()) {
-            ColorOption(null, dark, selected == null) { onChange(null) }
+            ColorOption(null, dark, accent, selected == null) { onChange(null) }
             ButtonColor.entries.forEach { color ->
-                ColorOption(color, dark, selected == color) { onChange(color) }
+                ColorOption(color, dark, accent, selected == color) { onChange(color) }
             }
         }
     }
@@ -609,6 +618,7 @@ internal fun IconColorRow(
 private fun ColorOption(
     color: ButtonColor?,
     dark: Boolean,
+    accent: Int,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -630,7 +640,7 @@ private fun ColorOption(
             Box(Modifier.size(COLOR_DOT_SIZE).border(1.dp, colors.outline, CircleShape))
             Icon(painterResource(R.drawable.ic_close), contentDescription = null, tint = colors.outline)
         } else {
-            Box(Modifier.size(COLOR_DOT_SIZE).background(Color(color.tint(dark)), CircleShape))
+            Box(Modifier.size(COLOR_DOT_SIZE).background(Color(color.tint(dark, accent)), CircleShape))
         }
     }
 }
@@ -818,6 +828,7 @@ private val ButtonColor?.label: Int
             ButtonColor.BLUE -> R.string.custom_button_color_blue
             ButtonColor.PURPLE -> R.string.custom_button_color_purple
             ButtonColor.PINK -> R.string.custom_button_color_pink
+            ButtonColor.THEME -> R.string.custom_button_color_theme
         }
 
 private const val HALF_LUMINANCE = 0.5f

@@ -420,6 +420,7 @@
     <string name="custom_button_color_blue">Blue</string>
     <string name="custom_button_color_purple">Purple</string>
     <string name="custom_button_color_pink">Pink</string>
+    <string name="custom_button_color_theme">Theme color</string>
     <string name="custom_button_placement">Place in the row</string>
     <string name="custom_button_placement_left">Left</string>
     <string name="custom_button_placement_center">Center</string>

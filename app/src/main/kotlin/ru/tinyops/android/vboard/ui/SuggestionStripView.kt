@@ -519,16 +519,16 @@ class SuggestionStripView(
             drawIcon(canvas, R.drawable.ic_settings, buttonWidth / 2f, theme.stripIcon)
         }
         clipboardLeft?.let {
-            val tint = clipboardColor?.tint(darkTheme) ?: theme.stripIcon
+            val tint = clipboardColor?.tint(darkTheme, theme.accent) ?: theme.stripIcon
             drawIcon(canvas, R.drawable.ic_content_paste, it + slotSize / 2f, tint)
         }
         fullscreenLeft?.let {
-            val tint = fullscreenColor?.tint(darkTheme) ?: theme.stripIcon
+            val tint = fullscreenColor?.tint(darkTheme, theme.accent) ?: theme.stripIcon
             drawIcon(canvas, R.drawable.ic_fullscreen, it + slotSize / 2f, tint)
         }
         if (proofreadVisible) {
             val center = proofreadLeft + buttonWidth / 2f
-            val tint = proofreadColor?.tint(darkTheme) ?: theme.stripIcon
+            val tint = proofreadColor?.tint(darkTheme, theme.accent) ?: theme.stripIcon
             drawActionButton(canvas, proofreadState, R.drawable.ic_auto_fix_high, center, tint)
         }
         drawCustomButtons(canvas)
@@ -560,7 +560,7 @@ class SuggestionStripView(
             val button = customButtons[if (onStrip) index else first + index - customsShown]
             val left = if (onStrip) strip[index] else below[index - customsShown]
             val centerY = if (onStrip) rowHeight / 2f else rowHeight + rowHeight / 2f
-            val tint = button.color?.tint(darkTheme) ?: theme.stripIcon
+            val tint = button.color?.tint(darkTheme, theme.accent) ?: theme.stripIcon
             drawActionButton(canvas, button.state, button.icon, left + slotSize / 2f, tint, centerY)
         }
     }
@@ -570,7 +570,7 @@ class SuggestionStripView(
         val centerX = micLeft + buttonWidth / 2f
         val paint = if (pressed.zone == Zone.MIC) micPressedPaint else micPaint
         canvas.drawCircle(centerX, rowHeight / 2f, rowHeight * MIC_RADIUS, paint)
-        drawIcon(canvas, R.drawable.ic_mic, centerX, micColor?.tint(darkTheme) ?: theme.stripIcon)
+        drawIcon(canvas, R.drawable.ic_mic, centerX, micColor?.tint(darkTheme, theme.accent) ?: theme.stripIcon)
     }
 
     /** A button that sends text to a server: its icon, a spinner during the request or the undo arrow after it. */

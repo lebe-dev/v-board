@@ -226,7 +226,7 @@ internal class ButtonGroupPopup(
         button: StripButton,
         column: View,
     ): View {
-        val tint = button.color?.tint(darkTheme) ?: theme.stripIcon
+        val tint = button.color?.tint(darkTheme, theme.accent) ?: theme.stripIcon
         val padding = (size - theme.stripIconSize.toInt()) / 2
         val icon =
             ImageView(context).apply {

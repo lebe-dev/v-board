@@ -426,6 +426,7 @@
     <string name="custom_button_color_blue">Синий</string>
     <string name="custom_button_color_purple">Фиолетовый</string>
     <string name="custom_button_color_pink">Розовый</string>
+    <string name="custom_button_color_theme">Цвет темы</string>
     <string name="custom_button_placement">Место в ряду</string>
     <string name="custom_button_placement_left">Слева</string>
     <string name="custom_button_placement_center">По центру</string>

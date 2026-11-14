@@ -32,6 +32,9 @@ class KeyboardTheme(
     val suggestionDivider = palette.suggestionDivider
     val suggestionPressed = palette.suggestionPressed
     val stripIcon = palette.stripIcon
+
+    /** The color of the theme that stands out, used for icons that ask for the color of the theme. */
+    val accent = palette.actionKey
     val keyIcon = palette.keyIcon
     val voiceActive = palette.voiceActive
     val voiceActiveIcon = palette.voiceActiveIcon

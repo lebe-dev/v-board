@@ -224,6 +224,7 @@ internal fun PromptPickerRow(
     var open by rememberSaveable { mutableStateOf(false) }
     val chosen = library.prompts.filter { it.id in selected.orEmpty() }
     val dark = isDarkSurface()
+    val accent = rememberThemeAccent()
     val summary =
         if (chosen.isEmpty()) {
             AnnotatedString(stringResource(R.string.prompt_picker_none))
@@ -231,7 +232,7 @@ internal fun PromptPickerRow(
             buildAnnotatedString {
                 chosen.forEachIndexed { index, prompt ->
                     if (index > 0) append(", ")
-                    val tone = prompt.color?.let { Color(it.tint(dark)) }
+                    val tone = prompt.color?.let { Color(it.tint(dark, accent)) }
                     if (tone ==
                         null
                     ) {
@@ -304,7 +305,10 @@ private fun PromptRow(
 
 /** The color a prompt title is shown in, in the tone that reads on the current background; unspecified without one. */
 @Composable
-private fun ButtonColor?.tone(): Color = this?.let { Color(it.tint(isDarkSurface())) } ?: Color.Unspecified
+private fun ButtonColor?.tone(): Color {
+    val accent = rememberThemeAccent()
+    return this?.let { Color(it.tint(isDarkSurface(), accent)) } ?: Color.Unspecified
+}
 
 @Composable
 private fun isDarkSurface(): Boolean = MaterialTheme.colorScheme.surface.luminance() < HALF_LUMINANCE
