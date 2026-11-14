@@ -136,6 +136,15 @@ class VoiceSettingsTest {
     }
 
     @Test
+    fun `the timeout of a server is stored and an old entry gets the default`() {
+        val prefs = VoicePrefs(RuntimeEnvironment.getApplication())
+        prefs.saveServer(ServerProfile("a", "Slow", "https://server.example/v1", "m", timeoutSeconds = 90))
+        assertEquals(90, prefs.servers.single().timeoutSeconds)
+        val old = """[{"id":"x","name":"Old","endpoint":"https://server.example/v1","model":"m"}]"""
+        assertEquals(ServerProfile.DEFAULT_TIMEOUT_SECONDS, ServerProfileJson.parse(old).single().timeoutSeconds)
+    }
+
+    @Test
     fun `the servers are stored in order`() {
         val first = addServer()
         val second = addServer(id = "second").copy(proxyEnabled = true, proxyUrl = "socks5://p:1080")

@@ -218,6 +218,15 @@ class KeyboardViewTouchTest {
     }
 
     @Test
+    fun `the word mode follows the chosen interval`() {
+        view.deleteHold = DeleteHoldMode.WORDS
+        view.wordDeleteIntervalMillis = 50L
+        holdBackspace(400 + 50 * 6)
+        assertEquals("delete:CHARACTERS", events.first())
+        assertTrue("events=$events", events.drop(1).count { it == "delete:WORDS" } >= 6)
+    }
+
+    @Test
     fun `holding delete in the clear mode deletes everything once`() {
         view.deleteHold = DeleteHoldMode.ALL
         holdBackspace(2000)

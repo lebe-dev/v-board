@@ -21,7 +21,8 @@ internal object ServerProfileJson {
                     .put("api_key", it.apiKey)
                     .put("effort", it.effort.id)
                     .put("proxy_enabled", it.proxyEnabled)
-                    .put("proxy_url", it.proxyUrl),
+                    .put("proxy_url", it.proxyUrl)
+                    .put("timeout_seconds", it.timeoutSeconds),
             )
         }
         return array.toString()
@@ -44,6 +45,10 @@ internal object ServerProfileJson {
                     effort = EnhancementEffort.fromId(item.optString("effort")),
                     proxyEnabled = item.optBoolean("proxy_enabled"),
                     proxyUrl = item.optString("proxy_url"),
+                    timeoutSeconds =
+                        item
+                            .optInt("timeout_seconds", ServerProfile.DEFAULT_TIMEOUT_SECONDS)
+                            .coerceIn(ServerProfile.MIN_TIMEOUT_SECONDS, ServerProfile.MAX_TIMEOUT_SECONDS),
                 )
             }
         }.getOrDefault(emptyList())

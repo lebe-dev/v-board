@@ -46,6 +46,18 @@ class ServerProfileTest {
     }
 
     @Test
+    fun `the timeout defaults to three minutes and reaches text improvement`() {
+        assertEquals(180, profile.timeoutSeconds)
+        assertEquals(45, profile.copy(timeoutSeconds = 45).forEnhancement("Fix it").timeoutSeconds)
+    }
+
+    @Test
+    fun `the timeout is kept within bounds when stored`() {
+        assertEquals(ServerProfile.MIN_TIMEOUT_SECONDS, profile.copy(timeoutSeconds = 1).normalized().timeoutSeconds)
+        assertEquals(ServerProfile.MAX_TIMEOUT_SECONDS, profile.copy(timeoutSeconds = 9999).normalized().timeoutSeconds)
+    }
+
+    @Test
     fun `recognition gets the profile data and its own options`() {
         val server = profile.forRecognition(language = "ru", promptEnabled = true, prompt = "Terms")
         assertEquals("https://server.example/v1/audio/transcriptions", server.transcriptionUrl)

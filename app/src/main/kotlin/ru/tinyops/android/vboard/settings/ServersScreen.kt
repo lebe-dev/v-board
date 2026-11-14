@@ -9,6 +9,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -21,6 +22,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.voice.EnhancementEffort
 import ru.tinyops.android.vboard.core.voice.SelfHostedServer
@@ -31,6 +34,7 @@ import ru.tinyops.android.vboard.core.voice.ServerProfile
 import ru.tinyops.android.vboard.core.voice.TextFeature
 import ru.tinyops.android.vboard.core.voice.find
 import java.net.URI
+import kotlin.math.roundToInt
 
 /** Keeps the server being edited through a rotation; nothing is a closed editor. */
 private val DraftSaver =
@@ -49,6 +53,7 @@ private val DraftSaver =
                     it.effort.id,
                     it.proxyEnabled,
                     it.proxyUrl,
+                    it.timeoutSeconds,
                 )
             }
         },
@@ -66,6 +71,7 @@ private val DraftSaver =
                     effort = EnhancementEffort.fromId(it[6] as String),
                     proxyEnabled = it[7] as Boolean,
                     proxyUrl = it[8] as String,
+                    timeoutSeconds = it[9] as Int,
                 )
             }
         },
@@ -339,7 +345,10 @@ private fun ServerFormBody(
                 )
             },
         ) {
-            if (draft.kind == ServerKind.TEXT) EffortChoice(draft.effort) { onDraft(draft.copy(effort = it)) }
+            if (draft.kind == ServerKind.TEXT) {
+                EffortChoice(draft.effort) { onDraft(draft.copy(effort = it)) }
+                TimeoutChoice(draft.timeoutSeconds) { onDraft(draft.copy(timeoutSeconds = it)) }
+            }
         }
         CheckRow(
             text =
@@ -411,6 +420,30 @@ private fun ColumnScope.EffortChoice(
     }
     Text(
         stringResource(R.string.server_effort_description),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/** "Тайм-аут": how long to wait for the model before the original text is kept. */
+@Composable
+private fun ColumnScope.TimeoutChoice(
+    seconds: Int,
+    onChange: (Int) -> Unit,
+) {
+    val label = stringResource(R.string.server_timeout)
+    val range = ServerProfile.MAX_TIMEOUT_SECONDS - ServerProfile.MIN_TIMEOUT_SECONDS
+    val steps = range / ServerProfile.TIMEOUT_STEP_SECONDS - 1
+    Text(stringResource(R.string.server_timeout_value, label, seconds), style = MaterialTheme.typography.labelLarge)
+    Slider(
+        value = seconds.toFloat(),
+        onValueChange = { onChange(it.roundToInt()) },
+        valueRange = ServerProfile.MIN_TIMEOUT_SECONDS.toFloat()..ServerProfile.MAX_TIMEOUT_SECONDS.toFloat(),
+        steps = steps,
+        modifier = Modifier.semantics { contentDescription = label },
+    )
+    Text(
+        stringResource(R.string.server_timeout_description),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

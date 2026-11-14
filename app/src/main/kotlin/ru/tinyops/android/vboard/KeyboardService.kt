@@ -800,6 +800,7 @@ class KeyboardService :
         view.gestureEnabled = gesturesAvailable()
         view.spaceDragMode = keyboardPrefs.spaceDragMode
         view.deleteHold = keyboardPrefs.deleteHold
+        view.wordDeleteIntervalMillis = keyboardPrefs.wordDeleteInterval.toLong()
         decoder.setSlideEngine(keyboardPrefs.slideEngine)
         // A table downloaded or deleted in the settings since the last field.
         decoder.refreshBigrams()

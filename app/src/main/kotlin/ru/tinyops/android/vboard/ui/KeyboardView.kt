@@ -126,6 +126,9 @@ class KeyboardView(
     /** What holding the delete key does after the first character. */
     var deleteHold: DeleteHoldMode = DeleteHoldMode.CHARACTERS
 
+    /** Pause between words while delete is held in the word mode. */
+    var wordDeleteIntervalMillis: Long = WORD_REPEAT_INTERVAL_MILLIS
+
     /** How a finger on the space bar moves the cursor. */
     var spaceDragMode: SpaceDragMode = SpaceDragMode.LINEAR
 
@@ -540,7 +543,7 @@ class KeyboardView(
                             repeat = null
                             performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                         }
-                        DeleteHoldMode.WORDS -> handler.postDelayed(this, WORD_REPEAT_INTERVAL_MILLIS)
+                        DeleteHoldMode.WORDS -> handler.postDelayed(this, wordDeleteIntervalMillis)
                         else -> handler.postDelayed(this, REPEAT_INTERVAL_MILLIS)
                     }
                 }

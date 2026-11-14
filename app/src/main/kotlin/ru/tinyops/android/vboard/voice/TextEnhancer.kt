@@ -80,8 +80,9 @@ class TextEnhancer {
     ): String {
         connection.requestMethod = "POST"
         connection.instanceFollowRedirects = false
-        connection.connectTimeout = CONNECT_TIMEOUT_MS
-        connection.readTimeout = READ_TIMEOUT_MS
+        val timeoutMillis = server.timeoutSeconds * MILLIS_PER_SECOND
+        connection.connectTimeout = minOf(CONNECT_TIMEOUT_MS, timeoutMillis)
+        connection.readTimeout = timeoutMillis
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
         connection.setRequestProperty("Accept", "application/json")
@@ -94,7 +95,7 @@ class TextEnhancer {
     companion object {
         private const val TAG = "TextEnhancer"
         private const val CONNECT_TIMEOUT_MS = 30_000
-        private const val READ_TIMEOUT_MS = 180_000
+        private const val MILLIS_PER_SECOND = 1_000
 
         fun buildRequest(
             model: String,

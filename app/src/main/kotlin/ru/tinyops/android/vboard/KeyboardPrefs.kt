@@ -26,6 +26,17 @@ class KeyboardPrefs(
         get() = DeleteHoldMode.fromCode(prefs.getString(KEY_DELETE_HOLD, null))
         set(value) = prefs.edit { putString(KEY_DELETE_HOLD, value.code) }
 
+    /** Pause between words while the delete key is held in the word mode, in milliseconds. */
+    var wordDeleteInterval: Int
+        get() =
+            prefs
+                .getInt(KEY_WORD_DELETE_INTERVAL, DEFAULT_WORD_DELETE_INTERVAL)
+                .coerceIn(MIN_WORD_DELETE_INTERVAL, MAX_WORD_DELETE_INTERVAL)
+        set(value) =
+            prefs.edit {
+                putInt(KEY_WORD_DELETE_INTERVAL, value.coerceIn(MIN_WORD_DELETE_INTERVAL, MAX_WORD_DELETE_INTERVAL))
+            }
+
     /** Whether a finger sliding across letters types a word; on by default. */
     var slideEnabled: Boolean
         get() = prefs.getBoolean(KEY_SLIDE_ENABLED, true)
@@ -108,6 +119,10 @@ class KeyboardPrefs(
         const val MIN_BUTTON_WIDTH = 60
         const val MAX_BUTTON_WIDTH = 100
         const val BUTTON_WIDTH_STEP = 5
+        const val MIN_WORD_DELETE_INTERVAL = 50
+        const val MAX_WORD_DELETE_INTERVAL = 400
+        const val WORD_DELETE_INTERVAL_STEP = 25
+        const val DEFAULT_WORD_DELETE_INTERVAL = 150
 
         private const val FILE = "keyboard_prefs"
         private const val KEY_AUTO_CAPITALIZE = "auto_capitalize"
@@ -123,6 +138,7 @@ class KeyboardPrefs(
         private const val KEY_SLIDE_ENGINE = "slide_engine"
         private const val KEY_SPACE_DRAG = "space_drag_mode"
         private const val KEY_STRIP_BUTTON_WIDTH = "strip_button_width"
+        private const val KEY_WORD_DELETE_INTERVAL = "word_delete_interval_ms"
         private const val KEY_STRIP_SECOND_ROW = "strip_second_row"
         private const val KEY_SUGGEST_ALWAYS = "suggest_always"
         private const val KEY_SUGGESTION_TIMEOUT = "suggestion_timeout_seconds"

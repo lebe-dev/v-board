@@ -205,6 +205,7 @@ class SettingsBackupTest {
             )
         voice.micButton.button = micButton
         KeyboardPrefs(context).deleteHold = DeleteHoldMode.WORDS
+        KeyboardPrefs(context).wordDeleteInterval = 75
         KeyboardThemes.select(context, KeyboardThemes.MINT)
         KeyboardThemes.selectMode(context, ThemeMode.entries.last())
         KeyboardThemes.setEnterOnly(context, true)
@@ -229,6 +230,7 @@ class SettingsBackupTest {
         assertEquals(listOf(button), restored.customButtons.buttons)
         assertEquals(micButton, restored.micButton.button)
         assertEquals(DeleteHoldMode.WORDS, KeyboardPrefs(context).deleteHold)
+        assertEquals(75, KeyboardPrefs(context).wordDeleteInterval)
         assertEquals(theme, KeyboardThemes.selected(context))
         assertTrue(theme.enterOnly && theme.whiteIcons && theme.shapes.squareMode && theme.shapes.squareAction)
         assertEquals(listOf(KeyboardThemes.MINT), KeyboardThemes.recent(context).map { it.id })

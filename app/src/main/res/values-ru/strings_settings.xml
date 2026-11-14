@@ -204,6 +204,12 @@
     <string name="settings_fullscreen_summary">Добавляет в полосу кнопку, которая открывает текст поля над клавишами, до верхнего края экрана. В некоторых приложениях может работать неправильно.</string>
     <string name="settings_fullscreen_icon_place">Место значка полного экрана</string>
     <string name="delete_key_title">Удаление текста</string>
+    <string name="delete_words_speed">Скорость удаления слов</string>
+    <string name="delete_words_speed_value">%1$s: %2$.1f слов в секунду</string>
+    <string name="delete_words_speed_summary">Как быстро исчезают слова, пока вы удерживаете клавишу удаления</string>
+    <string name="server_timeout">Тайм-аут</string>
+    <string name="server_timeout_value">%1$s: %2$d с</string>
+    <string name="server_timeout_description">Сколько ждать ответа модели. Если она не ответит вовремя, вставится исходный текст.</string>
     <string name="delete_key_note">Нажатие на клавишу удаления всегда стирает один символ. Здесь выбирается, что происходит, если её удерживать.</string>
     <string name="delete_key_hold">Удержание клавиши удаления</string>
     <string name="delete_hold_characters">Удаление по символам</string>

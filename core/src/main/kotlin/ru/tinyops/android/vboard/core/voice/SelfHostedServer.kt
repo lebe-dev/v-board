@@ -15,6 +15,8 @@ data class SelfHostedServer(
     val proxyUrl: String = "",
     /** The [recipient] the user agreed to send text to. */
     val acceptedRecipient: String = "",
+    /** How long to wait for the server's answer before the original text is kept. */
+    val timeoutSeconds: Int = ServerProfile.DEFAULT_TIMEOUT_SECONDS,
 ) {
     /** The chat completions URL, or null when [endpoint] is not a usable http(s) address. */
     val chatUrl: String? get() = ServerAddress.chat(endpoint)

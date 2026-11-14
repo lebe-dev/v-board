@@ -31,6 +31,8 @@ data class ServerProfile(
     val proxyEnabled: Boolean = false,
     val proxyUrl: String = "",
     val kind: ServerKind = ServerKind.TEXT,
+    /** How long text improvement waits for an answer; recognition has its own limits. */
+    val timeoutSeconds: Int = DEFAULT_TIMEOUT_SECONDS,
 ) {
     /** The name to show: the one the user gave, or the host and the model when there is none. */
     val displayName: String
@@ -52,7 +54,8 @@ data class ServerProfile(
 
     /** The server as text improvement uses it, sending [prompt] with the text. */
     fun forEnhancement(prompt: String): SelfHostedServer {
-        val server = SelfHostedServer(endpoint, model, apiKey, prompt, proxyEnabled, proxyUrl)
+        val server =
+            SelfHostedServer(endpoint, model, apiKey, prompt, proxyEnabled, proxyUrl, timeoutSeconds = timeoutSeconds)
         return server.copy(acceptedRecipient = server.recipient.orEmpty())
     }
 
@@ -84,6 +87,7 @@ data class ServerProfile(
             model = model.trim().take(SelfHostedServer.MAX_MODEL_LENGTH),
             apiKey = apiKey.trim().take(SelfHostedServer.MAX_API_KEY_LENGTH),
             proxyUrl = proxyUrl.trim(),
+            timeoutSeconds = timeoutSeconds.coerceIn(MIN_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS),
         )
 
     /**
@@ -101,6 +105,10 @@ data class ServerProfile(
 
     companion object {
         const val MAX_NAME_LENGTH = 40
+        const val MIN_TIMEOUT_SECONDS = 10
+        const val MAX_TIMEOUT_SECONDS = 300
+        const val TIMEOUT_STEP_SECONDS = 10
+        const val DEFAULT_TIMEOUT_SECONDS = 180
     }
 }
 
