@@ -23,6 +23,7 @@ import org.robolectric.util.ReflectionHelpers
 import ru.tinyops.android.vboard.core.gesture.SlideEngine
 import ru.tinyops.android.vboard.core.layout.KeySpec
 import ru.tinyops.android.vboard.core.layout.KeyType
+import ru.tinyops.android.vboard.core.layout.KeyboardMode
 import ru.tinyops.android.vboard.core.layout.Language
 import ru.tinyops.android.vboard.ui.KeyboardView
 
@@ -119,6 +120,19 @@ class KeyboardServiceTypingTest {
         press(KeyType.SPACE)
         assertEquals("hi ", field.text)
         assertEquals("", field.composing)
+    }
+
+    @Test
+    fun `the number pad opens from the second symbols page and types digits`() {
+        val (field, keyboard) = start()
+
+        press(KeyType.SYMBOLS)
+        press(KeyType.MORE_SYMBOLS)
+        press(KeyType.NUMBERS)
+        assertEquals(KeyboardMode.NUMBERS, keyboard.spec?.mode)
+
+        type("42")
+        assertEquals("42", field.text)
     }
 
     @Test

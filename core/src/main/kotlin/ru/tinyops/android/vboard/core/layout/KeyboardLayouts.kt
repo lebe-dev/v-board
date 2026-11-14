@@ -4,6 +4,7 @@ package ru.tinyops.android.vboard.core.layout
 object KeyboardLayouts {
     private const val DIGITS = "1234567890"
     private const val WIDE = 1.5f
+    private const val NUMPAD_WIDE = 2f
 
     // A Russian vowel followed by a combining acute accent is the stressed vowel.
     private val RU_STRESSED = "аеиоуыэюя".associate { it.toString() to "$it\u0301" }
@@ -66,6 +67,7 @@ object KeyboardLayouts {
             KeyboardMode.LETTERS -> letters(language)
             KeyboardMode.SYMBOLS -> symbols(language)
             KeyboardMode.MORE_SYMBOLS -> moreSymbols(language)
+            KeyboardMode.NUMBERS -> numbers(language)
         }
 
     private fun letters(language: Language): KeyboardSpec =
@@ -139,7 +141,57 @@ object KeyboardLayouts {
                             characterKeys("%©®™✓[]", language) +
                             backspace(WIDE),
                     ),
-                    bottomRow(language, KeyboardMode.MORE_SYMBOLS, DEFAULT_BOTTOM),
+                    moreSymbolsBottomRow(language),
+                ),
+        )
+    }
+
+    /** Angle brackets take the places of the comma and the period, the number pad that of the language key. */
+    private fun moreSymbolsBottomRow(language: Language): KeyRow {
+        val widths = DEFAULT_BOTTOM
+        return KeyRow(
+            listOf(
+                alphabet(language, widths.mode),
+                characterKey("<", language, widths.small, KeyStyle.FUNCTION),
+                KeySpec(KeyType.NUMBERS, label = "1234", width = widths.small),
+                KeySpec(KeyType.SPACE, label = language.displayName, output = " ", width = widths.space),
+                characterKey(">", language, widths.small, KeyStyle.FUNCTION),
+                KeySpec(KeyType.ENTER, output = "\n", width = widths.action, style = KeyStyle.ACTION),
+            ),
+        )
+    }
+
+    /** Digits in a phone grid in the middle, arithmetic on the left, editing keys on the right. */
+    private fun numbers(language: Language): KeyboardSpec {
+        fun operators(chars: String) = chars.map { characterKey(it.toString(), language, 1f, KeyStyle.FUNCTION) }
+
+        fun digits(chars: String) = chars.map { characterKey(it.toString(), language, NUMPAD_WIDE) }
+        return KeyboardSpec(
+            language = language,
+            mode = KeyboardMode.NUMBERS,
+            rows =
+                listOf(
+                    KeyRow(
+                        operators("+-") + digits("123") + characterKey("%", language, NUMPAD_WIDE, KeyStyle.FUNCTION),
+                    ),
+                    KeyRow(
+                        operators("*/") + digits("456") +
+                            KeySpec(KeyType.SPACE, label = "␣", output = " ", width = NUMPAD_WIDE),
+                    ),
+                    KeyRow(
+                        listOf(
+                            KeySpec(KeyType.SYMBOLS, label = "?123", width = NUMPAD_WIDE, style = KeyStyle.FUNCTION),
+                        ) +
+                            digits("789") + backspace(NUMPAD_WIDE),
+                    ),
+                    KeyRow(
+                        listOf(alphabet(language, NUMPAD_WIDE)) +
+                            listOf(",", "0", ".").map {
+                                val style = if (it == "0") KeyStyle.LETTER else KeyStyle.FUNCTION
+                                characterKey(it, language, NUMPAD_WIDE, style)
+                            } +
+                            KeySpec(KeyType.ENTER, output = "\n", width = NUMPAD_WIDE, style = KeyStyle.ACTION),
+                    ),
                 ),
         )
     }
@@ -153,8 +205,7 @@ object KeyboardLayouts {
             if (mode == KeyboardMode.LETTERS) {
                 KeySpec(KeyType.SYMBOLS, label = "?123", width = widths.mode, style = KeyStyle.MODE)
             } else {
-                val label = if (language == Language.RUSSIAN) "АБВ" else "ABC"
-                KeySpec(KeyType.ALPHABET, label = label, width = widths.mode, style = KeyStyle.MODE)
+                alphabet(language, widths.mode)
             }
         return KeyRow(
             listOf(
@@ -216,11 +267,28 @@ object KeyboardLayouts {
     private fun characterKeys(
         characters: String,
         language: Language,
-    ): List<KeySpec> =
-        characters.map {
-            val label = it.toString()
-            KeySpec(KeyType.CHARACTER, label = label, alternates = symbolAlternates(label, language))
-        }
+    ): List<KeySpec> = characters.map { characterKey(it.toString(), language) }
+
+    private fun characterKey(
+        label: String,
+        language: Language,
+        width: Float = 1f,
+        style: KeyStyle = KeyStyle.LETTER,
+    ) = KeySpec(
+        KeyType.CHARACTER,
+        label = label,
+        alternates = symbolAlternates(label, language),
+        width = width,
+        style = style,
+    )
+
+    private fun alphabet(
+        language: Language,
+        width: Float,
+    ): KeySpec {
+        val label = if (language == Language.RUSSIAN) "АБВ" else "ABC"
+        return KeySpec(KeyType.ALPHABET, label = label, width = width, style = KeyStyle.MODE)
+    }
 
     /** Long-press alternates of a symbol key; the first one is preselected. */
     private fun symbolAlternates(

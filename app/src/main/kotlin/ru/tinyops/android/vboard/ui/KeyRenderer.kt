@@ -137,6 +137,7 @@ internal class KeyRenderer(
             KeyType.SPACE -> drawLabel(canvas, b, spec.label, b.height * SPACE_LABEL_SIZE, theme.label)
             KeyType.SYMBOLS, KeyType.ALPHABET, KeyType.MORE_SYMBOLS ->
                 drawLabel(canvas, b, spec.label, b.height * MODE_LABEL_SIZE, theme.label)
+            KeyType.NUMBERS -> drawTwoLines(canvas, b, spec.label, b.height * NUMBERS_LABEL_SIZE)
             KeyType.CHARACTER -> {
                 drawLabel(canvas, b, displayLabel(spec), labelSize, theme.label)
                 spec.hint?.let { drawHint(canvas, b, it) }
@@ -271,6 +272,19 @@ internal class KeyRenderer(
         canvas.drawText(text, b.centerX, b.centerY + baselineOffset(text) * size, labelPaint)
     }
 
+    /** Splits the label in half and draws the halves one above the other, like a tiny keypad. */
+    private fun drawTwoLines(
+        canvas: Canvas,
+        b: Bounds,
+        text: String,
+        size: Float,
+    ) {
+        val half = text.length / 2
+        val shift = size * NUMBERS_LINE_SPACING / 2f
+        drawLabel(canvas, b.copy(top = b.top - shift, bottom = b.bottom - shift), text.take(half), size, theme.label)
+        drawLabel(canvas, b.copy(top = b.top + shift, bottom = b.bottom + shift), text.drop(half), size, theme.label)
+    }
+
     /**
      * Centers the visible body of the label rather than the font's line box, which reserves
      * room for accents and descenders and therefore pushes letters below the key's center:
@@ -336,6 +350,8 @@ internal class KeyRenderer(
         const val HINT_SIZE = 0.21f
         const val SPACE_LABEL_SIZE = 0.3f
         const val MODE_LABEL_SIZE = 0.36f
+        const val NUMBERS_LABEL_SIZE = 0.28f
+        const val NUMBERS_LINE_SPACING = 1.15f
         const val ICON_SIZE = 0.5f
         const val EMOJI_HINT_SIZE = 0.26f
         const val EMOJI_HINT_TOP = 0.1f

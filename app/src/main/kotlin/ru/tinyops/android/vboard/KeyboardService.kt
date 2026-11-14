@@ -410,6 +410,7 @@ class KeyboardService :
             KeyType.SHIFT -> logic.shift.onTap(SystemClock.uptimeMillis())
             KeyType.SYMBOLS -> switchMode(KeyboardMode.SYMBOLS)
             KeyType.MORE_SYMBOLS -> switchMode(KeyboardMode.MORE_SYMBOLS)
+            KeyType.NUMBERS -> switchMode(KeyboardMode.NUMBERS)
             KeyType.ALPHABET -> switchMode(KeyboardMode.LETTERS)
             KeyType.LANGUAGE -> switchLanguage()
             KeyType.BACKSPACE -> onBackspace()

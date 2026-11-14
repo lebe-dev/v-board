@@ -16,6 +16,9 @@ enum class KeyType {
     /** Switches to the second symbols page. */
     MORE_SYMBOLS,
 
+    /** Switches to the number pad. */
+    NUMBERS,
+
     /** Switches between the supported languages. */
     LANGUAGE,
     SPACE,
@@ -89,6 +92,7 @@ enum class KeyboardMode {
     LETTERS,
     SYMBOLS,
     MORE_SYMBOLS,
+    NUMBERS,
 }
 
 /** A complete keyboard page. */

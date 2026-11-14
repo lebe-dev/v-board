@@ -64,9 +64,9 @@ class KeyboardLayoutsTest {
     }
 
     @Test
-    fun `every page has exactly one key that opens the emoji picker`() {
+    fun `letter and symbol pages have exactly one key that opens the emoji picker`() {
         for (language in Language.entries) {
-            for (mode in KeyboardMode.entries) {
+            for (mode in listOf(KeyboardMode.LETTERS, KeyboardMode.SYMBOLS)) {
                 val keys = KeyboardLayouts.spec(language, mode).rows.flatMap { it.keys }
                 val withEmoji = keys.filter { KeySpec.EMOJI_ALTERNATE in it.alternates }
                 assertEquals(1, withEmoji.size, "$language $mode")
@@ -126,7 +126,7 @@ class KeyboardLayoutsTest {
     @Test
     fun `symbol alternates are sane on every page`() {
         for (language in Language.entries) {
-            for (mode in listOf(KeyboardMode.SYMBOLS, KeyboardMode.MORE_SYMBOLS)) {
+            for (mode in listOf(KeyboardMode.SYMBOLS, KeyboardMode.MORE_SYMBOLS, KeyboardMode.NUMBERS)) {
                 val keys =
                     KeyboardLayouts
                         .spec(language, mode)
@@ -173,10 +173,57 @@ class KeyboardLayoutsTest {
         for (language in Language.entries) {
             for (mode in KeyboardMode.entries) {
                 val types = KeyboardLayouts.spec(language, mode).rows.flatMap { row -> row.keys.map { it.type } }
-                for (required in listOf(KeyType.BACKSPACE, KeyType.SPACE, KeyType.ENTER, KeyType.LANGUAGE)) {
+                for (required in listOf(KeyType.BACKSPACE, KeyType.SPACE, KeyType.ENTER)) {
                     assertTrue(required in types, "$language $mode lacks $required")
                 }
             }
+        }
+    }
+
+    @Test
+    fun `letter and symbol pages have the language key`() {
+        for (language in Language.entries) {
+            for (mode in listOf(KeyboardMode.LETTERS, KeyboardMode.SYMBOLS)) {
+                val types = KeyboardLayouts.spec(language, mode).rows.flatMap { row -> row.keys.map { it.type } }
+                assertTrue(KeyType.LANGUAGE in types, "$language $mode lacks the language key")
+            }
+        }
+    }
+
+    @Test
+    fun `second symbols page has angle brackets around the space bar and opens the number pad`() {
+        for (language in Language.entries) {
+            val keys =
+                KeyboardLayouts
+                    .spec(language, KeyboardMode.MORE_SYMBOLS)
+                    .rows
+                    .last()
+                    .keys
+            assertEquals(
+                listOf(
+                    KeyType.ALPHABET,
+                    KeyType.CHARACTER,
+                    KeyType.NUMBERS,
+                    KeyType.SPACE,
+                    KeyType.CHARACTER,
+                    KeyType.ENTER,
+                ),
+                keys.map { it.type },
+                "$language",
+            )
+            assertEquals("<", keys[1].output)
+            assertEquals(">", keys[4].output)
+        }
+    }
+
+    @Test
+    fun `number pad has every digit and a way back to letters and symbols`() {
+        for (language in Language.entries) {
+            val keys = KeyboardLayouts.spec(language, KeyboardMode.NUMBERS).rows.flatMap { it.keys }
+            val digits = keys.filter { it.type == KeyType.CHARACTER && it.output.single().isDigit() }
+            assertEquals("0123456789", digits.map { it.output }.sorted().joinToString(""), "$language")
+            assertTrue(keys.any { it.type == KeyType.ALPHABET }, "$language")
+            assertTrue(keys.any { it.type == KeyType.SYMBOLS }, "$language")
         }
     }
 
