@@ -73,6 +73,7 @@ private fun SuggestionStripView.applyLook(
     clipboardPlacement = clipboard.iconPlacement.takeIf { clipboard.enabled }
     clipboardColor = clipboard.iconColor
     micColor = voice.micColor
+    micEnhanced = voice.enhancementReady
     proofreadColor = voice.proofreadColor
     secondRow = keyboard.stripSecondRow
     buttonWidthScale = keyboard.stripButtonWidth / PERCENT

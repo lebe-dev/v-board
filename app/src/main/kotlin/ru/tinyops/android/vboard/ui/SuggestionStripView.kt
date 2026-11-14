@@ -164,6 +164,14 @@ class SuggestionStripView(
             invalidate()
         }
 
+    /** Whether dictated text is improved by a server; the microphone then carries a sparkle. */
+    var micEnhanced: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            invalidate()
+        }
+
     /** The color of the microphone icon; null keeps it like the other icons. */
     var micColor: ButtonColor? = null
         set(value) {
@@ -348,6 +356,9 @@ class SuggestionStripView(
     private val typing: Boolean get() = suggestions.isNotEmpty() && !voiceState.active
 
     private val slotsLeft: Float get() = if (typing) 0f else buttonWidth
+
+    @get:DrawableRes
+    private val micIcon: Int get() = if (micEnhanced) R.drawable.ic_mic_spark else R.drawable.ic_mic
 
     private val micVisible: Boolean get() = voiceAvailable || voiceState.active
 
@@ -570,7 +581,7 @@ class SuggestionStripView(
         val centerX = micLeft + buttonWidth / 2f
         val paint = if (pressed.zone == Zone.MIC) micPressedPaint else micPaint
         canvas.drawCircle(centerX, rowHeight / 2f, rowHeight * MIC_RADIUS, paint)
-        drawIcon(canvas, R.drawable.ic_mic, centerX, micColor?.tint(darkTheme, theme.accent) ?: theme.stripIcon)
+        drawIcon(canvas, micIcon, centerX, micColor?.tint(darkTheme, theme.accent) ?: theme.stripIcon)
     }
 
     /** A button that sends text to a server: its icon, a spinner during the request or the undo arrow after it. */
@@ -599,7 +610,7 @@ class SuggestionStripView(
         val radius = rowHeight * ACTIVE_RADIUS
         if (voiceState.speech) canvas.drawCircle(micCenter, rowHeight / 2f, radius * HALO_SCALE, haloPaint)
         canvas.drawCircle(micCenter, rowHeight / 2f, radius, activePaint)
-        drawIcon(canvas, R.drawable.ic_mic, micCenter, theme.voiceActiveIcon)
+        drawIcon(canvas, micIcon, micCenter, theme.voiceActiveIcon)
 
         val preview = voiceState.preview
         val (text, paint) =
