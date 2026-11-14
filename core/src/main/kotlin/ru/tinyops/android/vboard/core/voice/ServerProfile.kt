@@ -86,6 +86,19 @@ data class ServerProfile(
             proxyUrl = proxyUrl.trim(),
         )
 
+    /**
+     * The same server under [id], to try another model without entering the key again. A given name is
+     * marked by [markName]; an unnamed copy keeps following its host and model.
+     */
+    fun duplicate(
+        id: String,
+        markName: (String) -> String,
+    ): ServerProfile =
+        copy(
+            id = id,
+            name = if (name.isBlank()) "" else markName(name.trim()).take(MAX_NAME_LENGTH),
+        )
+
     companion object {
         const val MAX_NAME_LENGTH = 40
     }

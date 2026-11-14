@@ -90,4 +90,24 @@ class ServerProfileTest {
         assertNull(list.withoutProfile("b").find("b"))
         assertNull(list.find(null))
     }
+
+    @Test
+    fun `a copy keeps the connection under a new id and a marked name`() {
+        val copy = profile.copy(proxyEnabled = true, proxyUrl = "socks5://p:1").duplicate("b") { "$it (copy)" }
+        assertEquals("b", copy.id)
+        assertEquals("Work (copy)", copy.name)
+        assertEquals(profile.endpoint, copy.endpoint)
+        assertEquals(profile.model, copy.model)
+        assertEquals(profile.apiKey, copy.apiKey)
+        assertEquals(profile.effort, copy.effort)
+        assertTrue(copy.proxyEnabled)
+        assertEquals("socks5://p:1", copy.proxyUrl)
+    }
+
+    @Test
+    fun `a copy of an unnamed server stays unnamed and a long name is cut`() {
+        assertEquals("", profile.copy(name = "").duplicate("b") { "$it (copy)" }.name)
+        val long = profile.copy(name = "я".repeat(ServerProfile.MAX_NAME_LENGTH)).duplicate("b") { "$it (copy)" }
+        assertEquals(ServerProfile.MAX_NAME_LENGTH, long.name.length)
+    }
 }

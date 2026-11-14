@@ -13,11 +13,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.voice.EnhancementEffort
@@ -83,64 +85,58 @@ internal fun ServersScreen(
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var asDefault by rememberSaveable { mutableStateOf(false) }
     var emptiedKind by rememberSaveable { mutableStateOf<String?>(null) }
+    // The saved server whose key a copy carries; that key stays hidden in the copy as in the original.
+    var keyFrom by rememberSaveable { mutableStateOf<String?>(null) }
+    val resources = LocalResources.current
 
-    SettingsPage(title = stringResource(R.string.servers_title), onBack = onBack) {
-        item { SettingsNote(stringResource(R.string.servers_note), icon = R.drawable.ic_info) }
-        item {
-            SettingsSection(stringResource(R.string.servers_section)) {
-                servers.forEach { server ->
-                    item {
-                        SettingsLinkRow(
-                            title = server.displayName,
-                            summary =
-                                serverRowSummary(
-                                    server,
-                                    state.read { defaultServerId(server.kind) } == server.id,
-                                ),
-                            icon = R.drawable.ic_cloud,
-                            onClick = {
-                                asDefault = state.read { defaultServerId(server.kind) } == server.id
-                                editing = server
-                            },
-                        )
-                    }
-                }
-                if (servers.isEmpty()) item { SettingsNote(stringResource(R.string.servers_empty)) }
-                item {
-                    val add = {
-                        asDefault = false
-                        editing = ServerProfile(id = state.read { newServerId() })
-                    }
-                    SettingsLinkRow(stringResource(R.string.server_add), icon = R.drawable.ic_add, onClick = add)
-                }
-            }
-        }
-    }
+    ServerList(
+        state = state,
+        servers = servers,
+        onBack = onBack,
+        onOpen = { server, isDefault ->
+            asDefault = isDefault
+            keyFrom = null
+            editing = server
+        },
+    )
 
     editing?.let { draft ->
-        ServerEditor(
-            draft = draft,
-            exists = servers.find(draft.id) != null,
-            storedApiKey = servers.find(draft.id)?.apiKey.orEmpty(),
-            onDraft = { editing = it },
-            isDefault = asDefault,
-            onDefault = { asDefault = it },
-            actions =
-                EditorActions(
-                    onSave = {
-                        state.update {
-                            saveServer(draft)
-                            if (asDefault) setDefaultServer(draft.kind, draft.id)
-                        }
-                        editing = null
-                    },
-                    onDelete = {
-                        deleting = draft.id
-                        editing = null
-                    },
-                    onDismiss = { editing = null },
-                ),
-        )
+        val saved = servers.find(draft.id)
+        val storedApiKey = (saved ?: servers.find(keyFrom))?.apiKey.orEmpty()
+        // A fresh editor for every server, so a key being replaced in one is not carried to another.
+        key(draft.id) {
+            ServerEditor(
+                draft = draft,
+                exists = saved != null,
+                storedApiKey = storedApiKey,
+                onDraft = { editing = it },
+                isDefault = asDefault,
+                onDefault = { asDefault = it },
+                actions =
+                    EditorActions(
+                        onSave = {
+                            state.update {
+                                saveServer(draft)
+                                if (asDefault) setDefaultServer(draft.kind, draft.id)
+                            }
+                            editing = null
+                        },
+                        onDelete = {
+                            deleting = draft.id
+                            editing = null
+                        },
+                        onDismiss = { editing = null },
+                        onDuplicate = {
+                            keyFrom = draft.id.takeIf { draft.apiKey == storedApiKey }
+                            asDefault = false
+                            editing =
+                                draft.duplicate(state.read { newServerId() }) {
+                                    resources.getString(R.string.server_copy_name, it)
+                                }
+                        },
+                    ),
+            )
+        }
     }
     servers.find(deleting)?.let { doomed ->
         DeleteServerDialog(
@@ -156,6 +152,39 @@ internal fun ServersScreen(
         )
     }
     emptiedKind?.let { NoServersLeftDialog(it) { emptiedKind = null } }
+}
+
+/** The list of servers; [onOpen] gets the server to edit and whether it is the default of its kind. */
+@Composable
+private fun ServerList(
+    state: VoiceSettingsState,
+    servers: List<ServerProfile>,
+    onBack: () -> Unit,
+    onOpen: (ServerProfile, Boolean) -> Unit,
+) {
+    SettingsPage(title = stringResource(R.string.servers_title), onBack = onBack) {
+        item { SettingsNote(stringResource(R.string.servers_note), icon = R.drawable.ic_info) }
+        item {
+            SettingsSection(stringResource(R.string.servers_section)) {
+                servers.forEach { server ->
+                    item {
+                        val isDefault = state.read { defaultServerId(server.kind) } == server.id
+                        SettingsLinkRow(
+                            title = server.displayName,
+                            summary = serverRowSummary(server, isDefault),
+                            icon = R.drawable.ic_cloud,
+                            onClick = { onOpen(server, isDefault) },
+                        )
+                    }
+                }
+                if (servers.isEmpty()) item { SettingsNote(stringResource(R.string.servers_empty)) }
+                item {
+                    val add = { onOpen(ServerProfile(id = state.read { newServerId() }), false) }
+                    SettingsLinkRow(stringResource(R.string.server_add), icon = R.drawable.ic_add, onClick = add)
+                }
+            }
+        }
+    }
 }
 
 /** Tells that a function was turned off because the last server of its kind is gone. */
@@ -228,6 +257,7 @@ private class EditorActions(
     val onSave: () -> Unit,
     val onDelete: () -> Unit,
     val onDismiss: () -> Unit,
+    val onDuplicate: () -> Unit,
 )
 
 @Composable
@@ -254,6 +284,7 @@ private fun ServerEditor(
         dismissButton = {
             TextButton(onClick = actions.onDismiss) { Text(stringResource(R.string.settings_cancel)) }
             if (exists) {
+                TextButton(onClick = actions.onDuplicate) { Text(stringResource(R.string.server_duplicate)) }
                 TextButton(
                     onClick = actions.onDelete,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
