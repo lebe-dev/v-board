@@ -49,6 +49,7 @@
     <string name="proofread_auth_failed">The server refused access: check the key and the model</string>
     <string name="proofread_no_changes">Nothing to fix</string>
     <string name="proofread_changed">The text has changed: nothing was replaced</string>
+    <string name="voice_undo_changed">The text has changed: the dictation was not undone</string>
     <string name="undo_preview_empty">The field will be empty</string>
     <string name="proofread_too_long">The text is too long: select a part of it</string>
     <string name="voice_remote_failed">The recognition server did not answer: the phrase is lost</string>

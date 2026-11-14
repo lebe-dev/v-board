@@ -9,6 +9,7 @@ import android.os.SystemClock
 import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.inputmethod.CursorAnchorInfo
@@ -57,6 +58,7 @@ import ru.tinyops.android.vboard.ui.MicMenuItem
 import ru.tinyops.android.vboard.ui.SuggestionStripView
 import ru.tinyops.android.vboard.ui.UndoPeek
 import ru.tinyops.android.vboard.voice.CustomButtonsControl
+import ru.tinyops.android.vboard.voice.DictationUndoControl
 import ru.tinyops.android.vboard.voice.PromptResultStore
 import ru.tinyops.android.vboard.voice.ProofreadControl
 import ru.tinyops.android.vboard.voice.TextActions
@@ -78,6 +80,7 @@ private fun SuggestionStripView.applyLook(
     clipboardPlacement = clipboard.iconPlacement.takeIf { clipboard.enabled }
     clipboardColor = clipboard.iconColor
     micColor = voice.micColor
+    voiceAnimation = voice.voiceAnimation
     micEnhanced = voice.micEnhanced
     val library = voice.prompts.library
     micMenu = voice.micHoldChoices().map { MicMenuItem(it.mode.id, it.mode.label(context, library), it.mode.icon) }
@@ -87,6 +90,11 @@ private fun SuggestionStripView.applyLook(
 }
 
 private const val PERCENT = 100f
+
+private fun Window?.keepScreenOn(keep: Boolean) {
+    val flag = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+    if (keep) this?.addFlags(flag) else this?.clearFlags(flag)
+}
 
 /**
  * The input method: Russian/English layouts with symbols pages, tap typing with prefix
@@ -205,7 +213,9 @@ class KeyboardService :
                 onMessage = ::showMessage,
                 results = promptResults,
             )
-        textActions = TextActions(proofreader, customButtons)
+        val dictation =
+            DictationUndoControl({ currentInputConnection }, { stripView?.dictationUndo = it }, ::showMessage)
+        textActions = TextActions(proofreader, customButtons, dictation)
         fullscreen =
             FullscreenControl(
                 context = this,
@@ -272,6 +282,7 @@ class KeyboardService :
                     }
                 }
                 it.voiceState = voice.state
+                it.voiceLevel = { voice.level }
                 it.voiceAvailable = micShown
                 it.suggestionTimeoutMillis = keyboardPrefs.suggestionTimeout.millis
                 it.proofreadHolds = textActions.proofreader.holds
@@ -476,9 +487,9 @@ class KeyboardService :
 
     override fun onVoiceCancel() = voice.cancel()
 
-    override fun onProofreadClicked() = onTextAction { textActions.proofreader.onTap() }
+    override fun onDictationUndo() = onTextAction { textActions.dictation.onTap() }
 
-    override fun onProofreadHeld() = onTextAction { textActions.proofreader.onHold() }
+    override fun onProofreadUsed(held: Boolean) = onTextAction { textActions.proofreader.onUse(held) }
 
     override fun onCustomButtonUsed(
         id: String,
@@ -671,6 +682,7 @@ class KeyboardService :
 
     override fun textBeforeDictation(): CharSequence? = editor()?.textBeforeCursor(CONTEXT_LENGTH)
 
+    /** Text that arrives while dictating is what the undo of the dictation takes back. */
     override fun insertText(text: String) {
         textActions.reset()
         val editor = editor() ?: return
@@ -679,21 +691,16 @@ class KeyboardService :
         logic.reset()
         editor.commitText(text)
         editor.endBatchEdit()
+        textActions.dictation.add(text)
         updateAutoCaps()
     }
 
     override fun onVoiceState(state: VoiceState) {
+        textActions.dictation.onVoiceActive(state.active)
         stripView?.voiceState = state
     }
 
-    override fun setKeepScreenOn(keep: Boolean) {
-        val window = window?.window ?: return
-        if (keep) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
+    override fun setKeepScreenOn(keep: Boolean) = window?.window.keepScreenOn(keep)
 
     override fun dictationLocale(): Locale = language.locale
 

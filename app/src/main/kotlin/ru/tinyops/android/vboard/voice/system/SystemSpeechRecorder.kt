@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import ru.tinyops.android.vboard.core.voice.DictationFailure
 import ru.tinyops.android.vboard.core.voice.SystemSpeech
+import ru.tinyops.android.vboard.core.voice.VoiceLevel
 import ru.tinyops.android.vboard.diagnostics.AppLog
 import ru.tinyops.android.vboard.diagnostics.ErrorReporting
 import ru.tinyops.android.vboard.voice.engine.DictationListener
@@ -145,7 +146,9 @@ internal class SystemSpeechRecorder(
             }
         }
 
-        override fun onRmsChanged(rmsdB: Float) = Unit
+        override fun onRmsChanged(rmsdB: Float) {
+            listener?.onLevel(VoiceLevel.fromRmsDb(rmsdB))
+        }
 
         override fun onBufferReceived(buffer: ByteArray?) = Unit
 

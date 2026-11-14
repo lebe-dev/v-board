@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.tinyops.android.vboard.AssetFiles
 import ru.tinyops.android.vboard.core.voice.DictationFailure
+import ru.tinyops.android.vboard.core.voice.VoiceLevel
 import ru.tinyops.android.vboard.diagnostics.AppLog
 import ru.tinyops.android.vboard.diagnostics.ErrorReporting
 import java.io.File
@@ -162,6 +163,7 @@ internal class VadRecorder(
         }
         try {
             for (window in input.capture.frames) {
+                listener.onLevel(VoiceLevel.fromPcm16(window))
                 val (cut, speechNow) = synchronized(vadLock) { segmenter.accept(window) to segmenter.speech() }
                 send(cut)
                 if (speechNow != speech) {

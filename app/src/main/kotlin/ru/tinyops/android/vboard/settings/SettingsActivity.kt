@@ -278,6 +278,7 @@ internal class MainSettingsLinks(
 internal class VoiceLinks(
     val settings: () -> Unit,
     val micButton: () -> Unit,
+    val animation: () -> Unit,
 )
 
 /** The pages about the app itself the settings root links to. */
@@ -308,6 +309,7 @@ internal enum class Screen(
     KEYS(MAIN),
     VOICE(MAIN),
     MIC_BUTTON(MAIN),
+    VOICE_ANIMATION(MAIN),
     CLIPBOARD(MAIN),
     FULLSCREEN(MAIN),
     EMOJI(MAIN),
@@ -391,7 +393,7 @@ private fun SettingsNavigation(
                     onClose = { backDispatcher?.onBackPressed() },
                 )
             Screen.THEME, Screen.KEYS -> AppearancePage(current, theme, onTheme, back)
-            Screen.VOICE, Screen.MIC_BUTTON ->
+            Screen.VOICE, Screen.MIC_BUTTON, Screen.VOICE_ANIMATION ->
                 VoicePage(
                     page = current,
                     state = state,
@@ -431,7 +433,7 @@ private fun SettingsNavigation(
     }
 }
 
-/** The voice settings and the page of the microphone button. */
+/** The voice settings, the page of the microphone button and the animations of the voice strip. */
 @Composable
 private fun VoicePage(
     page: Screen,
@@ -442,6 +444,7 @@ private fun VoicePage(
     onBack: () -> Unit,
 ) {
     if (page == Screen.MIC_BUTTON) return MicButtonScreen(state, onBack)
+    if (page == Screen.VOICE_ANIMATION) return VoiceAnimationScreen(state, onBack)
     VoiceSettingsScreen(
         state = state,
         microphoneGranted = status.microphoneGranted,
@@ -470,7 +473,12 @@ private fun mainLinks(
 ) = MainSettingsLinks(
     theme = { navigate(Screen.THEME) },
     keys = { navigate(Screen.KEYS) },
-    voice = VoiceLinks(settings = { navigate(Screen.VOICE) }, micButton = { navigate(Screen.MIC_BUTTON) }),
+    voice =
+        VoiceLinks(
+            settings = { navigate(Screen.VOICE) },
+            micButton = { navigate(Screen.MIC_BUTTON) },
+            animation = { navigate(Screen.VOICE_ANIMATION) },
+        ),
     dictation = { navigate(Screen.DICTATION_FEATURE) },
     proofread = { navigate(Screen.PROOFREAD_FEATURE) },
     customButtons = { navigate(Screen.CUSTOM_BUTTONS) },

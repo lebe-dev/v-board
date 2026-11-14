@@ -1,5 +1,6 @@
 package ru.tinyops.android.vboard.ui
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
@@ -19,8 +20,10 @@ import ru.tinyops.android.vboard.core.layout.KeyStyle
 import ru.tinyops.android.vboard.core.voice.ButtonColor
 import ru.tinyops.android.vboard.core.voice.ButtonPlacement
 import ru.tinyops.android.vboard.core.voice.ButtonPlaces
+import ru.tinyops.android.vboard.core.voice.VoiceAnimation
 import ru.tinyops.android.vboard.voice.ProofreadState
 import ru.tinyops.android.vboard.voice.VoiceState
+import kotlin.math.abs
 
 /**
  * The strip above the keys: settings (cog) on the left, voice input (microphone in a round button)
@@ -37,8 +40,11 @@ import ru.tinyops.android.vboard.voice.VoiceState
  * buttons that do not fit go to a row under the strip, which stays while typing so that the keyboard
  * keeps its height.
  *
- * While dictating, the strip turns into the voice panel: × cancels, the middle shows the status
- * or the text waiting to be inserted, and the highlighted microphone ends the dictation.
+ * While dictating, the strip turns into the voice panel: × cancels and the right end finishes the dictation. With
+ * an animation chosen the panel is a [VoiceBubble] that follows the voice, × and ✓ sit over its ends, and text shows
+ * only when there is something to read (the text waiting to be inserted, recognition or improvement at work).
+ * Without one the middle shows the status and the highlighted microphone ends the dictation. After the dictation an
+ * undo button in the middle takes its text back until the user types or moves on.
  */
 @SuppressLint("ViewConstructor")
 class SuggestionStripView(
@@ -61,10 +67,11 @@ class SuggestionStripView(
 
         fun onVoiceCancel()
 
-        fun onProofreadClicked()
+        /** The undo button that takes back the text of the last dictation. */
+        fun onDictationUndo()
 
-        /** The proofread button was held for a while. */
-        fun onProofreadHeld()
+        /** The proofread button was tapped, or held for a while when [held]. */
+        fun onProofreadUsed(held: Boolean)
 
         /** A custom button was tapped, or held for a while when [held]. */
         fun onCustomButtonUsed(
@@ -87,6 +94,7 @@ class SuggestionStripView(
         FULLSCREEN,
         PROOFREAD,
         MIC,
+        DICTATION_UNDO,
         NONE,
     }
 
@@ -226,9 +234,38 @@ class SuggestionStripView(
             if (field == value) return
             // The status changes all the time while dictating; only the panel coming or going moves the buttons.
             if (field.active != value.active) setPressed(Hit.NONE)
+            if (!field.active && value.active) bubble.reset()
             field = value
             invalidate()
         }
+
+    /** How the voice panel looks; [VoiceAnimation.CLASSIC] keeps the status and the highlighted microphone. */
+    var voiceAnimation: VoiceAnimation
+        get() = bubble.animation
+        set(value) {
+            if (bubble.animation == value) return
+            bubble.animation = value
+            invalidate()
+        }
+
+    /** The loudness of the microphone, from 0 to 1, read on every frame of the animation. */
+    var voiceLevel: () -> Float = { 0f }
+
+    /** Whether the text of the last dictation can be taken back; the middle of the strip then offers it. */
+    var dictationUndo: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            setPressed(Hit.NONE)
+            relayoutButtons()
+        }
+
+    private val bubble = VoiceBubble(theme)
+
+    private val animated: Boolean get() = voiceAnimation != VoiceAnimation.CLASSIC
+
+    /** Dictation and the undo after it leave the strip to themselves. */
+    private val voiceOwnsStrip: Boolean get() = voiceState.active || dictationUndo
 
     private var suggestions: List<String> = emptyList()
 
@@ -253,6 +290,11 @@ class SuggestionStripView(
 
     private val micPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = theme.keyColor(KeyStyle.LETTER, false) }
     private val micPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = theme.keyColor(KeyStyle.LETTER, true) }
+    private val discPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = theme.keyColor(KeyStyle.LETTER, false)
+            alpha = (DISC_ALPHA * MAX_ALPHA).toInt()
+        }
 
     private val textPaint =
         TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -284,7 +326,7 @@ class SuggestionStripView(
             when {
                 zone == Zone.MIC -> micPopup.show(this, micMenu)
                 zone == Zone.PROOFREAD && proofreadState == ProofreadState.UNDO -> undoPeek.begin(UndoPeek.PROOFREAD)
-                zone == Zone.PROOFREAD -> listener?.onProofreadHeld()
+                zone == Zone.PROOFREAD -> listener?.onProofreadUsed(held = true)
                 button == null -> Unit
                 button.state == ProofreadState.UNDO -> undoPeek.begin(button.id)
                 else -> listener?.onCustomButtonUsed(button.id, held = true)
@@ -363,7 +405,7 @@ class SuggestionStripView(
     }
 
     /** While suggestions are shown the cog and the clipboard button give their room to the slots. */
-    private val typing: Boolean get() = suggestions.isNotEmpty() && !voiceState.active
+    private val typing: Boolean get() = suggestions.isNotEmpty() && !voiceOwnsStrip
 
     private val slotsLeft: Float get() = if (typing) 0f else buttonWidth
 
@@ -381,7 +423,7 @@ class SuggestionStripView(
     private val proofreadVisible: Boolean
         get() {
             val state = proofreadState ?: return false
-            if (voiceState.active) return false
+            if (voiceOwnsStrip) return false
             return !typing || state != ProofreadState.IDLE
         }
 
@@ -392,8 +434,8 @@ class SuggestionStripView(
     private val proofreadLeft: Float
         get() = if (proofreadVisible) proofreadRight - buttonWidth else proofreadRight
 
-    /** The custom, clipboard and fullscreen buttons give way to suggestions and to dictation. */
-    private val buttonsVisible: Boolean get() = !voiceState.active && !typing
+    /** The custom, clipboard and fullscreen buttons give way to suggestions, to dictation and to its undo. */
+    private val buttonsVisible: Boolean get() = !voiceOwnsStrip && !typing
 
     private val clipboardCount: Int get() = if (clipboardPlacement != null) 1 else 0
 
@@ -468,7 +510,7 @@ class SuggestionStripView(
     /** Chips are transient and a custom button is always wanted, so the buttons keep their place. */
     private val showsChips: Boolean
         get() {
-            if (clipChips.chips.isEmpty() || suggestions.isNotEmpty() || voiceState.active) return false
+            if (clipChips.chips.isEmpty() || suggestions.isNotEmpty() || voiceOwnsStrip) return false
             val free = places
             return free.gapEnd - free.gapStart >= rowHeight * MIN_CHIP_ROOM
         }
@@ -508,6 +550,7 @@ class SuggestionStripView(
             x >= proofreadRight -> if (micVisible) Zone.MIC else Zone.NONE
             x >= proofreadLeft -> Zone.PROOFREAD
             voiceState.active -> Zone.NONE
+            dictationUndo -> if (abs(x - width / 2f) < buttonWidth / 2f) Zone.DICTATION_UNDO else Zone.NONE
             custom >= customsShown && buttonsVisible ->
                 if (custom - customsShown < clipboardCount) Zone.CLIPBOARD else Zone.FULLSCREEN
             showsChips -> chipZoneAt(x)
@@ -531,11 +574,16 @@ class SuggestionStripView(
     // endregion
 
     override fun onDraw(canvas: Canvas) {
-        if (voiceState.active) drawVoicePanel(canvas) else drawSuggestions(canvas)
+        when {
+            voiceState.active && animated -> drawVoiceBubble(canvas)
+            voiceState.active -> drawVoicePanel(canvas)
+            else -> drawSuggestions(canvas)
+        }
     }
 
     private fun drawSuggestions(canvas: Canvas) {
         drawPressed(canvas)
+        if (dictationUndo) drawDictationUndo(canvas)
         if (!typing) {
             drawIcon(canvas, R.drawable.ic_settings, buttonWidth / 2f, theme.stripIcon)
         }
@@ -613,6 +661,41 @@ class SuggestionStripView(
         }
     }
 
+    /** The undo of the last dictation: a round button in the middle of the strip. */
+    private fun drawDictationUndo(canvas: Canvas) {
+        val centerX = width / 2f
+        val paint = if (pressed.zone == Zone.DICTATION_UNDO) micPressedPaint else micPaint
+        canvas.drawCircle(centerX, rowHeight / 2f, rowHeight * MIC_RADIUS, paint)
+        drawIcon(canvas, R.drawable.ic_undo, centerX, theme.stripIcon)
+    }
+
+    /** The bubble across the strip, × over its left end and ✓ (or the spinner of the work after it) over the right. */
+    private fun drawVoiceBubble(canvas: Canvas) {
+        val inset = rowHeight * BUBBLE_INSET
+        val moving = ValueAnimator.areAnimatorsEnabled()
+        val level = if (voiceState.phase == VoiceState.Phase.LISTENING) voiceLevel() else 0f
+        bubble.draw(canvas, inset, inset, width - inset, rowHeight - inset, drawingTime, level, moving)
+        val left = buttonWidth / 2f
+        val right = micLeft + buttonWidth / 2f
+        val disc = rowHeight * DISC_RADIUS
+        val centerY = rowHeight / 2f
+        canvas.drawCircle(left, centerY, disc, if (pressed.zone == Zone.LEFT_BUTTON) micPressedPaint else discPaint)
+        drawIcon(canvas, R.drawable.ic_close, left, theme.suggestion)
+        canvas.drawCircle(right, centerY, disc, if (pressed.zone == Zone.MIC) micPressedPaint else discPaint)
+        if (voiceState.phase == VoiceState.Phase.LISTENING) {
+            drawIcon(canvas, R.drawable.ic_check, right, theme.suggestion)
+        } else {
+            spinner.draw(canvas, right, centerY, theme.suggestion)
+        }
+        val text = voiceState.bubbleText()?.let(context::getString) ?: voiceState.preview
+        if (text.isNotEmpty()) {
+            val available = (micLeft - buttonWidth) * TEXT_WIDTH
+            val shown = TextUtils.ellipsize(text, textPaint, available, TextUtils.TruncateAt.START)
+            canvas.drawText(shown, 0, shown.length, width / 2f, textPaint.baselineIn(rowHeight), textPaint)
+        }
+        if (moving || voiceState.phase != VoiceState.Phase.LISTENING) postInvalidateOnAnimation()
+    }
+
     private fun drawVoicePanel(canvas: Canvas) {
         drawPressed(canvas)
         drawIcon(canvas, R.drawable.ic_close, buttonWidth / 2f, theme.stripIcon)
@@ -644,7 +727,8 @@ class SuggestionStripView(
                 Zone.CLIPBOARD -> clipboardLeft?.let { it to it + slotSize } ?: return
                 Zone.FULLSCREEN -> fullscreenLeft?.let { it to it + slotSize } ?: return
                 Zone.PROOFREAD -> proofreadLeft to proofreadRight
-                Zone.MIC, Zone.CHIP_0, Zone.CHIP_1, Zone.CHIP_2 -> return // Drawn with their own pressed color.
+                // Drawn with their own pressed color.
+                Zone.MIC, Zone.DICTATION_UNDO, Zone.CHIP_0, Zone.CHIP_1, Zone.CHIP_2 -> return
                 Zone.CUSTOM -> {
                     val (left, bottom) = boxOf(customButtons.indexOfFirst { it.id == pressed.id }) ?: return
                     top = (bottom - rowHeight).toFloat()
@@ -746,8 +830,9 @@ class SuggestionStripView(
             Zone.LEFT_BUTTON -> if (voiceState.active) listener.onVoiceCancel() else listener.onSettingsClicked()
             Zone.CLIPBOARD -> listener.onClipboardClicked()
             Zone.FULLSCREEN -> listener.onFullscreenClicked()
-            Zone.PROOFREAD -> listener.onProofreadClicked()
+            Zone.PROOFREAD -> listener.onProofreadUsed(held = false)
             Zone.MIC -> listener.onMicUsed(null)
+            Zone.DICTATION_UNDO -> listener.onDictationUndo()
             Zone.CHIP_0, Zone.CHIP_1, Zone.CHIP_2 ->
                 clipChips.chips
                     .getOrNull(
@@ -807,6 +892,14 @@ class SuggestionStripView(
         const val DIVIDER_HEIGHT = 0.4f
         const val PRESSED_INSET = 0.12f
         const val ACTIVE_RADIUS = 0.36f
+
+        /** The gap between the bubble and the edges of the strip, as a share of its height. */
+        const val BUBBLE_INSET = 0.12f
+
+        /** The round backing of × and ✓ over the bubble. */
+        const val DISC_RADIUS = 0.3f
+        const val DISC_ALPHA = 0.8f
+        const val MAX_ALPHA = 255
         const val HALO_SCALE = 1.3f
         val CHIP_ZONES = listOf(Zone.CHIP_0, Zone.CHIP_1, Zone.CHIP_2)
 
@@ -823,6 +916,12 @@ class SuggestionStripView(
         const val MIC_RADIUS = 0.4f
     }
 }
+
+/**
+ * The bubble speaks for itself while listening: the status shows only while the recognizer gets ready or the text is
+ * at work after the recording; null leaves the place to the text waiting to be inserted, if any.
+ */
+private fun VoiceState.bubbleText(): Int? = statusText().takeIf { phase != VoiceState.Phase.LISTENING || preparing }
 
 private fun VoiceState.statusText(): Int =
     when (phase) {

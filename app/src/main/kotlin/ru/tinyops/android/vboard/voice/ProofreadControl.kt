@@ -93,11 +93,10 @@ internal class ProofreadControl(
     var holds = false
         private set
 
-    fun onTap() = proofreader.onTap()
-
-    fun onHold() {
-        if (!prefs.proofreadHoldReady) return
-        proofreader.onHold()
+    /** A tap on the button, or a hold when [held]. */
+    fun onUse(held: Boolean) {
+        if (!held) return proofreader.onTap()
+        if (prefs.proofreadHoldReady) proofreader.onHold()
     }
 
     /** What the field would hold after the undo, for the preview of a held undo arrow. */

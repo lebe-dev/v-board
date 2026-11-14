@@ -29,6 +29,7 @@ import ru.tinyops.android.vboard.core.layout.PlacedKey
 import ru.tinyops.android.vboard.core.voice.ButtonColor
 import ru.tinyops.android.vboard.core.voice.ServerProfile
 import ru.tinyops.android.vboard.core.voice.TextFeature
+import ru.tinyops.android.vboard.core.voice.VoiceAnimation
 import ru.tinyops.android.vboard.ui.KeyboardView
 import ru.tinyops.android.vboard.ui.SuggestionStripView
 import ru.tinyops.android.vboard.voice.ProofreadState
@@ -325,12 +326,36 @@ class KeyboardServiceRenderTest {
         val strip = root.getChildAt(0) as SuggestionStripView
         strip.setSuggestions(listOf("привет", "при", "прием"))
         render(root, "strip-idle-dark")
+        strip.voiceAnimation = VoiceAnimation.CLASSIC
         strip.voiceState = VoiceState(VoiceState.Phase.LISTENING, speech = true, preview = "Привет, как дела?")
         val bitmap = render(root, "strip-voice-dark")
         // The active microphone sits on an accent disc in the top right corner.
         val discX = strip.width - strip.height / 2
         val discY = strip.height / 2 - strip.height / 4
         assertEquals(color(R.color.kb_voice_active), bitmap.getPixel(discX, discY))
+    }
+
+    @Test
+    fun `the voice bubble covers the strip while dictating`() {
+        val (root, _) = startInput()
+        val strip = root.getChildAt(0) as SuggestionStripView
+        strip.voiceAnimation = VoiceAnimation.AURORA
+        strip.voiceLevel = { 1f }
+        strip.voiceState = VoiceState(VoiceState.Phase.LISTENING, speech = true)
+        val bitmap = render(root, "strip-voice-bubble-dark")
+        // Between × and ✓ the strip is the bubble, not the bare background.
+        val background = color(R.color.kb_background)
+        assertNotEquals(background, bitmap.getPixel(strip.width / 2, strip.height / 3))
+        assertEquals(background, bitmap.getPixel(1, 1))
+    }
+
+    @Test
+    fun `the undo of a dictation shows in the middle of the strip`() {
+        val (root, _) = startInput()
+        val strip = root.getChildAt(0) as SuggestionStripView
+        strip.dictationUndo = true
+        render(root, "strip-dictation-undo-dark")
+        assertEquals(SuggestionStripView.Zone.DICTATION_UNDO, strip.zoneAt(strip.width / 2f))
     }
 
     @Test

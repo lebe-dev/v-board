@@ -551,6 +551,15 @@
     <string name="mic_mode_repeat_tap">%1$s, tap again</string>
     <string name="settings_mic_button">Microphone button</string>
     <string name="settings_mic_button_summary">What a tap and a hold on the microphone do</string>
+    <string name="settings_voice_animation">Animations</string>
+    <string name="settings_voice_animation_section">While dictating</string>
+    <string name="settings_voice_animation_aurora">Aurora</string>
+    <string name="settings_voice_animation_aurora_summary">Theme colors drift along the bottom of the bubble and rise with your voice</string>
+    <string name="settings_voice_animation_drops">Drops</string>
+    <string name="settings_voice_animation_drops_summary">Drops of the theme colors roll through the bubble, merge and swell with your voice</string>
+    <string name="settings_voice_animation_classic">No animation</string>
+    <string name="settings_voice_animation_classic_summary">The status in the middle of the strip and the highlighted microphone</string>
+    <string name="settings_voice_animation_note">Over the bubble, × cancels the dictation and ✓ finishes it. Afterwards the undo button in the middle of the strip takes the dictated text back until you type.</string>
     <string name="mic_button_tap">Tap</string>
     <string name="mic_button_hold">Menu on hold</string>
     <string name="mic_button_hold_note">Hold the microphone, slide your finger to a mode and let go to start it. Modes that need a text improvement server are hidden until it is set up.</string>

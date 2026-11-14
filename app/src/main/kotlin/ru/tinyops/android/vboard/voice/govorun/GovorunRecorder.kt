@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.tinyops.android.vboard.core.voice.DictationFailure
 import ru.tinyops.android.vboard.core.voice.GovorunApi
+import ru.tinyops.android.vboard.core.voice.VoiceLevel
 import ru.tinyops.android.vboard.voice.engine.DictationListener
 import ru.tinyops.android.vboard.voice.engine.MicrophoneCapture
 import java.io.IOException
@@ -94,6 +95,7 @@ internal class GovorunRecorder(
             scope.launch(Dispatchers.IO) {
                 try {
                     for (window in input.capture.frames) {
+                        listener.onLevel(VoiceLevel.fromPcm16(window))
                         if (queue.trySend(window).isFailure) Log.w(TAG, "audio queue full, window dropped")
                     }
                 } finally {

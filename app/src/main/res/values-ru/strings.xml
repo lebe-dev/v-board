@@ -49,6 +49,7 @@
     <string name="proofread_auth_failed">Сервер отказал в доступе: проверьте ключ и модель</string>
     <string name="proofread_no_changes">Исправлять нечего</string>
     <string name="proofread_changed">Текст изменился: замена не выполнена</string>
+    <string name="voice_undo_changed">Текст изменился: диктовка не отменена</string>
     <string name="undo_preview_empty">Поле будет пустым</string>
     <string name="proofread_too_long">Текст слишком длинный: выделите его часть</string>
     <string name="voice_remote_failed">Сервер распознавания не ответил: фраза не вставлена</string>

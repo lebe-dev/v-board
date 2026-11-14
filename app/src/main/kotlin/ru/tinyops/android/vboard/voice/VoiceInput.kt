@@ -105,6 +105,10 @@ class VoiceInput(
             host.onVoiceState(value)
         }
 
+    /** How loud the microphone was last, from 0 to 1, while recording; read by the animation of the strip. */
+    @Volatile var level = 0f
+        private set
+
     private var transcript: Transcript? = null
     private var dictionary = VoiceDictionary.EMPTY
     private var enhancements: EnhancementQueue? = null
@@ -230,6 +234,7 @@ class VoiceInput(
         serverRecorder.stop()
         govorunRecorder.stop()
         systemRecorder.stop()
+        level = 0f
         state = state.copy(phase = VoiceState.Phase.RECOGNIZING, speech = false)
     }
 
@@ -268,6 +273,11 @@ class VoiceInput(
 
         override fun onSpeechActive(active: Boolean) {
             if (current && state.phase == VoiceState.Phase.LISTENING) state = state.copy(speech = active)
+        }
+
+        // Any thread: only the latest value matters, and the strip reads it on its own frames.
+        override fun onLevel(level: Float) {
+            if (transcript === this@VoiceInput.transcript) this@VoiceInput.level = level
         }
 
         override suspend fun onDone(failure: DictationFailure?) {
@@ -339,6 +349,7 @@ class VoiceInput(
         dictationResults = null
         enhancementDrain = null
         transcript = null
+        level = 0f
         host.setKeepScreenOn(false)
         if (state.active) state = VoiceState()
         scheduleRelease()

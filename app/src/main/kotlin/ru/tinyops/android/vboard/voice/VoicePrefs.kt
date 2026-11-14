@@ -19,6 +19,7 @@ import ru.tinyops.android.vboard.core.voice.RemoteRecognitionServer
 import ru.tinyops.android.vboard.core.voice.ServerKind
 import ru.tinyops.android.vboard.core.voice.ServerProfile
 import ru.tinyops.android.vboard.core.voice.TextFeature
+import ru.tinyops.android.vboard.core.voice.VoiceAnimation
 import ru.tinyops.android.vboard.core.voice.VoiceDictionary
 import ru.tinyops.android.vboard.core.voice.find
 import ru.tinyops.android.vboard.core.voice.promptPlace
@@ -50,6 +51,11 @@ class VoicePrefs(
     var voiceEnabled: Boolean
         get() = prefs.getBoolean(KEY_VOICE_ENABLED, true)
         set(value) = prefs.edit { putBoolean(KEY_VOICE_ENABLED, value) }
+
+    /** How the strip looks while dictating. */
+    var voiceAnimation: VoiceAnimation
+        get() = VoiceAnimation.fromId(prefs.getString(KEY_VOICE_ANIMATION, null))
+        set(value) = prefs.edit { putString(KEY_VOICE_ANIMATION, value.id) }
 
     /** The color of the microphone icon on the strip; null keeps it like the other icons. */
     var micColor: ButtonColor?
@@ -364,6 +370,7 @@ class VoicePrefs(
     internal companion object {
         const val FILE = "voice"
         const val KEY_VOICE_ENABLED = "voice_enabled"
+        const val KEY_VOICE_ANIMATION = "voice_animation"
         const val KEY_MIC_COLOR = "mic_color"
         const val KEY_PROOFREAD_COLOR = "proofread_color"
         const val KEY_ENGINE = "engine"

@@ -18,6 +18,7 @@ import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.clipboard.ClipChip
 import ru.tinyops.android.vboard.core.clipboard.ClipKind
 import ru.tinyops.android.vboard.core.voice.ButtonPlacement
+import ru.tinyops.android.vboard.core.voice.VoiceAnimation
 import ru.tinyops.android.vboard.voice.ProofreadState
 import ru.tinyops.android.vboard.voice.VoiceState
 import java.util.concurrent.TimeUnit
@@ -59,16 +60,16 @@ class SuggestionStripTouchTest {
                     events += if (modeId == null) "mic" else "mode:$modeId"
                 }
 
+                override fun onDictationUndo() {
+                    events += "undo"
+                }
+
                 override fun onVoiceCancel() {
                     events += "cancel"
                 }
 
-                override fun onProofreadClicked() {
-                    events += "proofread"
-                }
-
-                override fun onProofreadHeld() {
-                    events += "proofread-hold"
+                override fun onProofreadUsed(held: Boolean) {
+                    events += if (held) "proofread-hold" else "proofread"
                 }
 
                 override fun onCustomButtonUsed(
@@ -661,6 +662,30 @@ class SuggestionStripTouchTest {
         assertEquals(0, customsIn(1.5f * row))
         remeasure()
         assertEquals(2 * row, strip.height)
+    }
+
+    @Test
+    fun `the ends of the bubble cancel and finish the dictation`() {
+        strip.voiceAnimation = VoiceAnimation.AURORA
+        strip.voiceState = VoiceState(phase = VoiceState.Phase.LISTENING)
+        tap(leftButton)
+        tap(middle)
+        tap(mic)
+        assertEquals(listOf("cancel", "mic"), events)
+    }
+
+    @Test
+    fun `the undo of a dictation stands alone in the middle`() {
+        strip.customButtons = buttons("a")
+        strip.setClipChips(listOf(ClipChip(ClipKind.TEXT, "текст", "текст")))
+        strip.dictationUndo = true
+        tap(middle)
+        tap(1.5f * strip.height)
+        tap(mic)
+        assertEquals(listOf("undo", "mic"), events)
+        strip.dictationUndo = false
+        tap(middle)
+        assertEquals(1, events.count { it == "undo" })
     }
 
     private companion object {

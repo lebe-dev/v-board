@@ -559,6 +559,15 @@
     <string name="mic_mode_repeat_tap">%1$s, повторным нажатием</string>
     <string name="settings_mic_button">Кнопка микрофона</string>
     <string name="settings_mic_button_summary">Что делают нажатие и удержание микрофона</string>
+    <string name="settings_voice_animation">Анимации</string>
+    <string name="settings_voice_animation_section">Во время диктовки</string>
+    <string name="settings_voice_animation_aurora">Сияние</string>
+    <string name="settings_voice_animation_aurora_summary">Цвета темы плывут вдоль нижнего края пузыря и поднимаются вместе с голосом</string>
+    <string name="settings_voice_animation_drops">Капли</string>
+    <string name="settings_voice_animation_drops_summary">Капли цветов темы катаются по пузырю, сливаются и растут вместе с голосом</string>
+    <string name="settings_voice_animation_classic">Без анимации</string>
+    <string name="settings_voice_animation_classic_summary">Состояние в середине полосы и подсвеченный микрофон</string>
+    <string name="settings_voice_animation_note">Крестик поверх пузыря отменяет диктовку, галочка завершает её. После диктовки кнопка в середине полосы убирает надиктованный текст, пока вы не начали печатать.</string>
     <string name="mic_button_tap">Нажатие</string>
     <string name="mic_button_hold">Меню при удержании</string>
     <string name="mic_button_hold_note">Удерживайте микрофон, проведите пальцем до режима и отпустите, чтобы запустить его. Режимы, которым нужен сервер улучшения текста, скрыты, пока он не настроен.</string>

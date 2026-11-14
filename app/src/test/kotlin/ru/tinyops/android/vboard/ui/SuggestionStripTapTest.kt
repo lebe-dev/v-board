@@ -50,11 +50,11 @@ class SuggestionStripTapTest {
                     events += "mic"
                 }
 
+                override fun onDictationUndo() = Unit
+
                 override fun onVoiceCancel() = Unit
 
-                override fun onProofreadClicked() = Unit
-
-                override fun onProofreadHeld() = Unit
+                override fun onProofreadUsed(held: Boolean) = Unit
 
                 override fun onCustomButtonUsed(
                     id: String,

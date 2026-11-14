@@ -130,3 +130,24 @@ enum class AutoStop(
         private const val MILLIS_PER_MINUTE = 60_000L
     }
 }
+
+/**
+ * "Анимация" of the voice strip while dictating.
+ *  - [AURORA]: spots of the theme colors drift along the bottom of the bubble and rise with the voice.
+ *  - [DROPS]: drops of the theme colors roll through the bubble, merge and grow with the voice.
+ *  - [CLASSIC]: no bubble, the status and the highlighted microphone.
+ */
+enum class VoiceAnimation(
+    val id: String,
+) {
+    AURORA("aurora"),
+    DROPS("drops"),
+    CLASSIC("classic"),
+    ;
+
+    companion object {
+        val DEFAULT = AURORA
+
+        fun fromId(id: String?): VoiceAnimation = entries.firstOrNull { it.id == id } ?: DEFAULT
+    }
+}

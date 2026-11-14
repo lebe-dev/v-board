@@ -20,6 +20,9 @@ internal interface DictationListener {
     /** Speech started or stopped. */
     fun onSpeechActive(active: Boolean)
 
+    /** How loud the microphone is, from 0 to 1; may come on any thread, many times a second. */
+    fun onLevel(level: Float) = Unit
+
     /** Always called last, also for empty or failed recordings. */
     suspend fun onDone(failure: DictationFailure?)
 }

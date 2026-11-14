@@ -82,30 +82,46 @@ internal fun MainSettingsScreen(
             }
         }
         item { TypingSection(state, links.typing) }
-        item {
-            SettingsSection(stringResource(R.string.settings_voice)) {
-                item {
-                    SettingsLinkRow(
-                        title = stringResource(R.string.settings_voice),
-                        summary = stringResource(R.string.settings_voice_link_summary),
-                        icon = R.drawable.ic_microphone,
-                        prominent = true,
-                        onClick = links.voice.settings,
-                    )
-                }
-                item {
-                    SettingsLinkRow(
-                        title = stringResource(R.string.settings_mic_button),
-                        summary = stringResource(R.string.settings_mic_button_summary),
-                        icon = R.drawable.ic_mic_spark,
-                        prominent = true,
-                        onClick = links.voice.micButton,
-                    )
-                }
-            }
-        }
+        item { VoiceSection(state, links.voice) }
         item { EnhancementSection(state, links) }
         item { ApplicationSection(links.app) }
+    }
+}
+
+/** Voice input: its settings, the microphone button and the animations of the voice strip. */
+@Composable
+private fun VoiceSection(
+    state: VoiceSettingsState,
+    links: VoiceLinks,
+) {
+    SettingsSection(stringResource(R.string.settings_voice)) {
+        item {
+            SettingsLinkRow(
+                title = stringResource(R.string.settings_voice),
+                summary = stringResource(R.string.settings_voice_link_summary),
+                icon = R.drawable.ic_microphone,
+                prominent = true,
+                onClick = links.settings,
+            )
+        }
+        item {
+            SettingsLinkRow(
+                title = stringResource(R.string.settings_mic_button),
+                summary = stringResource(R.string.settings_mic_button_summary),
+                icon = R.drawable.ic_mic_spark,
+                prominent = true,
+                onClick = links.micButton,
+            )
+        }
+        item {
+            SettingsLinkRow(
+                title = stringResource(R.string.settings_voice_animation),
+                summary = stringResource(state.read { voiceAnimation }.label),
+                icon = R.drawable.ic_auto_awesome,
+                prominent = true,
+                onClick = links.animation,
+            )
+        }
     }
 }
 
