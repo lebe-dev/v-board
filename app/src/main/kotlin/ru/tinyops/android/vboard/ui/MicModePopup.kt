@@ -21,7 +21,7 @@ import kotlin.math.min
 data class MicMenuItem(
     val id: String,
     val label: String,
-    @DrawableRes val icon: Int,
+    @param:DrawableRes val icon: Int,
 )
 
 /**
