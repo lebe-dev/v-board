@@ -114,7 +114,7 @@ internal class ProofreadField(
 ) : Proofreader.Editor {
     override fun window(length: Int): CursorWindow? =
         connection()?.getSurroundingText(length, length, 0)?.let {
-            CursorWindow(it.text, it.selectionStart, it.selectionEnd, it.offset)
+            CursorWindow(it.text, it.selectionStart, it.selectionEnd, it.offset).anchored(length)
         }
 
     override fun replace(

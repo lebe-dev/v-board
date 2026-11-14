@@ -33,7 +33,16 @@ class CursorWindow(
     val selectionStart: Int,
     val selectionEnd: Int,
     val offset: Int,
-)
+) {
+    /**
+     * The window with its offset filled in when the editor did not tell it but gave fewer characters before
+     * the selection than [requestedBefore]: then the text before the selection is all there is, and it starts at 0.
+     */
+    fun anchored(requestedBefore: Int): CursorWindow {
+        if (offset >= 0 || selectionStart >= requestedBefore) return this
+        return CursorWindow(text, selectionStart, selectionEnd, 0)
+    }
+}
 
 /** The editing operations that move the cursor; implemented over an `InputConnection`. */
 interface CursorEditor {
