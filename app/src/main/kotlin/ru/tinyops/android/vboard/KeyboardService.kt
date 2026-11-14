@@ -63,6 +63,7 @@ import ru.tinyops.android.vboard.voice.TextActions
 import ru.tinyops.android.vboard.voice.VoiceInput
 import ru.tinyops.android.vboard.voice.VoicePrefs
 import ru.tinyops.android.vboard.voice.VoiceState
+import ru.tinyops.android.vboard.voice.icon
 import ru.tinyops.android.vboard.voice.label
 import ru.tinyops.android.vboard.voice.micEnhanced
 import ru.tinyops.android.vboard.voice.micHoldChoices
@@ -79,7 +80,7 @@ private fun SuggestionStripView.applyLook(
     micColor = voice.micColor
     micEnhanced = voice.micEnhanced
     val library = voice.prompts.library
-    micMenu = voice.micHoldChoices().map { MicMenuItem(it.mode.id, it.mode.label(context, library)) }
+    micMenu = voice.micHoldChoices().map { MicMenuItem(it.mode.id, it.mode.label(context, library), it.mode.icon) }
     proofreadColor = voice.proofreadColor
     secondRow = keyboard.stripSecondRow
     buttonWidthScale = keyboard.stripButtonWidth / PERCENT

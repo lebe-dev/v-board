@@ -1,6 +1,7 @@
 package ru.tinyops.android.vboard.voice
 
 import android.content.Context
+import androidx.annotation.DrawableRes
 import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.voice.MicEnding
 import ru.tinyops.android.vboard.core.voice.MicMode
@@ -26,3 +27,13 @@ fun MicMode.label(
         MicEnding.REPEAT_TAP -> context.getString(R.string.mic_mode_repeat_tap, base)
     }
 }
+
+/** The icon of the mode: a plain microphone, the microphone with a sparkle for improvement, sparkles for prompts. */
+@get:DrawableRes
+val MicMode.icon: Int
+    get() =
+        when (processing) {
+            MicProcessing.DEFAULT, MicProcessing.NONE -> R.drawable.ic_mic
+            MicProcessing.ENHANCE -> R.drawable.ic_mic_spark
+            MicProcessing.PROMPTS -> R.drawable.ic_auto_awesome
+        }

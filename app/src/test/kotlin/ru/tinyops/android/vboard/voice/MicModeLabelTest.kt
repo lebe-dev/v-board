@@ -6,6 +6,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.voice.MicEnding
 import ru.tinyops.android.vboard.core.voice.MicMode
 import ru.tinyops.android.vboard.core.voice.MicProcessing
@@ -59,5 +60,13 @@ class MicModeLabelTest {
             label(MicMode("m", MicProcessing.NONE, ending = MicEnding.AFTER_PAUSE)),
         )
         assertEquals("С улучшением", label(MicMode("m", MicProcessing.ENHANCE)))
+    }
+
+    @Test
+    fun `the icon tells plain dictation from improved and prompted, whatever the ending`() {
+        assertEquals(R.drawable.ic_mic, MicMode("m", MicProcessing.NONE, ending = MicEnding.REPEAT_TAP).icon)
+        assertEquals(R.drawable.ic_mic, MicMode("m").icon)
+        assertEquals(R.drawable.ic_mic_spark, MicMode("m", MicProcessing.ENHANCE).icon)
+        assertEquals(R.drawable.ic_auto_awesome, MicMode("m", MicProcessing.PROMPTS, listOf("en")).icon)
     }
 }

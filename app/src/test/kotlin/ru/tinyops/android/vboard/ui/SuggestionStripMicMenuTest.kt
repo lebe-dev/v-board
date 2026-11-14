@@ -14,6 +14,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
+import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.clipboard.ClipChip
 import ru.tinyops.android.vboard.voice.VoiceState
 import java.util.concurrent.TimeUnit
@@ -90,7 +91,11 @@ class SuggestionStripMicMenuTest {
         event.recycle()
     }
 
-    private val modes = listOf(MicMenuItem("plain", "Без обработки"), MicMenuItem("improved", "С улучшением"))
+    private val modes =
+        listOf(
+            MicMenuItem("plain", "Без обработки", R.drawable.ic_mic),
+            MicMenuItem("improved", "С улучшением", R.drawable.ic_mic_spark),
+        )
 
     /** The middle of the row of mode [index] in the menu above the strip. */
     private fun modeY(index: Int) = -(modes.size - index - 0.5f) * row

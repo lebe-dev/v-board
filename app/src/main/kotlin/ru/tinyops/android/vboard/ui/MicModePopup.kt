@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
+import androidx.annotation.DrawableRes
 import androidx.core.graphics.ColorUtils
 import kotlin.math.floor
 import kotlin.math.max
@@ -20,6 +21,7 @@ import kotlin.math.min
 data class MicMenuItem(
     val id: String,
     val label: String,
+    @DrawableRes val icon: Int,
 )
 
 /**
@@ -136,13 +138,24 @@ internal class MicModePopup(
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(SIDE_DP), 0, dp(SIDE_DP), 0)
+            setPadding(dp(ICON_START_DP), 0, dp(SIDE_DP), 0)
+            compoundDrawablePadding = dp(ICON_GAP_DP)
+            setCompoundDrawablesRelative(icon(item.icon), null, null, null)
             background =
                 StateListDrawable().apply {
                     val highlight = GradientDrawable().apply { setColor(theme.suggestionPressed) }
                     addState(intArrayOf(android.R.attr.state_activated), highlight)
                 }
         }
+
+    /** A copy of its own, because the theme shares one drawable per icon. */
+    private fun icon(
+        @DrawableRes id: Int,
+    ) = requireNotNull(context.getDrawable(id)).mutate().apply {
+        setTint(theme.stripIcon)
+        val size = theme.stripIconSize.toInt()
+        setBounds(0, 0, size, size)
+    }
 
     private fun dp(value: Int) = (value * density).toInt()
 
@@ -152,6 +165,8 @@ internal class MicModePopup(
         const val RADIUS_DP = 12f
         const val MIN_WIDTH_DP = 200
         const val SIDE_DP = 16
+        const val ICON_START_DP = 12
+        const val ICON_GAP_DP = 12
         const val NAME_SIZE_SP = 16f
         const val OPAQUE = 255
     }

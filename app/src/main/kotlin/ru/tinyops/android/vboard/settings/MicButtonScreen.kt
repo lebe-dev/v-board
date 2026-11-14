@@ -1,8 +1,10 @@
 package ru.tinyops.android.vboard.settings
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -14,6 +16,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import ru.tinyops.android.vboard.R
@@ -22,6 +25,7 @@ import ru.tinyops.android.vboard.core.voice.MicEnding
 import ru.tinyops.android.vboard.core.voice.MicMode
 import ru.tinyops.android.vboard.core.voice.MicProcessing
 import ru.tinyops.android.vboard.core.voice.PromptLibrary
+import ru.tinyops.android.vboard.voice.icon
 import ru.tinyops.android.vboard.voice.label
 import ru.tinyops.android.vboard.voice.micHoldChoices
 
@@ -124,6 +128,7 @@ private fun HoldSection(
             item {
                 ModeRow(
                     label = mode.label(context, library),
+                    icon = mode.icon,
                     available = mode.id in working,
                     first = index == 0,
                     last = index == button.hold.lastIndex,
@@ -149,6 +154,7 @@ private fun HoldSection(
 @Composable
 private fun ModeRow(
     label: String,
+    @DrawableRes icon: Int,
     available: Boolean,
     first: Boolean,
     last: Boolean,
@@ -157,6 +163,7 @@ private fun ModeRow(
 ) {
     ListItem(
         headlineContent = { Text(label) },
+        leadingContent = { Icon(painterResource(icon), contentDescription = null) },
         supportingContent =
             if (available) {
                 null
