@@ -101,6 +101,12 @@ data class MicMode(
             }
         return DictationPlan(mode, improvement)
     }
+
+    /** Whether [other] dictates the same way; prompts count in any order and only for a mode with prompts. */
+    fun sameWayAs(other: MicMode): Boolean =
+        processing == other.processing &&
+            ending == other.ending &&
+            (processing != MicProcessing.PROMPTS || promptIds.toSet() == other.promptIds.toSet())
 }
 
 /** A [mode] of the hold menu that can work, with its [plan]. */
@@ -124,13 +130,31 @@ data class MicButton(
 
     val holdFull: Boolean get() = hold.size >= MAX_HOLD
 
-    /** Replaces the hold mode with the id of [mode] in place, or adds it at the end while there is room. */
+    /** Whether another hold mode already dictates the way [mode] does. */
+    fun duplicates(mode: MicMode): Boolean = hold.any { it.id != mode.id && it.sameWayAs(mode) }
+
+    /**
+     * Replaces the hold mode with the id of [mode] in place, or adds it at the end while there is room; a mode
+     * that [duplicates] another is not taken.
+     */
     fun withHold(mode: MicMode): MicButton =
         when {
+            duplicates(mode) -> this
             hold.any { it.id == mode.id } -> copy(hold = hold.map { if (it.id == mode.id) mode else it })
             holdFull -> this
             else -> copy(hold = hold + mode)
         }
+
+    /** A hold mode [id] to start editing from: one that does not repeat a mode of the menu, when there is such. */
+    fun freshHold(id: String): MicMode =
+        MicEnding.entries
+            .flatMap { ending -> FRESH_PROCESSING.map { MicMode(id, it, ending = ending) } }
+            .firstOrNull { !duplicates(it) }
+            ?: MicMode(id, MicProcessing.PROMPTS)
+
+    /** The button without the hold modes that repeat an earlier one. */
+    fun distinct(): MicButton =
+        copy(hold = hold.fold(emptyList()) { kept, mode -> if (kept.any(mode::sameWayAs)) kept else kept + mode })
 
     fun withoutHold(id: String): MicButton = copy(hold = hold.filterNot { it.id == id })
 
@@ -157,5 +181,8 @@ data class MicButton(
                 MicMode("improved", MicProcessing.ENHANCE),
             )
         val DEFAULT = MicButton()
+
+        /** What a new mode may start with; prompts need a choice first. */
+        private val FRESH_PROCESSING = listOf(MicProcessing.NONE, MicProcessing.ENHANCE)
     }
 }

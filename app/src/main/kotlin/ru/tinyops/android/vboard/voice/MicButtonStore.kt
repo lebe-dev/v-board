@@ -24,8 +24,8 @@ class MicButtonStore(
         get() = parsed(prefs.getString(KEY, null))
         set(value) = prefs.edit { putString(KEY, serialize(value)) }
 
-    /** A hold mode not stored yet, with an id of its own. */
-    fun newHoldMode(): MicMode = MicMode(UUID.randomUUID().toString(), MicProcessing.NONE)
+    /** An id for a hold mode not stored yet. */
+    fun newHoldId(): String = UUID.randomUUID().toString()
 
     companion object {
         private const val TAG = "MicButtonStore"
@@ -52,7 +52,7 @@ class MicButtonStore(
                 MicButton(
                     tap = item.optJSONObject("tap")?.let(::parseMode) ?: MicButton.DEFAULT.tap,
                     hold = List(hold.length()) { hold.optJSONObject(it)?.let(::parseMode) }.filterNotNull(),
-                )
+                ).distinct()
             } catch (failure: JSONException) {
                 AppLog.error(TAG, "Stored microphone button settings are unreadable", failure)
                 ErrorReporting.capture(failure)

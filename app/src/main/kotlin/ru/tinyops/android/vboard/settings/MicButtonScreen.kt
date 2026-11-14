@@ -45,26 +45,26 @@ internal fun MicButtonScreen(
                 library = library,
                 working = working,
                 onOpen = { editing = it },
-                onAdd = {
-                    val mode = state.read { micButton.newHoldMode() }
-                    save(button.withHold(mode))
-                    editing = mode.id
-                },
+                onAdd = { editing = state.read { micButton.newHoldId() } },
                 onMove = { id, by -> save(button.movedHold(id, by)) },
             )
         }
     }
 
-    val mode = button.hold.firstOrNull { it.id == editing } ?: return
+    // A new mode is stored only when it is saved.
+    val id = editing ?: return
+    val stored = button.hold.firstOrNull { it.id == id }
     ModeEditor(
-        mode = mode,
+        mode = stored ?: button.freshHold(id),
+        exists = stored != null,
+        duplicates = button::duplicates,
         library = library,
         onSave = {
             save(button.withHold(it))
             editing = null
         },
         onDelete = {
-            save(button.withoutHold(mode.id))
+            save(button.withoutHold(id))
             editing = null
         },
         onDismiss = { editing = null },
@@ -191,6 +191,8 @@ private fun ModeRow(
 @Composable
 private fun ModeEditor(
     mode: MicMode,
+    exists: Boolean,
+    duplicates: (MicMode) -> Boolean,
     library: PromptLibrary,
     onSave: (MicMode) -> Unit,
     onDelete: () -> Unit,
@@ -201,9 +203,12 @@ private fun ModeEditor(
     var ending by rememberSaveable(mode.id) { mutableStateOf(mode.ending) }
     val needsPrompts = processing == MicProcessing.PROMPTS
     val promptsChosen = prompts.any { library.find(it) != null }
+    val kept = if (needsPrompts) library.prompts.map { it.id }.filter { it in prompts } else emptyList()
+    val edited = mode.copy(processing = processing, promptIds = kept, ending = ending)
+    val repeated = duplicates(edited)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.mic_button_edit)) },
+        title = { Text(stringResource(if (exists) R.string.mic_button_edit else R.string.mic_button_new)) },
         text = {
             SettingsDialogContent {
                 DialogHeading(stringResource(R.string.mic_mode_processing))
@@ -223,20 +228,18 @@ private fun ModeEditor(
                 endingChoices().forEach {
                     SettingsRadioRow(it.label, ending == it.value, { ending = it.value }, it.description)
                 }
+                if (repeated) SettingsNote(stringResource(R.string.mic_button_duplicate), icon = R.drawable.ic_info)
             }
         },
         confirmButton = {
             TextButton(
-                enabled = !needsPrompts || promptsChosen,
-                onClick = {
-                    val kept = if (needsPrompts) library.prompts.map { it.id }.filter { it in prompts } else emptyList()
-                    onSave(mode.copy(processing = processing, promptIds = kept, ending = ending))
-                },
+                enabled = (!needsPrompts || promptsChosen) && !repeated,
+                onClick = { onSave(edited) },
             ) { Text(stringResource(R.string.feature_save)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
-            TextButton(onClick = onDelete) { Text(stringResource(R.string.mic_button_delete)) }
+            if (exists) TextButton(onClick = onDelete) { Text(stringResource(R.string.mic_button_delete)) }
         },
     )
 }

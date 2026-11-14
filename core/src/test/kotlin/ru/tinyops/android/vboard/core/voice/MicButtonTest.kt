@@ -2,6 +2,7 @@ package ru.tinyops.android.vboard.core.voice
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -129,9 +130,58 @@ class MicButtonTest {
     @Test
     fun `the hold menu is bounded`() {
         val full =
-            (1..MicButton.MAX_HOLD).fold(MicButton(hold = emptyList())) { button, i -> button.withHold(MicMode("m$i")) }
+            (1..MicButton.MAX_HOLD).fold(MicButton(hold = emptyList())) { button, i ->
+                button.withHold(MicMode("m$i", MicProcessing.PROMPTS, listOf("p$i")))
+            }
         assertTrue(full.holdFull)
-        assertEquals(full, full.withHold(MicMode("extra")))
+        assertEquals(full, full.withHold(MicMode("extra", MicProcessing.NONE)))
+    }
+
+    @Test
+    fun `a mode that dictates the same way as another is not added twice`() {
+        val plain = MicMode("plain", MicProcessing.NONE)
+        val improved = MicMode("improved", MicProcessing.ENHANCE)
+        val button = MicButton(hold = listOf(plain, improved))
+        assertTrue(button.duplicates(MicMode("other", MicProcessing.NONE)))
+        assertEquals(button, button.withHold(MicMode("other", MicProcessing.NONE)))
+        assertEquals(button, button.withHold(improved.copy(processing = MicProcessing.NONE)))
+        assertFalse(button.duplicates(plain))
+        assertFalse(button.duplicates(MicMode("other", MicProcessing.NONE, ending = MicEnding.REPEAT_TAP)))
+    }
+
+    @Test
+    fun `prompts count as the same in any order and only for a mode with prompts`() {
+        val english = MicMode("en", MicProcessing.PROMPTS, listOf("a", "b"))
+        val button = MicButton(hold = listOf(english, MicMode("plain", MicProcessing.NONE, listOf("stale"))))
+        assertTrue(button.duplicates(MicMode("x", MicProcessing.PROMPTS, listOf("b", "a"))))
+        assertFalse(button.duplicates(MicMode("x", MicProcessing.PROMPTS, listOf("a"))))
+        assertTrue(button.duplicates(MicMode("x", MicProcessing.NONE)))
+    }
+
+    @Test
+    fun `a new mode starts as one the menu does not have yet`() {
+        val plain = MicMode("plain", MicProcessing.NONE)
+        val improved = MicMode("improved", MicProcessing.ENHANCE)
+        assertEquals(MicMode("n", MicProcessing.NONE), MicButton(hold = emptyList()).freshHold("n"))
+        assertEquals(MicMode("n", MicProcessing.ENHANCE), MicButton(hold = listOf(plain)).freshHold("n"))
+        val fresh = MicButton(hold = listOf(plain, improved)).freshHold("n")
+        assertEquals("n", fresh.id)
+        assertFalse(MicButton(hold = listOf(plain, improved)).duplicates(fresh))
+    }
+
+    @Test
+    fun `repeated modes are dropped keeping the first one`() {
+        val button =
+            MicButton(
+                hold =
+                    listOf(
+                        MicMode("plain", MicProcessing.NONE),
+                        MicMode("improved", MicProcessing.ENHANCE),
+                        MicMode("again", MicProcessing.NONE),
+                    ),
+            )
+        assertEquals(listOf("plain", "improved"), button.distinct().hold.map { it.id })
+        assertEquals(MicButton.DEFAULT, MicButton.DEFAULT.distinct())
     }
 
     @Test

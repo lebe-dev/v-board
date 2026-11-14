@@ -67,10 +67,22 @@ class MicButtonStoreTest {
     }
 
     @Test
+    fun `a stored menu with a repeated mode reads back without it`() {
+        raw.edit {
+            putString(
+                MicButtonStore.KEY,
+                """{"hold":[{"id":"plain","processing":"none"},{"id":"improved","processing":"enhance"},""" +
+                    """{"id":"added","processing":"none"}]}""",
+            )
+        }
+        assertEquals(listOf("plain", "improved"), store.button.hold.map { it.id })
+    }
+
+    @Test
     fun `a new hold mode gets an id of its own`() {
-        val first = store.newHoldMode()
-        val second = store.newHoldMode()
-        assertNotEquals(first.id, second.id)
-        assertNotEquals(MicButton.TAP_ID, first.id)
+        val first = store.newHoldId()
+        val second = store.newHoldId()
+        assertNotEquals(first, second)
+        assertNotEquals(MicButton.TAP_ID, first)
     }
 }

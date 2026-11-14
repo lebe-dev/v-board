@@ -562,6 +562,8 @@
     <string name="mic_button_hold_note">Удерживайте микрофон, проведите пальцем до режима и отпустите, чтобы запустить его. Режимы, которым нужен сервер улучшения текста, скрыты, пока он не настроен.</string>
     <string name="mic_button_hold_empty">Нет режимов: удержание работает как нажатие</string>
     <string name="mic_button_add">Добавить режим</string>
+    <string name="mic_button_new">Новый режим</string>
+    <string name="mic_button_duplicate">Такой режим уже есть в меню</string>
     <string name="mic_button_edit">Изменить режим</string>
     <string name="mic_button_delete">Удалить</string>
     <string name="mic_button_unavailable">Скрыт: нужен настроенный сервер улучшения текста и промпт</string>

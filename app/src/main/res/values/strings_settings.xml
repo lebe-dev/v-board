@@ -554,6 +554,8 @@
     <string name="mic_button_hold_note">Hold the microphone, slide your finger to a mode and let go to start it. Modes that need a text improvement server are hidden until it is set up.</string>
     <string name="mic_button_hold_empty">No modes: a hold works like a tap</string>
     <string name="mic_button_add">Add a mode</string>
+    <string name="mic_button_new">New mode</string>
+    <string name="mic_button_duplicate">This mode is already in the menu</string>
     <string name="mic_button_edit">Edit mode</string>
     <string name="mic_button_delete">Delete</string>
     <string name="mic_button_unavailable">Hidden: needs a complete text improvement server and prompt</string>
