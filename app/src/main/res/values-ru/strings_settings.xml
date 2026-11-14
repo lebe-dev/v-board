@@ -15,6 +15,11 @@
     <string name="settings_clipboard_history">Хранить историю буфера обмена</string>
     <string name="settings_clipboard_note">История остаётся на этом телефоне, хранит последние 30 элементов и пропускает то, что приложения помечают как конфиденциальное, например пароли. Скриншоты автоматически не собираются.</string>
     <string name="settings_back">Назад</string>
+    <string name="settings_edit_rows">Скрыть пункты</string>
+    <string name="settings_edit_done">Готово</string>
+    <string name="settings_edit_hide">Скрыть</string>
+    <string name="settings_edit_show">Показать</string>
+    <string name="settings_edit_hint">Нажмите на пункт, чтобы скрыть его или вернуть. Раздел "Приложение" остаётся всегда.</string>
     <string name="settings_cancel">Отмена</string>
 
     <string name="settings_appearance">Внешний вид</string>

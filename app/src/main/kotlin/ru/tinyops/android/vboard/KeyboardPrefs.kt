@@ -17,6 +17,11 @@ class KeyboardPrefs(
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
+    /** Ids of the rows hidden on the main settings screen; the ids are stored, so they must stay stable. */
+    var hiddenSettings: Set<String>
+        get() = prefs.getStringSet(KEY_HIDDEN_SETTINGS, null).orEmpty().toSet()
+        set(value) = prefs.edit { putStringSet(KEY_HIDDEN_SETTINGS, value) }
+
     var spaceDragMode: SpaceDragMode
         get() = SpaceDragMode.fromCode(prefs.getString(KEY_SPACE_DRAG, null))
         set(value) = prefs.edit { putString(KEY_SPACE_DRAG, value.code) }
@@ -131,6 +136,7 @@ class KeyboardPrefs(
         private const val KEY_FULLSCREEN = "fullscreen_enabled"
         private const val KEY_FULLSCREEN_COLOR = "fullscreen_color"
         private const val KEY_FULLSCREEN_PLACEMENT = "fullscreen_placement"
+        private const val KEY_HIDDEN_SETTINGS = "hidden_settings"
         private const val KEY_LOG_ERRORS = "log_errors"
         private const val KEY_NEURAL_LOADING = "neural_model_loading"
         private const val KEY_SEND_ERRORS = "send_errors"

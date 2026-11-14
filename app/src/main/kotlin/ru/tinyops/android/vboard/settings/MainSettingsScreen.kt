@@ -37,7 +37,25 @@ internal fun MainSettingsScreen(
 ) {
     val context = LocalContext.current
     var announced by remember { mutableStateOf(UpdateCheck.announced(context)) }
-    SettingsPage(title = stringResource(R.string.settings_title), onBack = onClose) {
+    val prefs = remember { KeyboardPrefs(context) }
+    var hidden by remember { mutableStateOf(prefs.hiddenSettings) }
+    var editing by remember { mutableStateOf(false) }
+    val rows =
+        HiddenRows(hidden, editing) { item ->
+            hidden = if (item.id in hidden) hidden - item.id else hidden + item.id
+            prefs.hiddenSettings = hidden
+        }
+    SettingsPage(
+        title = stringResource(R.string.settings_title),
+        onBack = onClose,
+        actions = {
+            TooltipIconButton(
+                icon = if (editing) R.drawable.ic_check else R.drawable.ic_edit,
+                label = stringResource(if (editing) R.string.settings_edit_done else R.string.settings_edit_rows),
+                onClick = { editing = !editing },
+            )
+        },
+    ) {
         announced?.let { release ->
             item {
                 UpdateBanner(
@@ -50,40 +68,45 @@ internal fun MainSettingsScreen(
                 )
             }
         }
-        item {
-            SettingsSection(stringResource(R.string.settings_appearance)) {
-                item {
-                    SettingsLinkRow(
-                        title = stringResource(R.string.theme_title),
-                        summary = stringResource(theme.name),
-                        icon = R.drawable.ic_palette,
-                        prominent = true,
-                        onClick = links.theme,
-                    )
-                }
-                item {
-                    SettingsLinkRow(
-                        title = stringResource(R.string.keys_title),
-                        summary = stringResource(R.string.keys_link_summary),
-                        icon = R.drawable.ic_keyboard,
-                        prominent = true,
-                        onClick = links.keys,
-                    )
-                }
-                item {
-                    SettingsLinkRow(
-                        title = stringResource(R.string.settings_emoji),
-                        summary = stringResource(R.string.settings_emoji_link_summary),
-                        icon = R.drawable.ic_emoji,
-                        prominent = true,
-                        onClick = links.typing.emoji,
-                    )
+        if (editing) {
+            item { SettingsNote(stringResource(R.string.settings_edit_hint)) }
+        }
+        if (rows.shows(HideableSection.APPEARANCE)) {
+            item {
+                SettingsSection(stringResource(R.string.settings_appearance)) {
+                    hideable(rows, HideableItem.THEME) {
+                        SettingsLinkRow(
+                            title = stringResource(R.string.theme_title),
+                            summary = stringResource(theme.name),
+                            icon = R.drawable.ic_palette,
+                            prominent = true,
+                            onClick = links.theme,
+                        )
+                    }
+                    hideable(rows, HideableItem.KEYS) {
+                        SettingsLinkRow(
+                            title = stringResource(R.string.keys_title),
+                            summary = stringResource(R.string.keys_link_summary),
+                            icon = R.drawable.ic_keyboard,
+                            prominent = true,
+                            onClick = links.keys,
+                        )
+                    }
+                    hideable(rows, HideableItem.EMOJI) {
+                        SettingsLinkRow(
+                            title = stringResource(R.string.settings_emoji),
+                            summary = stringResource(R.string.settings_emoji_link_summary),
+                            icon = R.drawable.ic_emoji,
+                            prominent = true,
+                            onClick = links.typing.emoji,
+                        )
+                    }
                 }
             }
         }
-        item { TypingSection(state, links.typing) }
-        item { VoiceSection(state, links.voice) }
-        item { EnhancementSection(state, links) }
+        if (rows.shows(HideableSection.TYPING)) item { TypingSection(state, links.typing, rows) }
+        if (rows.shows(HideableSection.VOICE)) item { VoiceSection(state, links.voice, rows) }
+        if (rows.shows(HideableSection.ENHANCEMENT)) item { EnhancementSection(state, links, rows) }
         item { ApplicationSection(links.app) }
     }
 }
@@ -93,9 +116,10 @@ internal fun MainSettingsScreen(
 private fun VoiceSection(
     state: VoiceSettingsState,
     links: VoiceLinks,
+    rows: HiddenRows,
 ) {
     SettingsSection(stringResource(R.string.settings_voice)) {
-        item {
+        hideable(rows, HideableItem.VOICE_SETTINGS) {
             SettingsLinkRow(
                 title = stringResource(R.string.settings_voice),
                 summary = stringResource(R.string.settings_voice_link_summary),
@@ -104,7 +128,7 @@ private fun VoiceSection(
                 onClick = links.settings,
             )
         }
-        item {
+        hideable(rows, HideableItem.MIC_BUTTON) {
             SettingsLinkRow(
                 title = stringResource(R.string.settings_mic_button),
                 summary = stringResource(R.string.settings_mic_button_summary),
@@ -113,7 +137,7 @@ private fun VoiceSection(
                 onClick = links.micButton,
             )
         }
-        item {
+        hideable(rows, HideableItem.VOICE_ANIMATION) {
             SettingsLinkRow(
                 title = stringResource(R.string.settings_voice_animation),
                 summary = stringResource(state.read { voiceAnimation }.label),
@@ -130,9 +154,10 @@ private fun VoiceSection(
 private fun EnhancementSection(
     state: VoiceSettingsState,
     links: MainSettingsLinks,
+    rows: HiddenRows,
 ) {
     SettingsSection(stringResource(R.string.settings_enhancement)) {
-        item {
+        hideable(rows, HideableItem.DICTATION) {
             SettingsLinkRow(
                 title = stringResource(R.string.feature_dictation),
                 summary = featureSummary(state, TextFeature.DICTATION),
@@ -141,7 +166,7 @@ private fun EnhancementSection(
                 onClick = links.dictation,
             )
         }
-        item {
+        hideable(rows, HideableItem.PROOFREAD) {
             SettingsLinkRow(
                 title = stringResource(R.string.feature_proofread),
                 summary = featureSummary(state, TextFeature.PROOFREAD),
@@ -150,7 +175,7 @@ private fun EnhancementSection(
                 onClick = links.proofread,
             )
         }
-        item {
+        hideable(rows, HideableItem.CUSTOM_BUTTONS) {
             val count = state.read { customButtons.buttons.size }
             SettingsLinkRow(
                 title = stringResource(R.string.custom_buttons_title),
@@ -165,8 +190,8 @@ private fun EnhancementSection(
                 onClick = links.customButtons,
             )
         }
-        item { DictionaryRow(state, links.text.dictionary) }
-        item {
+        hideable(rows, HideableItem.DICTIONARY) { DictionaryRow(state, links.text.dictionary) }
+        hideable(rows, HideableItem.PROMPTS) {
             SettingsLinkRow(
                 title = stringResource(R.string.settings_prompts),
                 summary = stringResource(R.string.settings_prompts_link_summary),
@@ -175,7 +200,7 @@ private fun EnhancementSection(
                 onClick = links.text.prompts,
             )
         }
-        item {
+        hideable(rows, HideableItem.SERVERS) {
             SettingsLinkRow(
                 title = stringResource(R.string.servers_title),
                 summary = serversSummary(state),
@@ -241,6 +266,7 @@ private fun serversSummary(state: VoiceSettingsState): String {
 private fun TypingSection(
     state: VoiceSettingsState,
     links: TypingLinks,
+    rows: HiddenRows,
 ) {
     val prefs = KeyboardPrefs(LocalContext.current)
     val engine = prefs.slideEngine
@@ -248,7 +274,7 @@ private fun TypingSection(
     val autocorrect = if (autocorrectOn) R.string.settings_fullscreen_on else R.string.feature_off
     val fullscreen = if (prefs.fullscreenEnabled) R.string.settings_fullscreen_on else R.string.feature_off
     SettingsSection(stringResource(R.string.settings_typing)) {
-        item {
+        hideable(rows, HideableItem.SUGGESTIONS) {
             SettingsLinkRow(
                 title = stringResource(R.string.settings_suggestions),
                 summary = stringResource(R.string.settings_suggestions_link_summary),
@@ -257,7 +283,7 @@ private fun TypingSection(
                 onClick = links.suggestions,
             )
         }
-        item {
+        hideable(rows, HideableItem.QUICK_REPLIES) {
             SettingsLinkRow(
                 title = stringResource(R.string.quick_replies_title),
                 summary = quickRepliesSummary(state),
@@ -266,7 +292,7 @@ private fun TypingSection(
                 onClick = links.quickReplies,
             )
         }
-        item {
+        hideable(rows, HideableItem.AUTOCORRECT) {
             SettingsLinkRow(
                 title = stringResource(R.string.settings_autocorrect),
                 summary = stringResource(autocorrect),
@@ -275,7 +301,7 @@ private fun TypingSection(
                 onClick = links.autocorrect,
             )
         }
-        item {
+        hideable(rows, HideableItem.SLIDE_ENGINE) {
             SettingsLinkRow(
                 title = stringResource(R.string.slide_engine_title),
                 summary = stringResource(if (prefs.slideEnabled) slideEngineLabel(engine) else R.string.feature_off),
@@ -284,7 +310,7 @@ private fun TypingSection(
                 onClick = links.slideEngine,
             )
         }
-        item {
+        hideable(rows, HideableItem.CLIPBOARD) {
             SettingsLinkRow(
                 title = stringResource(R.string.settings_clipboard),
                 summary = stringResource(R.string.settings_clipboard_link_summary),
@@ -293,8 +319,8 @@ private fun TypingSection(
                 onClick = links.clipboard,
             )
         }
-        item { SpaceDragRow() }
-        item {
+        hideable(rows, HideableItem.SPACE_DRAG) { SpaceDragRow() }
+        hideable(rows, HideableItem.FULLSCREEN) {
             SettingsLinkRow(
                 title = stringResource(R.string.settings_fullscreen),
                 summary = stringResource(fullscreen),
@@ -303,7 +329,7 @@ private fun TypingSection(
                 onClick = links.fullscreen,
             )
         }
-        item {
+        hideable(rows, HideableItem.DELETE_KEY) {
             SettingsLinkRow(
                 title = stringResource(R.string.delete_key_title),
                 summary = stringResource(deleteHoldLabel(prefs.deleteHold)),

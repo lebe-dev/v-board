@@ -2,6 +2,11 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="settings_title">Settings</string>
     <string name="settings_back">Back</string>
+    <string name="settings_edit_rows">Edit rows</string>
+    <string name="settings_edit_done">Done</string>
+    <string name="settings_edit_hide">Hide</string>
+    <string name="settings_edit_show">Show</string>
+    <string name="settings_edit_hint">Tap a row to hide it or to show it again. The application section always stays.</string>
     <string name="settings_space_drag">Moving the cursor with the space bar</string>
     <string name="settings_space_drag_linear">Horizontal only</string>
     <string name="settings_space_drag_linear_summary">Hold or slide along the space bar: the cursor goes through the text to the left or right, from one line to the next.</string>
