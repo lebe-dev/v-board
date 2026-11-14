@@ -43,7 +43,13 @@ internal object UpdateCheck {
     fun available(
         context: Context,
         current: String = BuildConfig.VERSION_NAME,
-    ): AvailableRelease? = UpdatePrefs(context).latest?.takeIf { it.isNewerThan(current) }
+    ): AvailableRelease? = UpdatePrefs(context).let { prefs -> prefs.latest?.takeIf { prefs.offers(it, current) } }
+
+    /** [release] is newer than [current] and, when it is a beta release, beta releases are on. */
+    private fun UpdatePrefs.offers(
+        release: AvailableRelease,
+        current: String,
+    ): Boolean = release.isNewerThan(current) && (betaReleases || !release.beta)
 
     /** The release the banner on the settings root offers: newer than this build and not closed by the user. */
     fun announced(
@@ -79,11 +85,11 @@ internal object UpdateCheck {
         releases: GithubReleases = GithubReleases(),
         current: String = BuildConfig.VERSION_NAME,
     ): AvailableRelease? {
-        val latest = releases.latest()
         val prefs = UpdatePrefs(context)
+        val latest = releases.latest(prefs.betaReleases)
         prefs.latest = latest
         prefs.lastCheck = System.currentTimeMillis()
-        val newer = latest?.takeIf { it.isNewerThan(current) }
+        val newer = latest?.takeIf { prefs.offers(it, current) }
         Log.i(TAG, if (newer == null) "No newer release" else "Release ${newer.version} is available")
         return newer
     }

@@ -1,5 +1,6 @@
 package ru.tinyops.android.vboard.update
 
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import ru.tinyops.android.vboard.BuildConfig
@@ -8,14 +9,24 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
 
-/** Reads the latest stable release of the app from the GitHub API. */
+/** Reads the newest release of the app from the GitHub API. */
 class GithubReleases(
-    private val apiUrl: String = LATEST_URL,
+    private val apiUrl: String = RELEASES_URL,
 ) {
-    /** The latest stable release, or null when the project has none. Blocks: call off the main thread. */
+    /**
+     * The newest stable release, or the newest of all with [beta] releases; null when there is none. Blocks: call
+     * off the main thread.
+     */
     @Throws(IOException::class)
-    fun latest(): AvailableRelease? {
-        val connection = URI(apiUrl).toURL().openConnection() as HttpURLConnection
+    fun latest(beta: Boolean = false): AvailableRelease? {
+        if (beta) return get("$apiUrl?per_page=$PAGE_SIZE")?.let { newest(it, beta = true) }
+        return get("$apiUrl/latest")?.let(::parse)?.takeUnless { it.beta }
+    }
+
+    /** The body of [url], or null when GitHub has nothing there. */
+    @Throws(IOException::class)
+    private fun get(url: String): String? {
+        val connection = URI(url).toURL().openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = TIMEOUT_MS
             connection.readTimeout = TIMEOUT_MS
@@ -24,38 +35,54 @@ class GithubReleases(
             val code = connection.responseCode
             if (code == HttpURLConnection.HTTP_NOT_FOUND) return null
             if (code != HttpURLConnection.HTTP_OK) throw IOException("GitHub answered HTTP $code")
-            val body = connection.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
-            return parse(body)
+            return connection.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
         } finally {
             connection.disconnect()
         }
     }
 
     companion object {
-        private const val LATEST_URL = "https://api.github.com/repos/lebe-dev/v-board/releases/latest"
+        private const val RELEASES_URL = "https://api.github.com/repos/lebe-dev/v-board/releases"
+        private const val PAGE_SIZE = 20
         private const val TIMEOUT_MS = 15_000
         private const val SHA256_PREFIX = "sha256:"
 
-        /** A draft, a pre-release or a tag that is not a version is not offered. */
+        /** One release; a draft or a tag that is not a version is none. A pre-release is a beta release. */
         @Throws(IOException::class)
         fun parse(body: String): AvailableRelease? =
             try {
-                val json = JSONObject(body)
-                val version = AppVersion.parse(json.getString("tag_name"))
-                val unpublished = json.optBoolean("draft") || json.optBoolean("prerelease")
-                if (version == null || version.isPreRelease || unpublished) {
-                    null
-                } else {
-                    AvailableRelease(
-                        version = version.toString(),
-                        notes = json.optString("body").trim(),
-                        pageUrl = json.getString("html_url"),
-                        apk = apk(json),
-                    )
-                }
+                release(JSONObject(body))
             } catch (bad: JSONException) {
                 throw IOException("GitHub sent an unexpected answer", bad)
             }
+
+        /** The newest version of a list of releases; beta releases only when [beta]. */
+        @Throws(IOException::class)
+        fun newest(
+            body: String,
+            beta: Boolean,
+        ): AvailableRelease? =
+            try {
+                val list = JSONArray(body)
+                List(list.length()) { release(list.getJSONObject(it)) }
+                    .filterNotNull()
+                    .filter { beta || !it.beta }
+                    .maxByOrNull { requireNotNull(AppVersion.parse(it.version)) }
+            } catch (bad: JSONException) {
+                throw IOException("GitHub sent an unexpected answer", bad)
+            }
+
+        private fun release(json: JSONObject): AvailableRelease? {
+            val version = AppVersion.parse(json.getString("tag_name")) ?: return null
+            if (json.optBoolean("draft")) return null
+            return AvailableRelease(
+                version = version.toString(),
+                notes = json.optString("body").trim(),
+                pageUrl = json.getString("html_url"),
+                apk = apk(json),
+                beta = version.isPreRelease || json.optBoolean("prerelease"),
+            )
+        }
 
         private fun apk(release: JSONObject): ApkAsset? {
             val assets = release.optJSONArray("assets") ?: return null

@@ -11,12 +11,13 @@ data class ApkAsset(
     val sha256: String,
 )
 
-/** A published release of the app: its version, its notes and the page it is on. */
+/** A published release of the app: its version, its notes and the page it is on; [beta] for a pre-release. */
 data class AvailableRelease(
     val version: String,
     val notes: String,
     val pageUrl: String,
     val apk: ApkAsset?,
+    val beta: Boolean = false,
 ) {
     /** Whether this release is newer than the version [current] of the running app. */
     fun isNewerThan(current: String): Boolean {
@@ -30,6 +31,7 @@ data class AvailableRelease(
             .put("version", version)
             .put("notes", notes)
             .put("page", pageUrl)
+            .put("beta", beta)
             .apply {
                 if (apk != null) {
                     put("apk", JSONObject().put("url", apk.url).put("size", apk.size).put("sha256", apk.sha256))
@@ -44,7 +46,13 @@ data class AvailableRelease(
                     json.optJSONObject("apk")?.let {
                         ApkAsset(it.getString("url"), it.getLong("size"), it.optString("sha256"))
                     }
-                AvailableRelease(json.getString("version"), json.optString("notes"), json.getString("page"), apk)
+                AvailableRelease(
+                    version = json.getString("version"),
+                    notes = json.optString("notes"),
+                    pageUrl = json.getString("page"),
+                    apk = apk,
+                    beta = json.optBoolean("beta"),
+                )
             } catch (_: JSONException) {
                 null
             }

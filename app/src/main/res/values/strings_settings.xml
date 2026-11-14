@@ -479,6 +479,8 @@
     <string name="updates_link_available">Version %1$s is available</string>
     <string name="updates_auto">Check automatically</string>
     <string name="updates_auto_summary">In the background, without notifications: a new version is shown at the top of the settings</string>
+    <string name="updates_beta">Beta versions</string>
+    <string name="updates_beta_summary">Also offer versions that are still being tested; they may have bugs</string>
     <string name="updates_interval">How often</string>
     <string name="updates_interval_daily">Once a day</string>
     <string name="updates_interval_weekly">Once a week</string>

@@ -10,7 +10,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.IOException
 
-/** The answer of `GET /repos/{owner}/{repo}/releases/latest`, trimmed to the fields the app reads. */
+/** The answers of the GitHub releases API, trimmed to the fields the app reads. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class GithubReleasesTest {
@@ -54,10 +54,29 @@ class GithubReleasesTest {
     }
 
     @Test
-    fun `pre-releases and tags that are not versions are not offered`() {
-        assertNull(GithubReleases.parse(release(prerelease = true)))
-        assertNull(GithubReleases.parse(release(tag = "v1.3.0-beta")))
+    fun `pre-releases are read as beta releases and tags that are not versions are skipped`() {
+        assertFalse(GithubReleases.parse(release())!!.beta)
+        assertTrue(GithubReleases.parse(release(prerelease = true))!!.beta)
+        assertTrue(GithubReleases.parse(release(tag = "v1.3.0-beta"))!!.beta)
         assertNull(GithubReleases.parse(release(tag = "nightly")))
+    }
+
+    @Test
+    fun `the newest release of the list is chosen, a beta one only when beta releases are on`() {
+        val list =
+            "[" +
+                listOf(
+                    release(tag = "v1.0.0"),
+                    release(tag = "v1.2.0-beta", prerelease = true),
+                    release(tag = "v1.1.0"),
+                    """{"tag_name": "v9.0.0", "draft": true, "html_url": "", "assets": []}""",
+                    release(tag = "nightly"),
+                ).joinToString(",") +
+                "]"
+
+        assertEquals("1.1.0", GithubReleases.newest(list, beta = false)?.version)
+        assertEquals("1.2.0-beta", GithubReleases.newest(list, beta = true)?.version)
+        assertNull(GithubReleases.newest("[]", beta = true))
     }
 
     @Test(expected = IOException::class)
@@ -81,6 +100,7 @@ class GithubReleasesTest {
 
         assertEquals(release, AvailableRelease.decode(release.encode()))
         assertEquals(release.copy(apk = null), AvailableRelease.decode(release.copy(apk = null).encode()))
+        assertEquals(release.copy(beta = true), AvailableRelease.decode(release.copy(beta = true).encode()))
     }
 
     private companion object {

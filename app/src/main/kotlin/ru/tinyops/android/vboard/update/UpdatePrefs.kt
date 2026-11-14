@@ -33,6 +33,11 @@ class UpdatePrefs(
         get() = CheckInterval.fromCode(prefs.getString(KEY_INTERVAL, null))
         set(value) = prefs.edit { putString(KEY_INTERVAL, value.code) }
 
+    /** Whether beta releases are offered too; off by default. */
+    var betaReleases: Boolean
+        get() = prefs.getBoolean(KEY_BETA, false)
+        set(value) = prefs.edit { putBoolean(KEY_BETA, value) }
+
     /** The newest release found by the last successful check, or null when there was none. */
     var latest: AvailableRelease?
         get() = prefs.getString(KEY_LATEST, null)?.let(AvailableRelease::decode)
@@ -52,6 +57,7 @@ class UpdatePrefs(
         private const val FILE = "updates"
         private const val KEY_AUTO_CHECK = "auto_check"
         private const val KEY_INTERVAL = "check_interval"
+        private const val KEY_BETA = "beta_releases"
         private const val KEY_LATEST = "latest_release"
         private const val KEY_LAST_CHECK = "last_check"
         private const val KEY_DISMISSED = "dismissed_version"

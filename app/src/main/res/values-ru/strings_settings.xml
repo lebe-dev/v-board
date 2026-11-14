@@ -485,6 +485,8 @@
     <string name="updates_link_available">Доступна версия %1$s</string>
     <string name="updates_auto">Проверять автоматически</string>
     <string name="updates_auto_summary">В фоне и без уведомлений: о новой версии скажет плашка вверху настроек</string>
+    <string name="updates_beta">Бета-версии</string>
+    <string name="updates_beta_summary">Предлагать и версии, которые ещё тестируются; в них возможны ошибки</string>
     <string name="updates_interval">Как часто</string>
     <string name="updates_interval_daily">Раз в сутки</string>
     <string name="updates_interval_weekly">Раз в неделю</string>

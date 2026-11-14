@@ -214,6 +214,7 @@ class SettingsBackupTest {
         UpdatePrefs(context).apply {
             autoCheck = true
             interval = CheckInterval.WEEKLY
+            betaReleases = true
         }
         val replies = voice.quickReplies.replies
         val theme = KeyboardThemes.selected(context)
@@ -233,6 +234,7 @@ class SettingsBackupTest {
         assertEquals(listOf(KeyboardThemes.MINT), KeyboardThemes.recent(context).map { it.id })
         assertTrue(UpdatePrefs(context).autoCheck)
         assertEquals(CheckInterval.WEEKLY, UpdatePrefs(context).interval)
+        assertTrue(UpdatePrefs(context).betaReleases)
     }
 
     @Test

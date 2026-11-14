@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpServer
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -27,12 +28,19 @@ class UpdateFlowTest {
 
     private lateinit var server: HttpServer
     private var latest: String? = null
+    private var list = "[]"
     private val installed = mutableListOf<ByteArray>()
 
     @Before
     fun setUp() {
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
-        server.createContext("/latest") { exchange ->
+        server.createContext("/releases") { exchange ->
+            val body = list.toByteArray()
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+            exchange.close()
+        }
+        server.createContext("/releases/latest") { exchange ->
             val body = latest?.toByteArray()
             if (body == null) {
                 exchange.sendResponseHeaders(404, -1)
@@ -62,15 +70,46 @@ class UpdateFlowTest {
 
     private fun base() = "http://127.0.0.1:${server.address.port}"
 
-    private fun releases() = GithubReleases("${base()}/latest")
+    private fun releases() = GithubReleases("${base()}/releases")
 
+    private fun json(
+        tag: String,
+        prerelease: Boolean = false,
+    ) = """
+        {"tag_name": "$tag", "prerelease": $prerelease, "html_url": "${base()}/tag/$tag", "body": "",
+         "assets": [{"name": "vboard.apk", "size": ${apk.size}, "digest": "sha256:$sha256",
+                     "browser_download_url": "${base()}/download/vboard.apk"}]}
+        """
+
+    /** A stable release, the one GitHub calls the latest. */
     private fun publish(tag: String) {
-        latest =
-            """
-            {"tag_name": "$tag", "prerelease": false, "html_url": "${base()}/tag/$tag", "body": "",
-             "assets": [{"name": "vboard.apk", "size": ${apk.size}, "digest": "sha256:$sha256",
-                         "browser_download_url": "${base()}/download/vboard.apk"}]}
-            """
+        latest = json(tag)
+        list = "[${json(tag)}]"
+    }
+
+    @Test
+    fun `beta releases are offered only while they are on`() {
+        publish("v1.0.0")
+        list = "[${json("v1.1.0-beta", prerelease = true)}, ${json("v1.0.0")}]"
+        val prefs = UpdatePrefs(context)
+        assertFalse("off by default", prefs.betaReleases)
+
+        assertNull(UpdateCheck.check(context, releases(), current = "1.0.0"))
+
+        prefs.betaReleases = true
+        assertEquals("1.1.0-beta", UpdateCheck.check(context, releases(), current = "1.0.0")?.version)
+        assertEquals("1.1.0-beta", UpdateCheck.available(context, current = "1.0.0")?.version)
+
+        prefs.betaReleases = false
+        assertNull("a found beta goes away with the switch", UpdateCheck.available(context, current = "1.0.0"))
+    }
+
+    @Test
+    fun `with beta releases on a newer stable release still wins`() {
+        UpdatePrefs(context).betaReleases = true
+        list = "[${json("v1.1.0-beta", prerelease = true)}, ${json("v1.1.0")}]"
+
+        assertEquals("1.1.0", UpdateCheck.check(context, releases(), current = "1.0.0")?.version)
     }
 
     private fun release(hash: String = sha256) =

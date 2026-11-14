@@ -68,6 +68,7 @@ private fun AutoCheckSection() {
     val prefs = remember { UpdatePrefs(context) }
     var auto by remember { mutableStateOf(prefs.autoCheck) }
     var interval by remember { mutableStateOf(prefs.interval) }
+    var beta by remember { mutableStateOf(prefs.betaReleases) }
     SettingsSection(null) {
         item {
             SettingsSwitchRow(
@@ -103,6 +104,20 @@ private fun AutoCheckSection() {
                     },
                 )
             }
+        }
+        item {
+            SettingsSwitchRow(
+                title = stringResource(R.string.updates_beta),
+                summary = stringResource(R.string.updates_beta_summary),
+                icon = R.drawable.ic_bug_report,
+                prominent = true,
+                checked = beta,
+                onCheckedChange = {
+                    beta = it
+                    prefs.betaReleases = it
+                    UpdateCheck.start(context)
+                },
+            )
         }
     }
 }
