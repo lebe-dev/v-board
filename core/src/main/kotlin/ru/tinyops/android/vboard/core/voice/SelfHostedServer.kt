@@ -142,6 +142,7 @@ enum class EnhancementOutcome {
     UNCHANGED,
     FAILED,
     AUTH_FAILED,
+    TIMED_OUT,
     ;
 
     companion object {

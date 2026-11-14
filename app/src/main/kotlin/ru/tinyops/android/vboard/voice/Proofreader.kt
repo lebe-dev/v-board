@@ -134,6 +134,7 @@ internal class Proofreader(
                 EnhancementOutcome.UNCHANGED -> R.string.proofread_no_changes
                 EnhancementOutcome.AUTH_FAILED -> R.string.proofread_auth_failed
                 EnhancementOutcome.FAILED -> R.string.proofread_failed
+                EnhancementOutcome.TIMED_OUT -> R.string.proofread_timed_out
             }
         if (problem != null) {
             onMessage(problem)

@@ -261,6 +261,7 @@ internal class ButtonActions(
                 EnhancementOutcome.UNCHANGED -> R.string.custom_button_no_changes
                 EnhancementOutcome.AUTH_FAILED -> R.string.proofread_auth_failed
                 EnhancementOutcome.FAILED -> R.string.proofread_failed
+                EnhancementOutcome.TIMED_OUT -> R.string.proofread_timed_out
             }
         if (problem != null) {
             onMessage(problem)

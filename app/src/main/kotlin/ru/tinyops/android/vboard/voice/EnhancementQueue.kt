@@ -73,7 +73,7 @@ internal class EnhancementQueue(
     }
 
     private fun report(outcome: EnhancementOutcome) {
-        if (outcome != EnhancementOutcome.FAILED && outcome != EnhancementOutcome.AUTH_FAILED) return
+        if (outcome == EnhancementOutcome.SUCCESS || outcome == EnhancementOutcome.UNCHANGED) return
         if (failureReported) return
         failureReported = true
         onFailure(outcome)

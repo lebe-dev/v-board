@@ -309,9 +309,12 @@ class VoiceInput(
             scope = scope,
             enhance = { enhancer.enhance(server, it, effort) },
             onFailure = {
-                val auth = it == EnhancementOutcome.AUTH_FAILED
                 host.showMessage(
-                    if (auth) R.string.voice_enhancement_auth_failed else R.string.voice_enhancement_failed,
+                    when (it) {
+                        EnhancementOutcome.AUTH_FAILED -> R.string.voice_enhancement_auth_failed
+                        EnhancementOutcome.TIMED_OUT -> R.string.voice_enhancement_timed_out
+                        else -> R.string.voice_enhancement_failed
+                    },
                 )
             },
             insert = ::insert,

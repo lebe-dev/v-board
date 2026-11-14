@@ -333,6 +333,9 @@ class SuggestionStripView(
             }
         }
 
+    /** A red message shown where the suggestions are, for a few seconds. */
+    val errorNotice = StripErrorNotice(this, textPaint, darkTheme)
+
     /** How long suggestions stay after the last update; 0 keeps them. */
     var suggestionTimeoutMillis: Long = 0L
 
@@ -603,6 +606,13 @@ class SuggestionStripView(
         drawCustomButtons(canvas)
         if (voiceAvailable) drawMicButton(canvas)
         if (showsChips) clipChips.draw(canvas, chipRoom, CHIP_ZONES.indexOf(pressed.zone))
+        drawMiddle(canvas)
+    }
+
+    /** The error in red, or else the suggested words. */
+    private fun drawMiddle(canvas: Canvas) {
+        val room = slotWidth * SLOTS * TEXT_WIDTH
+        if (errorNotice.draw(canvas, slotsLeft + slotWidth * SLOTS / 2f, room, rowHeight.toFloat())) return
         if (suggestions.isEmpty()) return
         val baseline = textPaint.baselineIn(rowHeight)
         for ((slot, zone) in SLOT_ZONES.withIndex()) {
@@ -875,6 +885,7 @@ class SuggestionStripView(
         undoPeek.end()
         removeCallbacks(holdAction)
         removeCallbacks(hideSuggestions)
+        errorNotice.clear()
     }
 
     /** Any change of the pressed zone ends the wait for a hold. */

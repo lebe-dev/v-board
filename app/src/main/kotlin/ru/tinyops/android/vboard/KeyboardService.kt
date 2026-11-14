@@ -59,6 +59,7 @@ import ru.tinyops.android.vboard.ui.SuggestionStripView
 import ru.tinyops.android.vboard.ui.UndoPeek
 import ru.tinyops.android.vboard.voice.CustomButtonsControl
 import ru.tinyops.android.vboard.voice.DictationUndoControl
+import ru.tinyops.android.vboard.voice.ENHANCEMENT_ERRORS
 import ru.tinyops.android.vboard.voice.PromptResultStore
 import ru.tinyops.android.vboard.voice.ProofreadControl
 import ru.tinyops.android.vboard.voice.TextActions
@@ -719,7 +720,8 @@ class KeyboardService :
         }.open { SwipeModelAssets.open(this) }
 
     override fun showMessage(message: Int) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        val strip = stripView?.takeIf { message in ENHANCEMENT_ERRORS }
+        if (strip != null) strip.errorNotice.show(message) else Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
     // endregion

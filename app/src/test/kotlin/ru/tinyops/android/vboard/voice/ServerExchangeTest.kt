@@ -18,6 +18,7 @@ import ru.tinyops.android.vboard.core.voice.EnhancementOutcome
 import ru.tinyops.android.vboard.core.voice.RemoteRecognitionServer
 import ru.tinyops.android.vboard.core.voice.SelfHostedServer
 import ru.tinyops.android.vboard.core.voice.ServerCheck
+import ru.tinyops.android.vboard.core.voice.ServerProfile
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.util.concurrent.CountDownLatch
@@ -81,8 +82,16 @@ class ServerExchangeTest {
                 org.json.JSONArray().put(JSONObject().put("message", JSONObject().put("content", content))),
             ).toString()
 
-    private fun selfHosted(apiKey: String = "secret") =
-        SelfHostedServer(endpoint = endpoint, model = "text-model", apiKey = apiKey, prompt = "Fix the text")
+    private fun selfHosted(
+        apiKey: String = "secret",
+        timeoutSeconds: Int = ServerProfile.DEFAULT_TIMEOUT_SECONDS,
+    ) = SelfHostedServer(
+        endpoint = endpoint,
+        model = "text-model",
+        apiKey = apiKey,
+        prompt = "Fix the text",
+        timeoutSeconds = timeoutSeconds,
+    )
 
     private fun recognition(
         promptEnabled: Boolean = false,
@@ -139,6 +148,17 @@ class ServerExchangeTest {
             val result = TextEnhancer().enhance(selfHosted(), "как есть")
 
             assertEquals(TextEnhancer.Result("как есть", EnhancementOutcome.AUTH_FAILED), result)
+        }
+
+    @Test
+    fun `a silent server keeps the dictated text and reports a timeout`() =
+        runBlocking {
+            hang = true
+            answer = chatAnswer("late")
+
+            val result = TextEnhancer().enhance(selfHosted(timeoutSeconds = 1), "как есть")
+
+            assertEquals(TextEnhancer.Result("как есть", EnhancementOutcome.TIMED_OUT), result)
         }
 
     @Test

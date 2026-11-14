@@ -13,6 +13,7 @@ import ru.tinyops.android.vboard.voice.ServerHttp.authorize
 import ru.tinyops.android.vboard.voice.ServerHttp.successBody
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 
 /**
  * "Улучшение текста" through the user's own OpenAI-compatible server, as Govorun's
@@ -43,6 +44,9 @@ class TextEnhancer {
         } catch (failure: ServerHttpException) {
             val outcome = EnhancementOutcome.failure(failure.status)
             fail(text, "The server answered with HTTP status ${failure.status}", failure, outcome)
+        } catch (failure: SocketTimeoutException) {
+            AppLog.error(TAG, "The server did not answer in time", failure)
+            Result(text, EnhancementOutcome.TIMED_OUT)
         } catch (failure: IOException) {
             fail(text, "The request to the server failed: ${failure.javaClass.simpleName}", failure)
         } catch (failure: IllegalStateException) {
