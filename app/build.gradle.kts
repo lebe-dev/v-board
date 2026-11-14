@@ -150,8 +150,8 @@ android {
         applicationId = "ru.tinyops.android.vboard"
         minSdk = 34
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.0.1"
         buildConfigField("String", "GIT_HASH", "\"${gitShortHash.get()}\"")
         buildConfigField("String", "SENTRY_DSN", "\"${sentryDsn.get()}\"")
         buildConfigField("String", "WORD_PAIRS_URL", "\"\"")
