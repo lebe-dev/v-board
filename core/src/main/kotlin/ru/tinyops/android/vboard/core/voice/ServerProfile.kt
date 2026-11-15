@@ -86,6 +86,7 @@ data class ServerProfile(
             endpoint = endpoint.trim(),
             model = model.trim().take(SelfHostedServer.MAX_MODEL_LENGTH),
             apiKey = apiKey.trim().take(SelfHostedServer.MAX_API_KEY_LENGTH),
+            effort = effort.normalized(),
             proxyUrl = proxyUrl.trim(),
             timeoutSeconds = timeoutSeconds.coerceIn(MIN_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS),
         )

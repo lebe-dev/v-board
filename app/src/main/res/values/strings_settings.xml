@@ -162,7 +162,13 @@
     <string name="server_threshold_250">From 250 characters</string>
     <string name="server_threshold_500">From 500 characters</string>
     <string name="server_effort">Effort</string>
-    <string name="server_effort_description">How much the model thinks before it answers. Lower is faster and cheaper, higher is more careful. Sent as reasoning_effort; a model that does not support it may reject the request.</string>
+    <string name="server_effort_description">How much the model thinks before it answers. Lower is faster and cheaper, higher is more careful. Sent as reasoning_effort; a model that does not support a level may reject the request. "Custom" sends the name you type, "Do not send" leaves the parameter out.</string>
+    <string name="server_effort_none">None</string>
+    <string name="server_effort_minimal">Minimal</string>
+    <string name="server_effort_xhigh">XHigh</string>
+    <string name="server_effort_omit">Do not send</string>
+    <string name="server_effort_custom">Custom</string>
+    <string name="server_effort_custom_label">Level name</string>
     <string name="server_effort_low">Low</string>
     <string name="server_effort_high">High</string>
     <string name="server_endpoint">Server address</string>

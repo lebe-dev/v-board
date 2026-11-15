@@ -42,7 +42,7 @@ internal object ServerProfileJson {
                     endpoint = item.optString("endpoint"),
                     model = item.optString("model"),
                     apiKey = item.optString("api_key"),
-                    effort = EnhancementEffort.fromId(item.optString("effort")),
+                    effort = EnhancementEffort.fromId(item.optString("effort", null)),
                     proxyEnabled = item.optBoolean("proxy_enabled"),
                     proxyUrl = item.optString("proxy_url"),
                     timeoutSeconds =

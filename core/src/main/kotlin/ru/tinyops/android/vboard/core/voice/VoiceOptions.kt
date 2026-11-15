@@ -90,19 +90,38 @@ enum class EnhancementThreshold(
 /**
  * "Уровень усилий" of text improvement: how much the model may think before it answers, sent as the
  * OpenAI `reasoning_effort` of the chat completion. Medium unless the user chose another level.
+ * [id] is one of the presets, any value typed by hand (for a model with its own levels), or empty
+ * ([OMIT]) when the parameter is not sent at all.
  */
-enum class EnhancementEffort(
+@JvmInline
+value class EnhancementEffort(
     val id: String,
 ) {
-    LOW("low"),
-    MEDIUM("medium"),
-    HIGH("high"),
-    ;
+    /** The value for the request, or null when the parameter must not be sent. */
+    val requestValue: String? get() = id.ifEmpty { null }
+
+    /** Whether the level is one of the presets rather than typed by hand. */
+    val isPreset: Boolean get() = this in PRESETS || this == OMIT
+
+    /** The level as it is stored: no spaces, bounded. */
+    fun normalized(): EnhancementEffort = EnhancementEffort(id.filterNot(Char::isWhitespace).take(MAX_LENGTH))
 
     companion object {
+        val NONE = EnhancementEffort("none")
+        val MINIMAL = EnhancementEffort("minimal")
+        val LOW = EnhancementEffort("low")
+        val MEDIUM = EnhancementEffort("medium")
+        val HIGH = EnhancementEffort("high")
+        val XHIGH = EnhancementEffort("xhigh")
+        val OMIT = EnhancementEffort("")
         val DEFAULT = MEDIUM
+        const val MAX_LENGTH = 32
 
-        fun fromId(id: String?): EnhancementEffort = entries.firstOrNull { it.id == id } ?: DEFAULT
+        /** The levels offered as ready-made choices, from the least thinking to the most. */
+        val PRESETS = listOf(NONE, MINIMAL, LOW, MEDIUM, HIGH, XHIGH)
+
+        /** The level stored under [id]; nothing stored is the default, an empty id is [OMIT]. */
+        fun fromId(id: String?): EnhancementEffort = if (id == null) DEFAULT else EnhancementEffort(id).normalized()
     }
 }
 

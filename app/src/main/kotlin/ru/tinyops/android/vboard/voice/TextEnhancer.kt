@@ -106,16 +106,15 @@ class TextEnhancer {
             instruction: String,
             text: String,
             effort: EnhancementEffort = EnhancementEffort.DEFAULT,
-        ): JSONObject =
-            JSONObject()
-                .put("model", model.trim())
-                .put(
-                    "messages",
-                    JSONArray()
-                        .put(JSONObject().put("role", "system").put("content", instruction.trim()))
-                        .put(JSONObject().put("role", "user").put("content", text)),
-                ).put("reasoning_effort", effort.id)
-                .put("stream", false)
+        ): JSONObject {
+            val messages =
+                JSONArray()
+                    .put(JSONObject().put("role", "system").put("content", instruction.trim()))
+                    .put(JSONObject().put("role", "user").put("content", text))
+            val request = JSONObject().put("model", model.trim()).put("messages", messages)
+            effort.requestValue?.let { request.put("reasoning_effort", it) }
+            return request.put("stream", false)
+        }
 
         /** `choices[0].message.content`; anything else is an unusable response. */
         fun parseResponse(raw: String): String {

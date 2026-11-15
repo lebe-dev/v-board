@@ -249,6 +249,14 @@ class VoiceSettingsTest {
     }
 
     @Test
+    fun `custom effort is sent as typed and an omitted one is left out`() {
+        val custom = TextEnhancer.buildRequest("m", "i", "t", EnhancementEffort.fromId("xhigh"))
+        assertEquals("xhigh", custom.getString("reasoning_effort"))
+        val omitted = TextEnhancer.buildRequest("m", "i", "t", EnhancementEffort.OMIT)
+        assertFalse(omitted.has("reasoning_effort"))
+    }
+
+    @Test
     fun `chat completion request and response follow the OpenAI format`() {
         val request = TextEnhancer.buildRequest(" gpt ", " Исправь ", "текст", EnhancementEffort.LOW)
         assertEquals("gpt", request.getString("model"))

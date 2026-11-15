@@ -155,7 +155,13 @@ class VoiceRulesTest {
         assertEquals(EnhancementEffort.MEDIUM, EnhancementEffort.DEFAULT)
         assertEquals("high", EnhancementEffort.fromId("high").id)
         assertEquals(EnhancementEffort.LOW, EnhancementEffort.fromId("low"))
-        assertEquals(EnhancementEffort.DEFAULT, EnhancementEffort.fromId("turbo"))
+        assertEquals("turbo", EnhancementEffort.fromId(" turbo ").id)
+        assertEquals(EnhancementEffort.OMIT, EnhancementEffort.fromId(""))
+        assertNull(EnhancementEffort.OMIT.requestValue)
+        assertEquals("xhigh", EnhancementEffort.XHIGH.requestValue)
+        assertEquals(EnhancementEffort.MAX_LENGTH, EnhancementEffort.fromId("x".repeat(100)).id.length)
+        assertEquals(true, EnhancementEffort.NONE.isPreset)
+        assertEquals(false, EnhancementEffort.fromId("turbo").isPreset)
         assertEquals(EnhancementEffort.DEFAULT, EnhancementEffort.fromId(null))
     }
 

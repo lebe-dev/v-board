@@ -164,7 +164,13 @@
     <string name="server_threshold_250">От 250 символов</string>
     <string name="server_threshold_500">От 500 символов</string>
     <string name="server_effort">Уровень усилий</string>
-    <string name="server_effort_description">Сколько модель думает перед ответом. Ниже — быстрее и дешевле, выше — аккуратнее. Отправляется как reasoning_effort; модель без его поддержки может отклонить запрос.</string>
+    <string name="server_effort_description">Сколько модель думает перед ответом. Ниже — быстрее и дешевле, выше — аккуратнее. Отправляется как reasoning_effort; модель без поддержки уровня может отклонить запрос. "Свой" отправляет введённое название, "Не отправлять" убирает параметр из запроса.</string>
+    <string name="server_effort_none">Нет</string>
+    <string name="server_effort_minimal">Минимальный</string>
+    <string name="server_effort_xhigh">Максимальный</string>
+    <string name="server_effort_omit">Не отправлять</string>
+    <string name="server_effort_custom">Свой</string>
+    <string name="server_effort_custom_label">Название уровня</string>
     <string name="server_effort_low">Низкий</string>
     <string name="server_effort_high">Высокий</string>
     <string name="server_endpoint">Адрес сервера</string>

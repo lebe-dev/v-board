@@ -1,9 +1,13 @@
 package ru.tinyops.android.vboard.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
@@ -24,6 +28,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.voice.EnhancementEffort
 import ru.tinyops.android.vboard.core.voice.SelfHostedServer
@@ -400,23 +405,44 @@ private fun KindChoice(
     }
 }
 
-/** "Уровень усилий": three levels visible at once, with the explanation under them. */
+/** "Уровень усилий": the presets, "do not send" and a level typed by hand, with the explanation under them. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ColumnScope.EffortChoice(
     selected: EnhancementEffort,
     onSelected: (EnhancementEffort) -> Unit,
 ) {
-    val levels = effortChoices()
+    var custom by rememberSaveable { mutableStateOf(!selected.isPreset) }
     Text(stringResource(R.string.server_effort), style = MaterialTheme.typography.labelLarge)
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        levels.forEachIndexed { index, level ->
-            SegmentedButton(
-                selected = level.value == selected,
-                onClick = { onSelected(level.value) },
-                shape = SegmentedButtonDefaults.itemShape(index, levels.size),
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        effortChoices().forEach { level ->
+            FilterChip(
+                selected = !custom && level.value == selected,
+                onClick = {
+                    custom = false
+                    onSelected(level.value)
+                },
                 label = { Text(level.label, maxLines = 1) },
             )
         }
+        FilterChip(
+            selected = custom,
+            onClick = {
+                custom = true
+                if (selected.isPreset) onSelected(EnhancementEffort(""))
+            },
+            label = { Text(stringResource(R.string.server_effort_custom), maxLines = 1) },
+        )
+    }
+    if (custom) {
+        OutlinedTextField(
+            value = selected.id,
+            onValueChange = { onSelected(EnhancementEffort(it).normalized()) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text(stringResource(R.string.server_effort_custom_label)) },
+            placeholder = { Text("minimal") },
+        )
     }
     Text(
         stringResource(R.string.server_effort_description),
@@ -473,13 +499,17 @@ private fun DeleteServerDialog(
     )
 }
 
-/** The levels of "Уровень усилий". */
+/** The ready-made levels of "Уровень усилий", ending with the one that sends nothing. */
 @Composable
 internal fun effortChoices(): List<Choice<EnhancementEffort>> =
     listOf(
+        Choice(EnhancementEffort.NONE, stringResource(R.string.server_effort_none)),
+        Choice(EnhancementEffort.MINIMAL, stringResource(R.string.server_effort_minimal)),
         Choice(EnhancementEffort.LOW, stringResource(R.string.server_effort_low)),
         Choice(EnhancementEffort.MEDIUM, stringResource(R.string.server_effort_medium)),
         Choice(EnhancementEffort.HIGH, stringResource(R.string.server_effort_high)),
+        Choice(EnhancementEffort.XHIGH, stringResource(R.string.server_effort_xhigh)),
+        Choice(EnhancementEffort.OMIT, stringResource(R.string.server_effort_omit)),
     )
 
 /**
