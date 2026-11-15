@@ -47,7 +47,7 @@ class ServerProfileTest {
 
     @Test
     fun `the timeout defaults to three minutes and reaches text improvement`() {
-        assertEquals(180, profile.timeoutSeconds)
+        assertEquals(30, profile.timeoutSeconds)
         assertEquals(45, profile.copy(timeoutSeconds = 45).forEnhancement("Fix it").timeoutSeconds)
     }
 

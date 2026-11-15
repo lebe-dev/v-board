@@ -109,7 +109,7 @@ data class ServerProfile(
         const val MIN_TIMEOUT_SECONDS = 10
         const val MAX_TIMEOUT_SECONDS = 300
         const val TIMEOUT_STEP_SECONDS = 10
-        const val DEFAULT_TIMEOUT_SECONDS = 180
+        const val DEFAULT_TIMEOUT_SECONDS = 30
     }
 }
 
