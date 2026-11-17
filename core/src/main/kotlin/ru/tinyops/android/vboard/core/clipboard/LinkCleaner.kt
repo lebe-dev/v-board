@@ -24,6 +24,8 @@ object LinkCleaner {
             "clckid",
             "yclid",
             "msclkid",
+            "twclid",
+            "ttclid",
         )
 
     private val url = Regex("(?i:https?://|www\\.)[^\\s<>\"']+")

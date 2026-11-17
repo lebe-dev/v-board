@@ -58,6 +58,14 @@ class LinkCleanerTest {
     }
 
     @Test
+    fun `x and tiktok click identifiers are removed`() {
+        assertEquals(
+            "https://example.com/item?id=42",
+            LinkCleaner.clean("https://example.com/item?twclid=a&ttclid=b&id=42"),
+        )
+    }
+
+    @Test
     fun `instagram share and meta pixel identifiers are removed`() {
         assertEquals(
             "https://example.com/p/1?x=1",
