@@ -6,6 +6,7 @@ import androidx.core.content.edit
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -139,6 +140,20 @@ class ClipChipsControlTest {
         control.refresh()
         assertEquals(listOf("r1"), strip.shownClipChips.map { it.remote })
         assertEquals(emptyList<String>(), superseded)
+    }
+
+    @Test
+    fun `a pasted item is not offered again as the copy the sync app wrote`() {
+        remote = RemoteClip("r1", image = false, "оттуда", "MacBook", NOW - 2 * 60_000)
+        clip =
+            ClipData.newPlainText("Unison", "оттуда").also {
+                ClipDescriptionHack.setTimestamp(it.description, NOW - 2 * 60_000 + 500)
+            }
+        control.refresh()
+        assertTrue(control.pasteRemote(strip.shownClipChips.single()))
+        remote = null
+        control.refresh()
+        assertEquals(0, strip.shownClipChips.size)
     }
 
     @Test

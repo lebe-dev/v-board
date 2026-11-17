@@ -1,12 +1,17 @@
 package ru.tinyops.android.vboard.core.clipboard
 
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ClipEchoTest {
-    private val echo = ClipEcho()
+    // The rule of the sync app: whitespace collapsed, cut at 160 characters with "...".
+    private fun preview(text: String): String {
+        val source = text.trim().replace(Regex("\\s+"), " ")
+        return if (source.length <= 160) source else source.take(160).trimEnd() + "..."
+    }
+
+    private val echo = ClipEcho(::preview)
 
     @Test
     fun `a text pasted from another device is not sent back`() {
@@ -22,14 +27,14 @@ class ClipEchoTest {
 
     @Test
     fun `a copy whose preview matches an item from another device is an echo`() {
-        echo.arrived("one  two\nthree", at = NOW)
-        assertTrue(echo.isEcho("one two three", now = NOW + 1_000))
+        echo.arrived("one two three", at = NOW)
+        assertTrue(echo.isEcho("one  two\nthree", now = NOW + 1_000))
     }
 
     @Test
     fun `a long text matches the shortened preview`() {
         val text = "слово ".repeat(100)
-        echo.arrived(ClipEcho.preview(text), at = NOW)
+        echo.arrived(preview(text), at = NOW)
         assertTrue(echo.isEcho(text, now = NOW))
         assertFalse(echo.isEcho("ещё " + text, now = NOW))
     }
@@ -47,13 +52,6 @@ class ClipEchoTest {
         assertTrue(echo.isRepeat("копия", now = NOW + 1_000))
         assertFalse(echo.isRepeat("копия", now = NOW + ClipEcho.REPEAT_MILLIS + 1))
         assertFalse(echo.isRepeat("другая", now = NOW + 1_000))
-    }
-
-    @Test
-    fun `the preview is shortened like the one that arrives`() {
-        assertEquals("a b", ClipEcho.preview("  a \n b "))
-        val long = "x".repeat(200)
-        assertEquals("x".repeat(160) + "...", ClipEcho.preview(long))
     }
 
     private companion object {

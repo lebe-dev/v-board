@@ -60,7 +60,7 @@ internal class UnisonControl(
     private val manager = context.getSystemService(ClipboardManager::class.java)
     private val handler = Handler(Looper.getMainLooper())
     private val files = Executors.newSingleThreadExecutor()
-    private val echo = ClipEcho()
+    private val echo = ClipEcho(BridgeContract::preview)
     private val keyboardPrefs = KeyboardPrefs(context)
     private val capture = Runnable { capture(live = true) }
     private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { onClipChanged() }
@@ -349,9 +349,14 @@ internal class UnisonControl(
         client.publishBinary(mime) { context.contentResolver.openInputStream(uri) }
     }
 
-    /** Unison puts what arrives into the clipboard under its own name, an image as its own uri. */
+    /**
+     * Unison marks what it puts into the clipboard with the id of the item and its own label; versions before the
+     * id are recognized by the label and by the uri of an image.
+     */
     override fun mirrors(clip: ClipData): Boolean {
-        if (clip.description.label?.toString() == UNISON_LABEL) return true
+        val description = clip.description
+        if (description.extras?.getString(BridgeContract.EXTRA_ITEM_ID) != null) return true
+        if (description.label?.toString() == BridgeContract.CLIP_LABEL) return true
         val uri = clip.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
         return uri?.authority?.startsWith(BridgeContract.PACKAGE) == true
     }
@@ -373,7 +378,6 @@ internal class UnisonControl(
 
     private companion object {
         const val TAG = "UnisonSync"
-        const val UNISON_LABEL = "Unison"
         const val MIME_TEXT = "text/plain"
         const val IMAGE_PREFIX = "image/"
         const val DEFAULT_IMAGE = "image/png"

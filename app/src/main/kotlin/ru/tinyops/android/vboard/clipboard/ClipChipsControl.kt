@@ -94,10 +94,14 @@ internal class ClipChipsControl(
         return payload
     }
 
-    /** Pastes the item from another device behind [chip]; false for a chip of a local clip. */
+    /**
+     * Pastes the item from another device behind [chip]; false for a chip of a local clip. The copy of the item the
+     * sync app put into the clipboard is not offered afterwards either.
+     */
     fun pasteRemote(chip: ClipChip): Boolean {
         val id = chip.remote ?: return false
         remote?.paste(id)
+        primaryClip()?.takeIf { remote?.mirrors(it) == true }?.let { consumedClipAt = it.description.timestamp }
         refresh()
         return true
     }

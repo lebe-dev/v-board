@@ -66,6 +66,51 @@ public final class BridgeContract {
     public static final int PUBLISH_FAILED = 7;
 
     /**
+     * Label of every clip the app writes into the system clipboard. It is not localized, so a
+     * keyboard may compare it as a fallback when {@link #EXTRA_ITEM_ID} is missing.
+     */
+    public static final String CLIP_LABEL = "Unison";
+
+    /**
+     * String extra of {@code ClipDescription.getExtras()} on a clip the app writes. It holds the
+     * id of the item, the same as {@code ClipSummary.id}, so a keyboard can tell the write from a
+     * copy of the user and match it to a chip. Apps older than this extra do not set it.
+     */
+    public static final String EXTRA_ITEM_ID = "app.unison.extra.ITEM_ID";
+
+    /** Length of {@code ClipSummary.preview} of a text item before the ellipsis. */
+    public static final int PREVIEW_LIMIT = 160;
+
+    /** Ellipsis appended to a preview that was cut. */
+    private static final String ELLIPSIS = "...";
+
+    /**
+     * Preview of a text exactly as {@code ClipSummary.preview} carries it for a text item:
+     * whitespace runs collapse into one space, the ends are trimmed, and a text longer than
+     * {@link #PREVIEW_LIMIT} characters is cut and ends with {@code "..."}. File items and
+     * images have previews of their own.
+     */
+    public static String preview(String text) {
+        return preview(text, PREVIEW_LIMIT);
+    }
+
+    /** Preview of a text cut at {@code limit} characters. */
+    public static String preview(String text, int limit) {
+        if (text == null) {
+            return "";
+        }
+        String source = text.trim().replaceAll("\\s+", " ").trim();
+        if (source.length() <= limit) {
+            return source;
+        }
+        int end = limit;
+        while (end > 0 && Character.isWhitespace(source.charAt(end - 1))) {
+            end--;
+        }
+        return source.substring(0, end) + ELLIPSIS;
+    }
+
+    /**
      * True when the core carries content of this MIME type through a publish: plain text, HTML
      * and images.
      */
