@@ -45,7 +45,15 @@ class LinkCleanerTest {
     fun `yandex click identifier is removed`() {
         assertEquals(
             "https://example.com/item?id=42",
-            LinkCleaner.clean("https://example.com/item?clckid=a&id=42"),
+            LinkCleaner.clean("https://example.com/item?clckid=a&yclid=b&id=42"),
+        )
+    }
+
+    @Test
+    fun `microsoft click identifier is removed`() {
+        assertEquals(
+            "https://example.com/item?id=42",
+            LinkCleaner.clean("https://example.com/item?msclkid=a&id=42"),
         )
     }
 
