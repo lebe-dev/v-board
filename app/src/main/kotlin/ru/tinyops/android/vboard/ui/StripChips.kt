@@ -139,24 +139,26 @@ internal class StripChips(
         centerY: Float,
     ) {
         val bitmap = thumbnail
-        if (chip.kind == ClipKind.IMAGE && bitmap != null) {
+        if (chip.kind == ClipKind.IMAGE && chip.remote == null && bitmap != null) {
             drawThumbnail(canvas, bitmap, centerX, centerY, iconSize * THUMBNAIL_SCALE / 2f)
             return
         }
-        val id =
-            when (chip.kind) {
-                ClipKind.LINK -> R.drawable.ic_link
-                ClipKind.EMAIL -> R.drawable.ic_mail
-                ClipKind.PHONE -> R.drawable.ic_phone
-                ClipKind.IMAGE -> R.drawable.ic_image
-                ClipKind.TEXT -> R.drawable.ic_assignment
-            }
+        val id = if (chip.remote != null) R.drawable.ic_computer else iconOf(chip.kind)
         val half = (iconSize / 2f).toInt()
         theme.icon(id, theme.suggestion).apply {
             setBounds(centerX.toInt() - half, centerY.toInt() - half, centerX.toInt() + half, centerY.toInt() + half)
             draw(canvas)
         }
     }
+
+    private fun iconOf(kind: ClipKind): Int =
+        when (kind) {
+            ClipKind.LINK -> R.drawable.ic_link
+            ClipKind.EMAIL -> R.drawable.ic_mail
+            ClipKind.PHONE -> R.drawable.ic_phone
+            ClipKind.IMAGE -> R.drawable.ic_image
+            ClipKind.TEXT -> R.drawable.ic_assignment
+        }
 
     /** A round center-cropped thumbnail. */
     private fun drawThumbnail(
@@ -204,8 +206,9 @@ private fun fit(
     return widths
 }
 
+// An image from another device is labelled with the name of that device.
 private fun ClipChip.shownLabel(context: Context): CharSequence =
-    if (kind == ClipKind.IMAGE) context.getString(R.string.clip_image) else label
+    if (kind == ClipKind.IMAGE && label.isEmpty()) context.getString(R.string.clip_image) else label
 
 /** The baseline that centers the text of this paint in a row [height] high. */
 internal fun Paint.baselineIn(height: Int) = height / 2f - (descent() + ascent()) / 2f

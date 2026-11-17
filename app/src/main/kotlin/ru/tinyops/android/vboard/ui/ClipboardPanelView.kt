@@ -38,7 +38,8 @@ import java.util.concurrent.Executors
  * switch and the delete mode, and the remembered items in two columns. A tap pastes an item (or
  * deletes it in the delete mode). While [promptResultsShown] says so, the header switches between
  * the clipboard and the buffer of prompt [results], which can be filtered by prompt; in the delete mode
- * the results stand in one column and are dragged by a handle into a new order.
+ * the results stand in one column and are dragged by a handle into a new order. While the clipboard sync is
+ * connected, the header also pauses and resumes it.
  */
 @SuppressLint("ViewConstructor")
 class ClipboardPanelView(
@@ -48,7 +49,17 @@ class ClipboardPanelView(
     private val prefs: ClipboardPrefs,
     private val results: PromptResultStore? = null,
     private val promptResultsShown: () -> Boolean = { false },
+    private val syncPause: SyncPause? = null,
 ) : LinearLayout(context) {
+    /** The pause of the clipboard sync with the other devices of the user. */
+    interface SyncPause {
+        /** The sync is on and connected, so it can be paused. */
+        val active: Boolean
+        val paused: Boolean
+
+        fun togglePause()
+    }
+
     interface Listener {
         fun onClipboardBack()
 
@@ -66,6 +77,11 @@ class ClipboardPanelView(
     private var showingResults = false
     private var filter: PromptFilter = PromptFilter.All
 
+    private val syncButton =
+        circleButton(R.drawable.ic_pause, R.string.unison_pause) {
+            syncPause?.togglePause()
+            updateButtons()
+        }
     private val toggleButton = circleButton(R.drawable.ic_toggle_on, R.string.clip_history_on) { toggleHistory() }
     private val editButton = circleButton(R.drawable.ic_edit, R.string.clip_edit) { toggleEditing() }
     private val content = LinearLayout(context).apply { orientation = VERTICAL }
@@ -229,7 +245,8 @@ class ClipboardPanelView(
                     addView(tabs, FrameLayout.LayoutParams(wrap, wrap, Gravity.CENTER_VERTICAL))
                 }
             addView(middle, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(GAP * 2) })
-            addView(toggleButton, buttonParams())
+            addView(syncButton, buttonParams())
+            addView(toggleButton, buttonParams().apply { marginStart = dp(GAP) })
             addView(editButton, buttonParams().apply { marginStart = dp(GAP) })
         }
 
@@ -255,6 +272,15 @@ class ClipboardPanelView(
     private fun updateButtons() {
         parts.select(clipboardTab, !showingResults)
         parts.select(resultsTab, showingResults)
+        val sync = syncPause?.takeIf { it.active && !showingResults }
+        syncButton.visibility = if (sync != null) VISIBLE else GONE
+        if (sync != null) {
+            syncButton.setImageDrawable(
+                parts.tinted(if (sync.paused) R.drawable.ic_play_arrow else R.drawable.ic_pause, theme.stripIcon),
+            )
+            syncButton.contentDescription =
+                context.getString(if (sync.paused) R.string.unison_resume else R.string.unison_pause)
+        }
         // The prompt results are switched on and off in the settings, not here.
         toggleButton.visibility = if (showingResults) INVISIBLE else VISIBLE
         val on = prefs.keepHistory

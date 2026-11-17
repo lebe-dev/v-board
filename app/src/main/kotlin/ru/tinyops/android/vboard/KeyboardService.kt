@@ -20,7 +20,6 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.core.content.edit
 import androidx.core.net.toUri
-import androidx.core.view.inputmethod.EditorInfoCompat
 import ru.tinyops.android.vboard.clipboard.ClipChipsControl
 import ru.tinyops.android.vboard.clipboard.ClipboardContent
 import ru.tinyops.android.vboard.clipboard.ClipboardHistoryStore
@@ -57,6 +56,8 @@ import ru.tinyops.android.vboard.ui.KeyboardView
 import ru.tinyops.android.vboard.ui.MicMenuItem
 import ru.tinyops.android.vboard.ui.SuggestionStripView
 import ru.tinyops.android.vboard.ui.UndoPeek
+import ru.tinyops.android.vboard.unison.UnisonControl
+import ru.tinyops.android.vboard.unison.UnisonHost
 import ru.tinyops.android.vboard.voice.CustomButtonsControl
 import ru.tinyops.android.vboard.voice.DictationUndoControl
 import ru.tinyops.android.vboard.voice.ENHANCEMENT_ERRORS
@@ -129,6 +130,7 @@ class KeyboardService :
     private lateinit var clipStore: ClipboardHistoryStore
     private lateinit var promptResults: PromptResultStore
     private lateinit var clipChips: ClipChipsControl
+    private lateinit var unison: UnisonControl
 
     /** The time the age of a copied clip is measured against; tests replace it. */
     internal var clock: () -> Long = System::currentTimeMillis
@@ -239,10 +241,7 @@ class KeyboardService :
         voicePrefs = VoicePrefs(this)
         emojiAssets = EmojiAssets(assets)
         emojiPrefs = EmojiPrefs(this)
-        clipStore = ClipboardHistoryStore(this)
-        clipStore.onChanged = { panelView?.takeIf { it.isShown }?.refresh() }
-        clipChips = ClipChipsControl(this, clipboardPrefs, clipStore, { stripView }, { clock() })
-        clipChips.start()
+        startClipboard()
         language = Language.fromCode(prefs().getString(PREF_LANGUAGE, null))
         logic.locale = language.locale
         // Active language first, then the other one so that switching is instant.
@@ -250,7 +249,19 @@ class KeyboardService :
         decoder.load(language.next()) { onDictionaryLoaded() }
     }
 
+    /** The clipboard history, the chips of the strip and the sync with the other devices through Unison. */
+    private fun startClipboard() {
+        clipStore = ClipboardHistoryStore(this)
+        clipStore.onChanged = { panelView?.takeIf { it.isShown }?.refresh() }
+        val host =
+            UnisonHost({ currentInputEditorInfo }, { clipChips.refresh() }, ::insertText, ::pasteImage, ::showMessage)
+        unison = UnisonControl(this, host)
+        clipChips = ClipChipsControl(this, clipboardPrefs, clipStore, { stripView }, { clock() }, unison)
+        clipChips.start()
+    }
+
     override fun onDestroy() {
+        unison.destroy()
         clipChips.destroy()
         textActions.destroy()
         voice.destroy()
@@ -472,6 +483,7 @@ class KeyboardService :
     override fun onFullscreenClicked() = fullscreen.enter()
 
     override fun onChipClicked(chip: ClipChip) {
+        if (clipChips.pasteRemote(chip)) return
         val payload = clipChips.consume()
         if (chip.kind == ClipKind.IMAGE && payload is ClipPayload.Image) {
             pasteImage(payload.source.toUri(), payload.mimeType)
@@ -607,6 +619,7 @@ class KeyboardService :
                     clipboardPrefs,
                     promptResults,
                     promptResultsShown = { voicePrefs.promptResultsEnabled },
+                    syncPause = unison,
                 ).also {
                     it.listener = this
                     panelView = it
@@ -634,18 +647,11 @@ class KeyboardService :
         uri: Uri,
         mimeType: String,
     ) {
-        val info = currentInputEditorInfo
-        val connection = currentInputConnection
-        if (info == null || connection == null) return
-        val accepted = EditorInfoCompat.getContentMimeTypes(info)
-        val acceptedType = ClipboardContent.acceptedImageType(mimeType, accepted)
-        if (acceptedType == null) {
-            showMessage(R.string.paste_image_unsupported)
-            return
-        }
-        editor()?.let { logic.commitComposing(it) }
-        logic.reset()
-        if (!ClipboardContent.commitImage(connection, info, uri, acceptedType)) showMessage(R.string.paste_image_failed)
+        ClipboardContent
+            .pasteImage(currentInputConnection, currentInputEditorInfo, uri, mimeType) {
+                editor()?.let { logic.commitComposing(it) }
+                logic.reset()
+            }?.let(::showMessage)
     }
 
     // endregion

@@ -51,4 +51,16 @@ class ClipChipsTest {
     fun `blank text has no chips`() {
         assertEquals(emptyList(), ClipChips.of(ClipPayload.Text("  \n "), showExtracted = true))
     }
+
+    @Test
+    fun `a text from another device is one chip with its preview`() {
+        val chip = ClipChips.of(RemoteClip("id1", image = false, "привет", "MacBook", 0L))
+        assertEquals(ClipChip(ClipKind.TEXT, "привет", insert = null, remote = "id1"), chip)
+    }
+
+    @Test
+    fun `an image from another device is labelled with the device`() {
+        val chip = ClipChips.of(RemoteClip("id2", image = true, "", "MacBook", 0L))
+        assertEquals(ClipChip(ClipKind.IMAGE, "MacBook", insert = null, remote = "id2"), chip)
+    }
 }

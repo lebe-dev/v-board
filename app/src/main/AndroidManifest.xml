@@ -12,8 +12,12 @@
     <!-- Keeps the background update check, when it is on, scheduled after a reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- Package visibility for the system recognizer and for Govorun's recognition service. -->
+    <!-- Clipboard sync through Unison: granted only when both apps are signed with the same key. -->
+    <uses-permission android:name="app.unison.permission.BRIDGE" />
+
+    <!-- Package visibility for the system recognizer, Govorun's recognition service and Unison. -->
     <queries>
+        <package android:name="app.unison" />
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>

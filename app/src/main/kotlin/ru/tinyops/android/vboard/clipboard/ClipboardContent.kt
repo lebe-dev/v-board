@@ -5,8 +5,10 @@ import android.content.ClipDescription
 import android.net.Uri
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import androidx.core.view.inputmethod.EditorInfoCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
+import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.clipboard.ClipPayload
 
 /** Reads what a [ClipData] holds, reduced to what the keyboard can insert. */
@@ -50,6 +52,25 @@ object ClipboardContent {
         mimeType: String,
         accepted: Array<String>,
     ): String? = accepted.firstOrNull { ClipDescription.compareMimeTypes(mimeType, it) }?.let { mimeType }
+
+    /**
+     * Hands the image at [uri] to the editor, after [beforeCommit] when the field takes images of [mimeType].
+     * Returns null once it went in or without a field, or the message that says why it did not.
+     */
+    fun pasteImage(
+        connection: InputConnection?,
+        info: EditorInfo?,
+        uri: Uri,
+        mimeType: String,
+        beforeCommit: () -> Unit,
+    ): Int? {
+        if (connection == null || info == null) return null
+        val accepted =
+            acceptedImageType(mimeType, EditorInfoCompat.getContentMimeTypes(info))
+                ?: return R.string.paste_image_unsupported
+        beforeCommit()
+        return if (commitImage(connection, info, uri, accepted)) null else R.string.paste_image_failed
+    }
 
     /** Hands the image at [uri] to the editor as rich content of [mimeType]; false when the editor refused it. */
     fun commitImage(

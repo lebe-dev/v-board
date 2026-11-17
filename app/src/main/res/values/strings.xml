@@ -124,4 +124,9 @@
     <string name="fullscreen_copy">Copy</string>
     <string name="fullscreen_close">Exit full screen</string>
     <string name="fullscreen_unsupported">This field cannot be opened in full screen</string>
+    <string name="unison_other_device">Other device</string>
+    <string name="unison_item_gone">This item is no longer available</string>
+    <string name="unison_item_unavailable">The device with this item is offline, try again later</string>
+    <string name="unison_pause">Pause sync with other devices</string>
+    <string name="unison_resume">Resume sync with other devices</string>
 </resources>

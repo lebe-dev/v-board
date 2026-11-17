@@ -358,6 +358,9 @@ class SuggestionStripView(
 
     fun clear() = setSuggestions(emptyList())
 
+    /** The chips the strip offers now. */
+    internal val shownClipChips: List<ClipChip> get() = clipChips.chips
+
     /** The chips of the recent clip; [image] is the thumbnail of an image chip, when it is loaded. */
     fun setClipChips(
         next: List<ClipChip>,

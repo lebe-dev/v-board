@@ -283,6 +283,7 @@ internal class VoiceLinks(
 
 /** The pages about the app itself the settings root links to. */
 internal class AppLinks(
+    val integrations: () -> Unit,
     val diagnostics: () -> Unit,
     val updates: () -> Unit,
 )
@@ -331,6 +332,7 @@ internal enum class Screen(
     DIAGNOSTICS(MAIN),
     APP_LOG(DIAGNOSTICS),
     UPDATES(MAIN),
+    INTEGRATIONS(MAIN),
 }
 
 @Composable
@@ -408,7 +410,7 @@ private fun SettingsNavigation(
                     onBack = back,
                 )
             Screen.DIAGNOSTICS -> DiagnosticsScreen(onOpenLog = { screen = Screen.APP_LOG }, onBack = back)
-            Screen.FULLSCREEN, Screen.APP_LOG, Screen.UPDATES -> StandalonePage(current, back)
+            Screen.FULLSCREEN, Screen.APP_LOG, Screen.UPDATES, Screen.INTEGRATIONS -> StandalonePage(current, back)
             Screen.CLIPBOARD, Screen.EMOJI, Screen.EMOJI_GROUPS, Screen.EMOJI_SINGLE, Screen.SLIDE_ENGINE,
             Screen.AUTOCORRECT, Screen.SUGGESTIONS, Screen.DELETE_KEY,
             ->
@@ -501,12 +503,13 @@ private fun mainLinks(
         ),
     app =
         AppLinks(
+            integrations = { navigate(Screen.INTEGRATIONS) },
             diagnostics = { navigate(Screen.DIAGNOSTICS) },
             updates = { navigate(Screen.UPDATES) },
         ),
 )
 
-/** The pages without sub-pages: the fullscreen mode, the application log and the updates. */
+/** The pages without sub-pages: the fullscreen mode, the application log, the updates and the integrations. */
 @Composable
 private fun StandalonePage(
     page: Screen,
@@ -515,6 +518,7 @@ private fun StandalonePage(
     when (page) {
         Screen.APP_LOG -> AppLogScreen(onBack)
         Screen.UPDATES -> UpdatesScreen(onBack)
+        Screen.INTEGRATIONS -> IntegrationsScreen(onBack)
         else -> FullscreenScreen(onBack)
     }
 }

@@ -13,6 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import ru.tinyops.android.vboard.core.clipboard.ClipPayload
+import ru.tinyops.android.vboard.core.clipboard.RemoteClip
 import ru.tinyops.android.vboard.ui.KeyboardTheme
 import ru.tinyops.android.vboard.ui.SuggestionStripView
 import java.io.File
@@ -28,15 +29,32 @@ class ClipChipsControlTest {
     private var reads = 0
     private lateinit var store: ClipboardHistoryStore
     private lateinit var control: ClipChipsControl
+    private lateinit var strip: SuggestionStripView
+    private var remote: RemoteClip? = null
+    private val superseded = mutableListOf<String>()
+    private val remotes =
+        object : RemoteClips {
+            override fun latest() = remote
+
+            override fun supersede(id: String) {
+                superseded += id
+            }
+
+            override fun paste(id: String) = Unit
+
+            override fun sync() = Unit
+
+            override fun mirrors(clip: ClipData) = clip.description.label == "Unison"
+        }
 
     @Before
     fun setUp() {
         context.getSharedPreferences("clipboard_prefs", Context.MODE_PRIVATE).edit(commit = true) { clear() }
         File(context.filesDir, "clipboard").deleteRecursively()
         store = ClipboardHistoryStore(context, executor = { it.run() }, notify = { it.run() })
-        val strip = SuggestionStripView(context, KeyboardTheme(context))
+        strip = SuggestionStripView(context, KeyboardTheme(context))
         control =
-            ClipChipsControl(context, prefs, store, { strip }, { now }) {
+            ClipChipsControl(context, prefs, store, { strip }, { now }, remotes) {
                 reads++
                 clip
             }
@@ -90,6 +108,55 @@ class ClipChipsControlTest {
         control.refresh()
         assertEquals(0, reads)
         assertEquals(emptyList<String>(), history())
+    }
+
+    @Test
+    fun `an item from another device newer than the local clip takes the strip`() {
+        copied("здесь", NOW - 30_000)
+        remote = RemoteClip("r1", image = false, "оттуда", "MacBook", NOW - 10_000)
+        control.refresh()
+        assertEquals(listOf("r1"), strip.shownClipChips.map { it.remote })
+        assertEquals(listOf("оттуда"), strip.shownClipChips.map { it.label })
+        assertNull(control.consume())
+    }
+
+    @Test
+    fun `a later local copy replaces the item from another device`() {
+        remote = RemoteClip("r1", image = false, "оттуда", "MacBook", NOW - 30_000)
+        copied("здесь", NOW - 10_000)
+        control.refresh()
+        assertEquals(listOf("здесь"), strip.shownClipChips.map { it.label })
+        assertEquals(listOf("r1"), superseded)
+    }
+
+    @Test
+    fun `the copy the sync app put into the clipboard does not replace its item`() {
+        remote = RemoteClip("r1", image = false, "оттуда", "MacBook", NOW - 2 * 60_000)
+        clip =
+            ClipData.newPlainText("Unison", "оттуда").also {
+                ClipDescriptionHack.setTimestamp(it.description, NOW - 2 * 60_000 + 500)
+            }
+        control.refresh()
+        assertEquals(listOf("r1"), strip.shownClipChips.map { it.remote })
+        assertEquals(emptyList<String>(), superseded)
+    }
+
+    @Test
+    fun `an item from another device is offered for a few minutes`() {
+        remote = RemoteClip("r1", image = false, "оттуда", "MacBook", NOW - 4 * 60_000)
+        control.refresh()
+        assertEquals(1, strip.shownClipChips.size)
+        now += 2 * 60_000
+        control.refresh()
+        assertEquals(emptyList<String>(), strip.shownClipChips.map { it.label })
+    }
+
+    @Test
+    fun `an item from another device follows the switch of the chips`() {
+        prefs.showOnStrip = false
+        remote = RemoteClip("r1", image = false, "оттуда", "MacBook", NOW - 1_000)
+        control.refresh()
+        assertEquals(0, strip.shownClipChips.size)
     }
 
     private companion object {

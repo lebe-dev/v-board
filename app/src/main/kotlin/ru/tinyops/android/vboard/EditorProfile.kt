@@ -31,6 +31,8 @@ data class EditorProfile(
      * private tab of a browser does: nothing typed or dictated there is kept on the phone.
      */
     val incognito: Boolean = false,
+    /** A copy may leave the phone: a text or number field that is neither a password nor private. */
+    val clipboardSyncAllowed: Boolean = false,
 ) {
     /** Dictation goes where words can be swiped: text fields that are not passwords. */
     val voiceAllowed: Boolean get() = gesturesAllowed
@@ -55,6 +57,7 @@ data class EditorProfile(
             val inputClass = inputType and InputType.TYPE_MASK_CLASS
             val variation = inputType and InputType.TYPE_MASK_VARIATION
             val isText = inputClass == InputType.TYPE_CLASS_TEXT
+            val incognito = info != null && info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0
             val isPassword = isText && variation in PASSWORD_VARIATIONS
             val noSuggestions = inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS != 0
             val numeric =
@@ -69,9 +72,22 @@ data class EditorProfile(
                 multiLine = isText && inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0,
                 // The flags against fullscreen are left out on purpose: the mode only starts at the user's tap.
                 fullscreenAllowed = isText && !isPassword,
-                incognito = info != null && info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0,
+                incognito = incognito,
+                clipboardSyncAllowed = clipboardSyncAllowed(info, inputClass, variation) && !incognito,
             )
         }
+
+        private fun clipboardSyncAllowed(
+            info: EditorInfo?,
+            inputClass: Int,
+            variation: Int,
+        ): Boolean =
+            when {
+                info == null -> false
+                inputClass == InputType.TYPE_CLASS_TEXT -> variation !in PASSWORD_VARIATIONS
+                inputClass == InputType.TYPE_CLASS_NUMBER -> variation != InputType.TYPE_NUMBER_VARIATION_PASSWORD
+                else -> false
+            }
 
         private fun enterAction(info: EditorInfo?): EnterAction {
             val options = info?.imeOptions ?: return EnterAction.NEWLINE

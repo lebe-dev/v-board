@@ -19,13 +19,15 @@ import ru.tinyops.android.vboard.core.input.SpaceDragMode
 import ru.tinyops.android.vboard.core.voice.TextFeature
 import ru.tinyops.android.vboard.core.voice.find
 import ru.tinyops.android.vboard.ui.ThemeSpec
+import ru.tinyops.android.vboard.unison.UnisonPrefs
 import ru.tinyops.android.vboard.update.UpdateCheck
 import ru.tinyops.android.vboard.update.UpdatePrefs
 
 /**
  * The settings root, in sections: appearance (theme, emoji), typing (slide to type, clipboard, the space bar,
  * the fullscreen mode), voice input, text improvement (dictation, proofreading, prompts, servers) and the app
- * itself (language, backup of all settings, diagnostics, updates, version); the back arrow closes settings.
+ * itself (integrations, language, backup of all settings, diagnostics, updates, version); the back arrow closes
+ * settings.
  * A newer release found by a check is announced by a banner above the sections.
  */
 @Composable
@@ -377,7 +379,10 @@ private fun SpaceDragRow() {
     )
 }
 
-/** The app itself: the language, the backup of all settings, diagnostics, updates, the project page and the version. */
+/**
+ * The app itself: the integrations with other apps, the language, the backup of all settings, diagnostics, updates,
+ * the project page and the version.
+ */
 @Composable
 private fun ApplicationSection(links: AppLinks) {
     val context = LocalContext.current
@@ -386,6 +391,15 @@ private fun ApplicationSection(links: AppLinks) {
     val localeManager = context.getSystemService(LocaleManager::class.java)
     var language by remember { mutableStateOf(localeManager.applicationLocales.toLanguageTags()) }
     SettingsSection(stringResource(R.string.settings_application)) {
+        item {
+            SettingsLinkRow(
+                title = stringResource(R.string.integrations_title),
+                summary = integrationsSummary(),
+                icon = R.drawable.ic_extension,
+                prominent = true,
+                onClick = links.integrations,
+            )
+        }
         item {
             SettingsChoiceRow(
                 title = stringResource(R.string.settings_language),
@@ -438,6 +452,13 @@ private fun ApplicationSection(links: AppLinks) {
             )
         }
     }
+}
+
+/** The integrations in use, or what there is to connect. */
+@Composable
+private fun integrationsSummary(): String {
+    val on = UnisonPrefs(LocalContext.current).enabled
+    return stringResource(if (on) R.string.unison_title else R.string.integrations_link_summary)
 }
 
 private const val PROJECT_URL = "https://github.com/lebe-dev/v-board"

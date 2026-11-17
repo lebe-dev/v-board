@@ -124,4 +124,9 @@
     <string name="fullscreen_copy">Скопировать</string>
     <string name="fullscreen_close">Выйти из полноэкранного режима</string>
     <string name="fullscreen_unsupported">Это поле нельзя открыть на весь экран</string>
+    <string name="unison_other_device">Другое устройство</string>
+    <string name="unison_item_gone">Этот элемент больше недоступен</string>
+    <string name="unison_item_unavailable">Устройство с этим элементом не в сети, попробуйте позже</string>
+    <string name="unison_pause">Приостановить синхронизацию с другими устройствами</string>
+    <string name="unison_resume">Возобновить синхронизацию с другими устройствами</string>
 </resources>

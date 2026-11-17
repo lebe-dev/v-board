@@ -56,8 +56,10 @@ class ClipboardPanelRenderTest {
         store: ClipboardHistoryStore,
         results: PromptResultStore? = null,
         resultsShown: Boolean = false,
+        syncPause: ClipboardPanelView.SyncPause? = null,
     ): ClipboardPanelView {
-        val panel = ClipboardPanelView(context, KeyboardTheme(context), store, prefs, results) { resultsShown }
+        val panel =
+            ClipboardPanelView(context, KeyboardTheme(context), store, prefs, results, { resultsShown }, syncPause)
         val width = context.resources.displayMetrics.widthPixels
         val height = (context.resources.displayMetrics.density * 330).toInt()
         panel.measure(
@@ -155,6 +157,34 @@ class ClipboardPanelRenderTest {
         val filtered = panel.texts()
         assertTrue("Dear colleagues, the meeting is moved to Friday." in filtered)
         assertFalse("Встреча в пятницу в три." in filtered)
+    }
+
+    @Test
+    fun `the header pauses and resumes the sync while it is connected`() {
+        val sync =
+            object : ClipboardPanelView.SyncPause {
+                override var active = true
+                override var paused = false
+
+                override fun togglePause() {
+                    paused = !paused
+                }
+            }
+        val panel = panel(store(), syncPause = sync)
+        val pause = panel.withDescription("Pause sync with other devices").single()
+        assertEquals(View.VISIBLE, pause.visibility)
+        pause.performClick()
+        assertTrue(sync.paused)
+        assertEquals(View.VISIBLE, panel.withDescription("Resume sync with other devices").single().visibility)
+        sync.active = false
+        panel.refresh()
+        assertEquals(View.GONE, panel.withDescription("Resume sync with other devices").single().visibility)
+    }
+
+    @Test
+    fun `without the sync the header has no pause`() {
+        val panel = panel(store())
+        assertEquals(View.GONE, panel.withDescription("Pause sync with other devices").single().visibility)
     }
 
     private fun View.withDescription(description: String): List<View> {

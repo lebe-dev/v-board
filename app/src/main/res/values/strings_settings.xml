@@ -597,4 +597,11 @@
     <string name="mic_mode_prompts">With prompts</string>
     <string name="mic_mode_prompts_summary">With the prompts you choose, on the dictation server</string>
     <string name="mic_mode_prompts_title">Prompts</string>
+    <string name="integrations_title">Integrations</string>
+    <string name="integrations_link_summary">Clipboard sync with Unison</string>
+    <string name="unison_title">Unison</string>
+    <string name="unison_summary">Send what you copy to your other devices and offer what was copied there on the suggestion strip</string>
+    <string name="unison_status_missing">Unison is not installed</string>
+    <string name="unison_status_refused">Unison refuses the keyboard: both apps must be signed with the same key</string>
+    <string name="unison_note">Copies from password fields, private fields and items marked sensitive are never sent. The sync can be paused from the clipboard panel of the keyboard.</string>
 </resources>

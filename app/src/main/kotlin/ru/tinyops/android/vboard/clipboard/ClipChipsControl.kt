@@ -8,25 +8,49 @@ import android.os.Handler
 import android.os.Looper
 import androidx.core.net.toUri
 import ru.tinyops.android.vboard.clipboard.ClipboardContent
+import ru.tinyops.android.vboard.core.clipboard.ClipChip
 import ru.tinyops.android.vboard.core.clipboard.ClipChips
 import ru.tinyops.android.vboard.core.clipboard.ClipPayload
+import ru.tinyops.android.vboard.core.clipboard.RemoteClip
 import ru.tinyops.android.vboard.ui.SuggestionStripView
 import java.util.concurrent.Executors
 
+/** The items copied on the other devices of the user. */
+internal interface RemoteClips {
+    /** The newest item that was neither pasted nor replaced by a later copy. */
+    fun latest(): RemoteClip?
+
+    /** A copy made on this phone came after the item [id]: it is not offered anymore. */
+    fun supersede(id: String)
+
+    /** Pastes the item [id] into the field. */
+    fun paste(id: String)
+
+    /** The keyboard opened in a field: catches up with what changed meanwhile. */
+    fun sync()
+
+    /** True for a clip the sync app put into the clipboard: a copy of an item from another device. */
+    fun mirrors(clip: ClipData): Boolean
+}
+
 /**
  * Keeps the clipboard history up to date and shows a clip that was just copied as chips on the strip, until
- * it is pasted or gets too old. Main thread only.
+ * it is pasted or gets too old. An item copied on another device takes the strip while it is newer than the
+ * local clip. Main thread only.
  *
  * @param strip the strip of the current input view, if there is one
  * @param clock the time the age of a clip is measured against
+ * @param remote the items copied on the other devices of the user
  * @param primaryClip reads the clipboard: a call into the system, so it is made once per update
  */
+
 internal class ClipChipsControl(
     private val context: Context,
     private val prefs: ClipboardPrefs,
     private val store: ClipboardHistoryStore,
     private val strip: () -> SuggestionStripView?,
     private val clock: () -> Long,
+    private val remote: RemoteClips? = null,
     private val primaryClip: () -> ClipData? = {
         context.getSystemService(ClipboardManager::class.java)?.primaryClip
     },
@@ -53,8 +77,12 @@ internal class ClipChipsControl(
         thumbnailLoader.shutdownNow()
     }
 
-    /** Catches up with what was copied, also while the keyboard was not running, then updates the chips. */
+    /**
+     * Catches up with what was copied, also while the keyboard was not running and on the other devices, then
+     * updates the chips.
+     */
     fun sync() {
+        remote?.sync()
         val clip = if (prefs.recording || chipsWanted) primaryClip() else null
         if (prefs.recording) store.record(clip)
         show(clip)
@@ -64,6 +92,14 @@ internal class ClipChipsControl(
     fun consume(): ClipPayload? {
         consumedClipAt = clipAt
         return payload
+    }
+
+    /** Pastes the item from another device behind [chip]; false for a chip of a local clip. */
+    fun pasteRemote(chip: ClipChip): Boolean {
+        val id = chip.remote ?: return false
+        remote?.paste(id)
+        refresh()
+        return true
     }
 
     /** Shows the recent clip, if it is fresh and not yet pasted, as chips on the strip. */
@@ -87,6 +123,15 @@ internal class ClipChipsControl(
                 ?.takeUnless { copiedAt == consumedClipAt || age >= LIFETIME_MILLIS }
                 ?.takeUnless(ClipboardContent::isSensitive)
                 ?.let { ClipboardContent.from(it) { uri -> context.contentResolver.getType(uri) } }
+        val local = clip?.takeUnless { remote?.mirrors(it) == true }
+        val other = freshRemote(local?.let { copiedAt })
+        if (other != null) {
+            payload = null
+            strip.setClipChips(listOf(ClipChips.of(other)))
+            val remoteAge = (clock() - other.createdAt).coerceAtLeast(0L)
+            handler.postDelayed(expire, REMOTE_LIFETIME_MILLIS - remoteAge)
+            return
+        }
         if (current == null) {
             payload = null
             strip.setClipChips(emptyList())
@@ -96,6 +141,20 @@ internal class ClipChipsControl(
         clipAt = copiedAt
         strip.setClipChips(ClipChips.of(current, prefs.showExtracted), thumbnailOf(current))
         handler.postDelayed(expire, LIFETIME_MILLIS - age)
+    }
+
+    /**
+     * The item from another device to show, unless it is too old or a local copy made at [localAt] came after it;
+     * such an item is not offered again.
+     */
+    private fun freshRemote(localAt: Long?): RemoteClip? {
+        val clip = remote?.latest()?.takeIf { prefs.chipsShown } ?: return null
+        if (clock() - clip.createdAt >= REMOTE_LIFETIME_MILLIS) return null
+        if (localAt != null && localAt >= clip.createdAt) {
+            remote.supersede(clip.id)
+            return null
+        }
+        return clip
     }
 
     /** The thumbnail of an image clip: decoded off the main thread, the chips are refreshed once it is ready. */
@@ -114,6 +173,9 @@ internal class ClipChipsControl(
 
     private companion object {
         const val LIFETIME_MILLIS = 60_000L
+
+        // Copied on a computer, the item is often pasted on the phone a few minutes later.
+        const val REMOTE_LIFETIME_MILLIS = 5 * 60_000L
         const val THUMBNAIL_SIDE = 96
     }
 }

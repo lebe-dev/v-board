@@ -1,10 +1,14 @@
 package ru.tinyops.android.vboard.core.clipboard
 
-/** A chip on the suggestion strip: what it shows and what a tap inserts (null for an image). */
+/**
+ * A chip on the suggestion strip: what it shows and what a tap inserts (null for an image). [remote] is the id of
+ * an item copied on another device, whose content is fetched on a tap.
+ */
 data class ClipChip(
     val kind: ClipKind,
     val label: String,
     val insert: String?,
+    val remote: String? = null,
 )
 
 /** Builds the chips of the strip from the latest clipboard content. */
@@ -21,6 +25,14 @@ object ClipChips {
         when (payload) {
             is ClipPayload.Image -> listOf(ClipChip(ClipKind.IMAGE, "", null))
             is ClipPayload.Text -> textChips(payload.text, showExtracted)
+        }
+
+    /** One chip for an item from another device: its preview, or the name of the device for an image. */
+    fun of(clip: RemoteClip): ClipChip =
+        if (clip.image) {
+            ClipChip(ClipKind.IMAGE, clip.device, insert = null, remote = clip.id)
+        } else {
+            ClipChip(ClipKind.TEXT, clip.preview, insert = null, remote = clip.id)
         }
 
     private fun textChips(

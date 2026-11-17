@@ -605,4 +605,11 @@
     <string name="mic_mode_prompts">С промптами</string>
     <string name="mic_mode_prompts_summary">С выбранными промптами, на сервере диктовки</string>
     <string name="mic_mode_prompts_title">Промпты</string>
+    <string name="integrations_title">Интеграции</string>
+    <string name="integrations_link_summary">Синхронизация буфера обмена через Unison</string>
+    <string name="unison_title">Unison</string>
+    <string name="unison_summary">Отправлять скопированное на другие устройства и показывать скопированное там на полосе подсказок</string>
+    <string name="unison_status_missing">Unison не установлен</string>
+    <string name="unison_status_refused">Unison не принимает клавиатуру: оба приложения должны быть подписаны одним ключом</string>
+    <string name="unison_note">Скопированное из полей паролей, приватных полей и помеченное как секретное никогда не отправляется. Синхронизацию можно приостановить в панели буфера обмена на клавиатуре.</string>
 </resources>
