@@ -47,13 +47,14 @@ internal class UnisonHost(
  * The clipboard sync through Unison, while it is turned on in the settings: a copy made in a text field (or
  * copied a moment before the keyboard opened) is handed to Unison, and the newest item copied on another device
  * is offered on the strip. Passwords, clips marked sensitive, private fields and what came from Unison itself are
- * never sent. Main thread only.
+ * never sent. A missing Unison is reported to the user once. Main thread only.
  */
 internal class UnisonControl(
     private val context: Context,
     private val host: UnisonHost,
     private val prefs: UnisonPrefs = UnisonPrefs(context),
     private val clock: () -> Long = System::currentTimeMillis,
+    private val installed: () -> Boolean = { UnisonAvailability.installed(context) },
 ) : ClipboardPanelView.SyncPause,
     RemoteClips {
     private val client = UnisonBridgeClient(context)
@@ -71,13 +72,20 @@ internal class UnisonControl(
                 intent: Intent?,
             ) {
                 if (intent?.data?.schemeSpecificPart != BridgeContract.PACKAGE || !prefs.enabled) return
-                client.bind()
+                missingReported = false
+                val removing =
+                    intent.action == Intent.ACTION_PACKAGE_REMOVED &&
+                        !intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
+                if (removing) client.unbind() else client.rebind()
             }
         }
 
     /** The items from the other devices by id, the newest few, and those already pasted or replaced. */
     private val items = LinkedHashMap<String, ClipSummary>()
     private val consumed = HashSet<String>()
+
+    /** True once the user was told that the sync is on but Unison is not on the phone. */
+    private var missingReported = false
 
     /** True while the sync is paused in Unison. */
     override var paused = false
@@ -117,6 +125,7 @@ internal class UnisonControl(
             IntentFilter().apply {
                 addAction(Intent.ACTION_PACKAGE_ADDED)
                 addAction(Intent.ACTION_PACKAGE_REPLACED)
+                addAction(Intent.ACTION_PACKAGE_REMOVED)
                 addDataScheme("package")
             }
         context.registerReceiver(packages, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -135,6 +144,7 @@ internal class UnisonControl(
     /** Follows the switch in the settings and catches up with a fresh copy. */
     override fun sync() {
         if (!prefs.enabled) {
+            missingReported = false
             if (client.connected || items.isNotEmpty()) {
                 client.unbind()
                 items.clear()
@@ -143,11 +153,22 @@ internal class UnisonControl(
             return
         }
         if (!client.connected) {
-            client.bind()
+            connect()
             return
         }
         loadRecent()
         capture(live = false)
+    }
+
+    /** Connects, or says once that the sync cannot work: Unison is not on this phone. */
+    private fun connect() {
+        if (installed()) {
+            client.bind()
+            return
+        }
+        if (missingReported) return
+        missingReported = true
+        host.showMessage(R.string.unison_status_missing)
     }
 
     override fun latest(): RemoteClip? {

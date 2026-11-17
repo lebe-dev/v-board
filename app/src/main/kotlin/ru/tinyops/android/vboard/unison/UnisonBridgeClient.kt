@@ -80,8 +80,12 @@ internal class UnisonBridgeClient(
                 name: ComponentName?,
                 binder: IBinder?,
             ) {
-                val service = binder?.let { IUnisonBridge.Stub.asInterface(it) } ?: return
-                if (!register(service)) return
+                val service = binder?.let { IUnisonBridge.Stub.asInterface(it) }
+                if (service == null || !register(service)) {
+                    // The connection is of no use, so the next attempt asks for a fresh one.
+                    unbind()
+                    return
+                }
                 bridge = service
                 onConnection?.invoke(true)
             }
@@ -130,6 +134,12 @@ internal class UnisonBridgeClient(
         } catch (e: IllegalArgumentException) {
             Log.w(TAG, "The connection to Unison is already gone: ${e.message}")
         }
+    }
+
+    /** Drops the current connection and binds again: the app was installed, updated or removed. */
+    fun rebind() {
+        unbind()
+        bind()
     }
 
     /** The keyboard is gone: the connection is closed and the threads stop. */
