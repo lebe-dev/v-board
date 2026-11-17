@@ -32,12 +32,28 @@ class LinkCleanerTest {
     @Test
     fun `facebook click identifier is removed`() {
         assertEquals(
-            "https://platipomiru.com/?clckid=8fb0dfd5",
+            "https://platipomiru.com/",
             LinkCleaner.clean(
                 "https://platipomiru.com/?clckid=8fb0dfd5&fbclid=PAT01DUAVpOHVleHRuA2FlbQIxMABwZG9mAnNydGMGYXBwX2lk" +
                     "DzU2NzA2NzM0MzM1MjQyNwABp_cGldgS8Odh4wxF39MxjLL5JDi87AI85n-jPNvuQajkDasPHuh9REbK2DsL" +
                     "_aem_2aPGMFzguTeD7pNBJYgXMQ",
             ),
+        )
+    }
+
+    @Test
+    fun `yandex click identifier is removed`() {
+        assertEquals(
+            "https://example.com/item?id=42",
+            LinkCleaner.clean("https://example.com/item?clckid=a&id=42"),
+        )
+    }
+
+    @Test
+    fun `instagram share and meta pixel identifiers are removed`() {
+        assertEquals(
+            "https://example.com/p/1?x=1",
+            LinkCleaner.clean("https://example.com/p/1?igsh=a&igshid=b&_fbp=c&x=1"),
         )
     }
 
@@ -66,7 +82,7 @@ class LinkCleanerTest {
 
     @Test
     fun `parameters that only look similar are kept`() {
-        val text = "https://example.com/a?utm=1&my_utm_source=2&gclid_note=3&x_fbclid=4"
+        val text = "https://example.com/a?utm=1&my_utm_source=2&gclid_note=3&x_fbclid=4&igshid_note=5"
         assertSame(text, LinkCleaner.clean(text))
     }
 
