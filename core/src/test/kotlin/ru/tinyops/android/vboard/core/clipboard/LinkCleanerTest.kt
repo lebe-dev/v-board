@@ -30,8 +30,20 @@ class LinkCleanerTest {
     }
 
     @Test
+    fun `facebook click identifier is removed`() {
+        assertEquals(
+            "https://platipomiru.com/?clckid=8fb0dfd5",
+            LinkCleaner.clean(
+                "https://platipomiru.com/?clckid=8fb0dfd5&fbclid=PAT01DUAVpOHVleHRuA2FlbQIxMABwZG9mAnNydGMGYXBwX2lk" +
+                    "DzU2NzA2NzM0MzM1MjQyNwABp_cGldgS8Odh4wxF39MxjLL5JDi87AI85n-jPNvuQajkDasPHuh9REbK2DsL" +
+                    "_aem_2aPGMFzguTeD7pNBJYgXMQ",
+            ),
+        )
+    }
+
+    @Test
     fun `parameter names are matched without regard to case`() {
-        assertEquals("https://example.com/a", LinkCleaner.clean("https://example.com/a?UTM_Source=x&GCLID=y"))
+        assertEquals("https://example.com/a", LinkCleaner.clean("https://example.com/a?UTM_Source=x&GCLID=y&FbClId=z"))
     }
 
     @Test
@@ -54,7 +66,7 @@ class LinkCleanerTest {
 
     @Test
     fun `parameters that only look similar are kept`() {
-        val text = "https://example.com/a?utm=1&my_utm_source=2&gclid_note=3"
+        val text = "https://example.com/a?utm=1&my_utm_source=2&gclid_note=3&x_fbclid=4"
         assertSame(text, LinkCleaner.clean(text))
     }
 

@@ -1,6 +1,6 @@
 package ru.tinyops.android.vboard.core.clipboard
 
-/** Removes ad tracking parameters (utm_*, Google click identifiers) from the links of a text. */
+/** Removes ad tracking parameters (utm_*, Google and Meta click identifiers) from the links of a text. */
 object LinkCleaner {
     private const val TRAILING_PUNCTUATION = ".,;:!?)]}»\"'"
     private const val UTM_PREFIX = "utm_"
@@ -17,6 +17,7 @@ object LinkCleaner {
             "srsltid",
             "_ga",
             "_gl",
+            "fbclid",
         )
 
     private val url = Regex("(?i:https?://|www\\.)[^\\s<>\"']+")
