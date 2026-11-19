@@ -491,6 +491,27 @@
     <string name="app_log_saved">The log is saved</string>
     <string name="app_log_save_failed">Could not save the log</string>
 
+    <!-- Slide to type calibration -->
+    <string name="swipe_calibration_title">Slide to type calibration</string>
+    <string name="swipe_calibration_link_summary">Record how you swipe to help tune the experimental engine</string>
+    <string name="swipe_calibration_intro">The page shows Russian words one by one. Swipe each of them in the field below the way you usually do, without aiming. The keyboard records the gesture and moves on to the next word.</string>
+    <string name="swipe_calibration_privacy">Gestures stay in memory until you save them. The file holds the gesture points, the size of the keys, the words suggested, the phone model and the app version.</string>
+    <string name="swipe_calibration_slide_off">Slide to type is off: turn it on in the keyboard settings first.</string>
+    <string name="swipe_calibration_start">Start</string>
+    <string name="swipe_calibration_progress">Word %1$d of %2$d</string>
+    <string name="swipe_calibration_field">Swipe the word here</string>
+    <string name="swipe_calibration_wrong_language">Switch the keyboard to Russian: only the Russian layout is calibrated.</string>
+    <string name="swipe_calibration_skip">Skip this word</string>
+    <string name="swipe_calibration_undo">Redo the previous word</string>
+    <string name="swipe_calibration_finish">Finish now</string>
+    <string name="swipe_calibration_result">First suggestion right: %1$d of %3$d. Among the suggestions: %2$d of %3$d.</string>
+    <string name="swipe_calibration_save">Save to a file</string>
+    <string name="swipe_calibration_save_summary">A zip archive to send to the developer</string>
+    <string name="swipe_calibration_saved">The calibration is saved</string>
+    <string name="swipe_calibration_save_failed">Could not save the calibration</string>
+    <string name="swipe_calibration_restart">Start over</string>
+    <string name="swipe_calibration_clear">Delete the recorded gestures</string>
+
     <string name="updates_title">Updates</string>
     <string name="updates_link_off">Automatic check is off</string>
     <string name="updates_link_daily">Checked once a day</string>

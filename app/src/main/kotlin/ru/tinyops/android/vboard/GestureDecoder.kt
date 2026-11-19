@@ -11,6 +11,7 @@ import ru.tinyops.android.vboard.core.gesture.neural.NeuralGestureEngine
 import ru.tinyops.android.vboard.core.layout.Language
 import ru.tinyops.android.vboard.diagnostics.AppLog
 import ru.tinyops.android.vboard.diagnostics.ErrorReporting
+import ru.tinyops.android.vboard.diagnostics.SwipeCalibration
 import ru.tinyops.android.vboard.stt.model.KeyboardLayout
 import ru.tinyops.android.vboard.stt.model.TouchPoint
 import java.util.concurrent.ConcurrentHashMap
@@ -115,10 +116,14 @@ class GestureDecoder(
         language: Language,
         layout: KeyboardLayout,
     ) {
+        SwipeCalibration.setLayout(language, layout)
         executor.execute { engine(language).setLayout(layout) }
     }
 
-    /** Decodes a gesture in the background; [onResult] receives candidates on the main thread. */
+    /**
+     * Decodes a gesture in the background; [onResult] receives candidates on the main thread. A finished
+     * gesture made during a calibration is recorded with them.
+     */
     fun decode(
         language: Language,
         points: List<TouchPoint>,
@@ -126,6 +131,7 @@ class GestureDecoder(
         complete: Boolean,
         onResult: (List<String>) -> Unit,
     ) {
+        val record = if (complete) SwipeCalibration.recorder(language) else null
         executor.execute {
             val engine = engine(language)
             val section =
@@ -135,7 +141,11 @@ class GestureDecoder(
                     else -> PerfTrace.DECODE_FINAL
                 }
             val words = PerfTrace.section(section) { engine.decode(points, precedingText, complete) }
-            main.post { onResult(words) }
+            val engineCode = slideEngine.code
+            main.post {
+                record?.invoke(points, words, engineCode)
+                onResult(words)
+            }
         }
     }
 

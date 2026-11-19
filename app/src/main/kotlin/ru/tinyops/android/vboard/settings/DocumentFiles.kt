@@ -3,6 +3,7 @@ package ru.tinyops.android.vboard.settings
 import android.content.Context
 import android.net.Uri
 import java.io.IOException
+import java.io.OutputStream
 
 /** Files the user picks in the system file picker. Blocks on the disk: call off the main thread. */
 internal object DocumentFiles {
@@ -17,5 +18,15 @@ internal object DocumentFiles {
     ) {
         val stream = context.contentResolver.openOutputStream(uri, "wt") ?: throw IOException("No stream for $uri")
         stream.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+    }
+
+    /** Lets [content] write over what the file at [uri] held, truncating it as [writeText] does. */
+    fun write(
+        context: Context,
+        uri: Uri,
+        content: (OutputStream) -> Unit,
+    ) {
+        val stream = context.contentResolver.openOutputStream(uri, "wt") ?: throw IOException("No stream for $uri")
+        stream.use(content)
     }
 }

@@ -10,6 +10,7 @@ step with the Kotlin code: a change there that is missing here shows as a mismat
     just swipe-eval /path/to/data.zip [--dict words.tsv] [--beam 4] [--rescored 4] [--limit 1000]
 
 Like the phone check, it skips the first 20 gestures of the grid `default`, so the numbers compare.
+A calibration archive saved by the keyboard has no warm-up: measure it with --warm-up 0.
 
 With --contexts (written by `bigrams.py contexts`) and --bigrams (written by `bigrams.py build`) the
 rescored words also get the association with the previous word, as `BigramTable` does in the keyboard.
@@ -491,13 +492,14 @@ def main() -> None:
     parser.add_argument("--context-rescored", type=int, default=CONTEXT_RESCORED, help="words rescored with a context")
     parser.add_argument("--tune", action="store_true", help="pick the weight and smoothing on half the gestures")
     parser.add_argument("--limit", type=int, default=0, help="gestures to measure, all when 0")
+    parser.add_argument("--warm-up", type=int, default=WARM_UP, help="gestures of the grid to skip first")
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     arguments = parser.parse_args()
 
     started = time.time()
     spec = read_spec(arguments.spec)
     centers, gestures = read_validation(arguments.validation)
-    gestures = [(number, *gesture) for number, gesture in enumerate(gestures)][WARM_UP:]
+    gestures = [(number, *gesture) for number, gesture in enumerate(gestures)][arguments.warm_up :]
     if arguments.limit:
         gestures = gestures[: arguments.limit]
     STATE["spec"] = spec
