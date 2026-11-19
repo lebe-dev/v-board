@@ -110,6 +110,11 @@ class KeyboardPrefs(
         get() = prefs.getBoolean(KEY_SUGGEST_ALWAYS, false)
         set(value) = prefs.edit { putBoolean(KEY_SUGGEST_ALWAYS, value) }
 
+    /** Whether the words that usually follow are suggested after a space; on by default. */
+    var suggestNextWord: Boolean
+        get() = prefs.getBoolean(KEY_SUGGEST_NEXT_WORD, true)
+        set(value) = prefs.edit { putBoolean(KEY_SUGGEST_NEXT_WORD, value) }
+
     /** Whether crash reports go to the developer; off until the user agrees. */
     var sendErrors: Boolean
         get() = prefs.getBoolean(KEY_SEND_ERRORS, false)
@@ -147,6 +152,7 @@ class KeyboardPrefs(
         private const val KEY_WORD_DELETE_INTERVAL = "word_delete_interval_ms"
         private const val KEY_STRIP_SECOND_ROW = "strip_second_row"
         private const val KEY_SUGGEST_ALWAYS = "suggest_always"
+        private const val KEY_SUGGEST_NEXT_WORD = "suggest_next_word"
         private const val KEY_SUGGESTION_TIMEOUT = "suggestion_timeout_seconds"
     }
 }

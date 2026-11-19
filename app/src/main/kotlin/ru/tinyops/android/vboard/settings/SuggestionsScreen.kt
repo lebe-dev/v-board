@@ -19,6 +19,7 @@ internal fun SuggestionsScreen(onBack: () -> Unit) {
             SettingsSection(null) {
                 item { SuggestionTimeoutRow() }
                 item { SuggestAlwaysRow() }
+                item { SuggestNextWordRow() }
             }
         }
     }
@@ -63,6 +64,24 @@ internal fun SuggestAlwaysRow() {
         onCheckedChange = {
             always = it
             prefs.suggestAlways = it
+        },
+    )
+}
+
+/** Whether the words that usually follow are suggested after a space. */
+@Composable
+internal fun SuggestNextWordRow() {
+    val prefs = KeyboardPrefs(LocalContext.current)
+    var nextWord by remember { mutableStateOf(prefs.suggestNextWord) }
+    SettingsSwitchRow(
+        title = stringResource(R.string.settings_suggest_next_word),
+        summary = stringResource(R.string.settings_suggest_next_word_summary),
+        icon = R.drawable.ic_auto_awesome,
+        prominent = true,
+        checked = nextWord,
+        onCheckedChange = {
+            nextWord = it
+            prefs.suggestNextWord = it
         },
     )
 }

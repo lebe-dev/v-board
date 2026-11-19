@@ -464,6 +464,8 @@
     <string name="settings_suggestions_link_summary">Word suggestions on the strip</string>
     <string name="settings_suggest_always">Always suggest words</string>
     <string name="settings_suggest_always_summary">Some apps ask the keyboard not to show word suggestions, for example in a search bar. When on, the keyboard suggests words in such fields too. Password fields still get no suggestions</string>
+    <string name="settings_suggest_next_word">Suggest the next word</string>
+    <string name="settings_suggest_next_word_summary">After a space the strip shows the words that usually follow, like "morning" after "good". They cover the strip buttons, as other suggestions do. For now only in Russian and with the word pairs downloaded</string>
     <string name="settings_suggestion_timeout">Hide word suggestions</string>
     <string name="settings_suggestion_timeout_description">Suggestions cover the buttons of the strip. After this time without typing they go away and the buttons come back</string>
     <string name="settings_suggestion_timeout_3">After 3 seconds</string>

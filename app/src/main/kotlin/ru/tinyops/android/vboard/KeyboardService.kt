@@ -379,6 +379,7 @@ class KeyboardService :
             logic.reset()
             logic.shift.reset()
             logic.suggestionsAllowed = profile.suggestionsAllowed
+            logic.nextWordsAllowed = keyboardPrefs.suggestNextWord
             stripView?.suggestionTimeoutMillis = keyboardPrefs.suggestionTimeout.millis
             stripView?.voiceAvailable = micShown
             stripView?.applyLook(clipboardPrefs, voicePrefs, keyboardPrefs)

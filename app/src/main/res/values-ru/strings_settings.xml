@@ -470,6 +470,8 @@
     <string name="settings_suggestions_link_summary">Подсказки слов на полосе</string>
     <string name="settings_suggest_always">Подсказывать слова всегда</string>
     <string name="settings_suggest_always_summary">Некоторые приложения просят не показывать подсказки слов, например в строке поиска. Когда включено, клавиатура подсказывает слова и в таких полях. В полях паролей подсказок по-прежнему нет</string>
+    <string name="settings_suggest_next_word">Подсказывать следующее слово</string>
+    <string name="settings_suggest_next_word_summary">После пробела на полосе появляются слова, которые обычно идут следом, например "утро" после "доброе". Они закрывают кнопки полосы, как и другие подсказки. Пока только для русского языка и со скачанным словарём пар слов</string>
     <string name="settings_suggestion_timeout">Скрывать подсказки слов</string>
     <string name="settings_suggestion_timeout_description">Подсказки закрывают кнопки полосы. После этого времени без набора они исчезают, и кнопки возвращаются</string>
     <string name="settings_suggestion_timeout_3">Через 3 секунды</string>

@@ -208,6 +208,18 @@ class InputLogicTest {
         assertTrue(suggestions.isEmpty())
     }
 
+    @Test
+    fun `next words turned off leave the strip empty after a space but keep completions`() {
+        logic.nextWordsAllowed = false
+        type("good")
+        logic.typeSpace(editor, 0)
+        assertTrue(suggestions.isEmpty())
+        placeCursor("good ", 5)
+        assertTrue(suggestions.isEmpty())
+        type("wo")
+        assertEquals(listOf("world", "wo", "word"), suggestions)
+    }
+
     private fun placeCursor(
         text: String,
         at: Int,

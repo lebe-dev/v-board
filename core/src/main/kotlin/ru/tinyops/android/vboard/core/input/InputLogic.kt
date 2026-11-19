@@ -62,6 +62,9 @@ class InputLogic(
     /** False for passwords and editors that opt out of suggestions: text is committed directly. */
     var suggestionsAllowed: Boolean = true
 
+    /** Whether the words that may follow are offered after a space; completions do not depend on it. */
+    var nextWordsAllowed: Boolean = true
+
     private val composing = StringBuilder()
     private var composingIsGesture = false
     private var phantomSpace = false
@@ -307,7 +310,9 @@ class InputLogic(
 
     /** Offers the words that may follow the text before the cursor, if nothing is composed; true when offered. */
     private fun showPredictions(editor: TextEditor): Boolean {
-        if (suggestionsAllowed && composing.isEmpty()) return strip.offerNextWords(editor, ::casedForShift)
+        if (suggestionsAllowed && nextWordsAllowed && composing.isEmpty()) {
+            return strip.offerNextWords(editor, ::casedForShift)
+        }
         strip.dropNextWords()
         return false
     }
