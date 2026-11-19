@@ -17,6 +17,9 @@ class TrieNode internal constructor(
     /** The word's frequency, or zero when the node is not a word. */
     val frequency: Double get() = trie.frequencyOf(index)
 
+    /** The highest frequency of a word at this node or below it. */
+    val bestFrequency: Double get() = trie.bestFrequencyOf(index)
+
     val isWord: Boolean get() = trie.isWord(index)
 
     val childCount: Int get() = trie.childCountOf(index)
@@ -73,6 +76,10 @@ class WordTrie {
     /** Replaces [words] in a trie restored by [fromArrays]. */
     private var wordSource: WordSource? = null
 
+    /** The highest word frequency below each node, built on first use and dropped by [insert]. */
+    @Volatile
+    private var bestFrequencies: FloatArray? = null
+
     var wordCount: Int = 0
         private set
 
@@ -103,6 +110,7 @@ class WordTrie {
         words[slot] = word
         logProbs[slot] = logProb
         frequencies[slot] = frequency
+        bestFrequencies = null
     }
 
     fun contains(word: String): Boolean {
@@ -162,6 +170,26 @@ class WordTrie {
         if (isWord(node)) logProbs[wordIndex[node]] else Double.NEGATIVE_INFINITY
 
     internal fun frequencyOf(node: Int): Double = if (isWord(node)) frequencies[wordIndex[node]] else 0.0
+
+    internal fun bestFrequencyOf(node: Int): Double {
+        val best = bestFrequencies ?: computeBestFrequencies().also { bestFrequencies = it }
+        return best[node].toDouble()
+    }
+
+    /** A child always comes after its parent, so one pass from the last node up covers every subtree. */
+    private fun computeBestFrequencies(): FloatArray {
+        val best = FloatArray(nodeTotal)
+        for (node in nodeTotal - 1 downTo 0) {
+            var value = frequencyOf(node).toFloat()
+            var child = firstChild[node]
+            while (child != NONE) {
+                value = maxOf(value, best[child])
+                child = nextSibling[child]
+            }
+            best[node] = value
+        }
+        return best
+    }
 
     internal fun childCountOf(node: Int): Int {
         var count = 0

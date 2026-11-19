@@ -21,6 +21,11 @@ import kotlin.math.pow
  * whole word over all tokens, divided like the search score by the length to the power 0.5. Each
  * of them costs one decoder pass.
  *
+ * Every hypothesis is also weighed by word frequency, [frequencyWeight] times its log: a finished word
+ * by its own frequency, a prefix by the most frequent word below it. A quick gesture that misses a few
+ * keys then keeps the frequent word it was meant for in the beam instead of a rare word that happens to
+ * lie closer to the path. The same weight applies when the best words are rescored.
+ *
  * With the previous word known, the rescored words also get its association with them from a
  * [BigramTable], weighted by [CONTEXT_WEIGHT]: the model alone often cannot tell endings apart
  * (`будет` and `будем`) or short words (`не`, `на`). More words are rescored then, [contextRescored].
@@ -35,9 +40,12 @@ class NeuralWordSearch(
     private val maxSteps: Int = DEFAULT_MAX_STEPS,
     private val rescored: Int = DEFAULT_RESCORED,
     private val contextRescored: Int = DEFAULT_CONTEXT_RESCORED,
+    private val frequencyWeight: Double = DEFAULT_FREQUENCY_WEIGHT,
 ) {
+    /** [score] orders the search; [modelScore] is the part of it that comes from the model alone. */
     private class Hypothesis(
         val tokens: LongArray,
+        val modelScore: Double,
         val score: Double,
         val nodes: List<TrieNode>,
     )
@@ -58,7 +66,7 @@ class NeuralWordSearch(
     ): List<String> {
         val partial = PriorityQueue<Hypothesis>(compareBy { it.score })
         val finished = ArrayList<Hypothesis>()
-        partial += Hypothesis(longArrayOf(spec.sosId.toLong()), 0.0, listOf(root))
+        partial += Hypothesis(longArrayOf(spec.sosId.toLong()), 0.0, 0.0, listOf(root))
         val allowed = IntArray(spec.numClasses)
         while (partial.isNotEmpty()) {
             expand(model, partial.poll(), allowed, partial, finished)
@@ -70,8 +78,8 @@ class NeuralWordSearch(
     }
 
     /**
-     * Puts the first of the sorted [finished] in the order of [fullScore], less the weighted
-     * association with the previous word when there is a [context].
+     * Puts the first of the sorted [finished] in the order of [fullScore], less the weighted word
+     * frequency and the weighted association with the previous word when there is a [context].
      */
     private fun rescore(
         model: SwipeSequenceModel,
@@ -85,7 +93,8 @@ class NeuralWordSearch(
             best
                 .map { hypothesis ->
                     val association = context?.association(foldedWord(hypothesis.tokens)) ?: 0.0
-                    hypothesis to fullScore(model, hypothesis.tokens) - CONTEXT_WEIGHT * association
+                    val score = fullScore(model, hypothesis.tokens) - prior(wordFrequency(hypothesis.nodes))
+                    hypothesis to score - CONTEXT_WEIGHT * association
                 }.sortedBy { it.second }
                 .map { it.first }
         for (index in reordered.indices) best[index] = reordered[index]
@@ -133,17 +142,26 @@ class NeuralWordSearch(
         if (count == 0) return
         val logProbs = if (count == 1) null else maskedLogProbs(model, hypothesis.tokens, allowed, count)
         val length = hypothesis.tokens.size
-        val denormalized = hypothesis.score * length.toDouble().pow(LENGTH_PENALTY)
+        val denormalized = hypothesis.modelScore * length.toDouble().pow(LENGTH_PENALTY)
         for (slot in slotsToContinue(logProbs, count)) {
             val token = allowed[slot]
             val logProb = logProbs?.get(slot) ?: 0.0
-            val score = (denormalized - logProb) / (length + 1).toDouble().pow(LENGTH_PENALTY)
+            val modelScore = (denormalized - logProb) / (length + 1).toDouble().pow(LENGTH_PENALTY)
             val tokens = hypothesis.tokens.copyOf(length + 1).also { it[length] = token.toLong() }
             val isEnd = token == spec.eosId
-            val next = Hypothesis(tokens, score, if (isEnd) hypothesis.nodes else advance(hypothesis.nodes, token))
+            val nodes = if (isEnd) hypothesis.nodes else advance(hypothesis.nodes, token)
+            val frequency = if (isEnd) wordFrequency(nodes) else nodes.maxOf { it.bestFrequency }
+            val next = Hypothesis(tokens, modelScore, modelScore - prior(frequency), nodes)
             if (isEnd || length >= maxSteps) finished += next else partial += next
         }
     }
+
+    /** The weighted log of a word [frequency]; nothing for a word without one. */
+    private fun prior(frequency: Double): Double = if (frequency > 0.0) frequencyWeight * ln(frequency) else 0.0
+
+    /** The frequency of the most frequent word the [nodes] end. */
+    private fun wordFrequency(nodes: List<TrieNode>): Double =
+        nodes.maxOfOrNull { if (it.isWord) it.frequency else 0.0 } ?: 0.0
 
     /** The slots to continue with: the [beamSize] most probable of those allowed. */
     private fun slotsToContinue(
@@ -238,6 +256,13 @@ class NeuralWordSearch(
          * points of top-1 over 4 on the validation set, 8 only 0.06 more.
          */
         const val DEFAULT_CONTEXT_RESCORED = 6
+
+        /**
+         * The weight of the log word frequency against the model's score. On the NeuroSwipe validation set 0.1
+         * keeps top-1 within 0.1 points and 0.15 costs 0.7; on quick gestures of a user 0.1 gains 4 points, on
+         * validation gestures with cut corners 3.
+         */
+        const val DEFAULT_FREQUENCY_WEIGHT = 0.1
 
         /** The weight of the association with the previous word against the model's score; 0.3 to 0.5 measure alike. */
         const val CONTEXT_WEIGHT = 0.4

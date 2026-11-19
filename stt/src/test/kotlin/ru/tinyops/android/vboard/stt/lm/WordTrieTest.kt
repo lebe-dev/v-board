@@ -173,4 +173,43 @@ class WordTrieTest {
         val broken = arrays.copy(firstChild = IntArray(1))
         assertFailsWith<IllegalArgumentException> { WordTrie.fromArrays(broken) { "cat" } }
     }
+
+    @Test
+    fun `a node knows the highest frequency of the words at it and below`() {
+        val trie = WordTrie()
+        trie.insert("car", logProb = -2.0, frequency = 3.0)
+        trie.insert("care", logProb = -3.0, frequency = 1.0)
+        trie.insert("cat", logProb = -1.0, frequency = 5.0)
+        trie.insert("dog", logProb = -1.0, frequency = 2.0)
+        val ca = trie.root.child('c')!!.child('a')!!
+        assertEquals(5.0, trie.root.bestFrequency, 1e-6)
+        assertEquals(5.0, ca.bestFrequency, 1e-6)
+        assertEquals(3.0, ca.child('r')!!.bestFrequency, 1e-6)
+        assertEquals(1.0, ca.child('r')!!.child('e')!!.bestFrequency, 1e-6)
+    }
+
+    @Test
+    fun `the highest frequency follows words inserted later`() {
+        val trie = WordTrie()
+        trie.insert("car", logProb = -2.0, frequency = 3.0)
+        assertEquals(3.0, trie.root.bestFrequency, 1e-6)
+        trie.insert("cat", logProb = -1.0, frequency = 5.0)
+        assertEquals(5.0, trie.root.bestFrequency, 1e-6)
+    }
+
+    @Test
+    fun `a restored trie knows the highest frequencies too`() {
+        val trie = WordTrie()
+        trie.insert("car", logProb = -2.0, frequency = 3.0)
+        trie.insert("cat", logProb = -1.0, frequency = 5.0)
+        val words = listOf("car", "cat")
+        val restored = WordTrie.fromArrays(trie.toArrays()) { words[it] }
+        val car =
+            restored.root
+                .child('c')!!
+                .child('a')!!
+                .child('r')!!
+        assertEquals(3.0, car.bestFrequency, 1e-6)
+        assertEquals(5.0, restored.root.bestFrequency, 1e-6)
+    }
 }

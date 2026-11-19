@@ -7,7 +7,7 @@ prepare_valid.py. Accuracy matches the phone to the last digit; time means nothi
 about a minute, so search settings and dictionaries can be tried without a phone. Keep the copy in
 step with the Kotlin code: a change there that is missing here shows as a mismatch with the phone.
 
-    just swipe-eval /path/to/data.zip [--dict words.tsv] [--beam 4] [--rescored 4] [--limit 1000]
+    just swipe-eval /path/to/data.zip [--dict words.tsv] [--beam 4] [--rescored 4] [--frequency-weight 0.1] [--limit 1000]
 
 Like the phone check, it skips the first 20 gestures of the grid `default`, so the numbers compare.
 A calibration archive saved by the keyboard has no warm-up: measure it with --warm-up 0.
@@ -43,6 +43,8 @@ MAX_STEPS = 34
 MAX_POINTS = 299
 MIN_INTERVAL_MILLIS = 12.0
 WORD = "$"
+BEST = "^"
+FREQUENCY_WEIGHT = 0.1
 FOLDED_LETTERS = {"ё": "е"}
 CONTEXT_WEIGHT = 0.4
 CONTEXT_SMOOTHING = 30000.0
@@ -74,7 +76,8 @@ def read_validation(path: Path) -> tuple[dict, list]:
 
 
 def read_dictionary(path: Path) -> dict:
-    """A trie of nested dicts; the node of a word holds it under WORD as (word, frequency)."""
+    """A trie of nested dicts; the node of a word holds it under WORD as (word, frequency), and every
+    node holds the highest frequency of a word at it or below under BEST (WordTrie.bestFrequency)."""
     root = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         word, frequency = line.split("\t")[:2]
@@ -82,6 +85,15 @@ def read_dictionary(path: Path) -> dict:
         for letter in word:
             node = node.setdefault(letter, {})
         node[WORD] = (word, float(frequency))
+    stack, order = [root], []
+    while stack:
+        node = stack.pop()
+        order.append(node)
+        stack.extend(child for key, child in node.items() if key not in (WORD, BEST))
+    for node in reversed(order):
+        own = node[WORD][1] if WORD in node else 0.0
+        node[BEST] = max((child[BEST] for key, child in node.items() if key not in (WORD, BEST)), default=own)
+        node[BEST] = max(node[BEST], own)
     return root
 
 
@@ -92,7 +104,7 @@ def words_of(root: dict) -> set:
         for key, child in node.items():
             if key == WORD:
                 found.add(fold(child[0]))
-            else:
+            elif key != BEST:
                 stack.append(child)
     return found
 
@@ -177,13 +189,14 @@ def central_difference(values: torch.Tensor, times: torch.Tensor) -> torch.Tenso
 class Search:
     """NeuralWordSearch: best-first beam search limited to the dictionary, then rescoring."""
 
-    def __init__(self, spec: dict, decode, beam: int, rescored: int) -> None:
+    def __init__(self, spec: dict, decode, beam: int, rescored: int, frequency_weight: float) -> None:
         self.tokens = spec["decoder_tokens"]
         self.eos = int(spec["eos_id"])
         self.sos = int(spec["sos_id"])
         self.decode = decode
         self.beam = beam
         self.rescored = rescored
+        self.frequency_weight = frequency_weight
         self.folded = {base: letter for letter, base in FOLDED_LETTERS.items() if letter not in self.tokens}
         self.calls = 0
 
@@ -191,18 +204,26 @@ class Search:
         self.calls += 1
         return self.decode.execute([torch.tensor(tokens, dtype=torch.long), memory])[0].double()
 
+    def prior(self, frequency: float) -> float:
+        """NeuralWordSearch.prior: the weighted log of a word frequency."""
+        return self.frequency_weight * math.log(frequency) if frequency > 0 else 0.0
+
     def __call__(self, memory, root: dict, limit: int) -> list:
         order = 0
-        partial = [(0.0, order, [self.sos], [root])]
+        # (score, order, tokens, nodes, model score): the score adds the word frequency to the model's part.
+        partial = [(0.0, order, [self.sos], [root], 0.0)]
         finished = []
         while partial:
-            score, _, tokens, nodes = heapq.heappop(partial)
-            for child in self.expand(memory, score, tokens, nodes):
-                if child[1][-1] == self.eos or len(tokens) >= MAX_STEPS:
-                    finished.append(child)
+            _, _, tokens, nodes, model_score = heapq.heappop(partial)
+            for child_model, child_tokens, child_nodes in self.expand(memory, model_score, tokens, nodes):
+                is_end = child_tokens[-1] == self.eos
+                frequency = word_frequency(child_nodes) if is_end else max(node[BEST] for node in child_nodes)
+                score = child_model - self.prior(frequency)
+                if is_end or len(tokens) >= MAX_STEPS:
+                    finished.append((score, child_tokens, child_nodes))
                 else:
                     order += 1
-                    heapq.heappush(partial, (child[0], order, child[1], child[2]))
+                    heapq.heappush(partial, (score, order, child_tokens, child_nodes, child_model))
             if len(partial) > self.beam:
                 partial = heapq.nsmallest(self.beam, partial)
                 heapq.heapify(partial)
@@ -264,12 +285,23 @@ class Search:
         return "".join(self.tokens[token] for token in tokens[1:end])
 
 
-def rank(finished: list, full_scores: list, count: int, association) -> list:
-    """NeuralWordSearch.rescore: the [count] best by full score, less the weighted [association]."""
+def word_frequency(nodes: list) -> float:
+    """The frequency of the most frequent word the nodes end."""
+    return max((node[WORD][1] for node in nodes if WORD in node), default=0.0)
+
+
+def rank(finished: list, full_scores: list, count: int, association, frequency_weight: float) -> list:
+    """NeuralWordSearch.rescore: the [count] best by full score, less the weighted log word frequency
+    and the weighted [association]."""
     count = min(count, len(full_scores))
     if count < 2:
         return finished
-    scored = [(full_scores[i] - association(finished[i][1]), i) for i in range(count)]
+
+    def prior(nodes: list) -> float:
+        frequency = word_frequency(nodes)
+        return frequency_weight * math.log(frequency) if frequency > 0 else 0.0
+
+    scored = [(full_scores[i] - prior(finished[i][2]) - association(finished[i][1]), i) for i in range(count)]
     return [finished[i] for _, i in sorted(scored)] + finished[count:]
 
 
@@ -372,7 +404,9 @@ def start_worker(arguments: argparse.Namespace) -> None:
         program = Runtime.get().load_program(str(arguments.model))
         STATE["encode"] = program.load_method("encode")
         rescored = max(arguments.rescored, arguments.context_rescored)
-        STATE["search"] = Search(STATE["spec"], program.load_method("decode"), arguments.beam, rescored)
+        STATE["search"] = Search(
+            STATE["spec"], program.load_method("decode"), arguments.beam, rescored, arguments.frequency_weight
+        )
 
 
 def decode_gesture(gesture: tuple) -> tuple:
@@ -400,6 +434,7 @@ class Scorer:
         self.contexts = contexts
         self.bigrams = bigrams
         self.rescored = arguments.rescored
+        self.frequency_weight = arguments.frequency_weight
         self.context_rescored = arguments.context_rescored
         self.associations = {}
 
@@ -429,7 +464,8 @@ class Scorer:
             of = self.association_of(number, previous, smoothing)
             association = lambda word: weight * of(word)  # noqa: E731
         rescoring_calls = min(count, len(full_scores)) if len(full_scores) >= 2 and count >= 2 else 0
-        return words(rank(finished, full_scores, count, association), CANDIDATES), rescoring_calls
+        ranked = rank(finished, full_scores, count, association, self.frequency_weight)
+        return words(ranked, CANDIDATES), rescoring_calls
 
     def measure(self, weight: float, smoothing: float, select=lambda result: True) -> dict:
         top1 = mrr = calls = count = 0.0
@@ -485,6 +521,7 @@ def main() -> None:
     parser.add_argument("--dict", type=Path, default=DICTIONARY, help="word<TAB>frequency per line")
     parser.add_argument("--beam", type=int, default=4)
     parser.add_argument("--rescored", type=int, default=4)
+    parser.add_argument("--frequency-weight", type=float, default=FREQUENCY_WEIGHT, help="weight of log word frequency")
     parser.add_argument("--contexts", type=Path, help="gesture number, word and previous word per line")
     parser.add_argument("--bigrams", type=Path, help="the table written by bigrams.py build")
     parser.add_argument("--weight", type=float, default=CONTEXT_WEIGHT)

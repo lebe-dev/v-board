@@ -185,6 +185,37 @@ class NeuralWordSearchTest {
     }
 
     @Test
+    fun `a much more frequent word wins over a rare one the model reads slightly better`() {
+        val trie = trieOf("дар" to 0.00001, "дом" to 0.01)
+        val model =
+            ScriptedModel(
+                TEST_SPEC,
+                logits = mapOf("д" to mapOf('а' to 1.3f, 'о' to 1f)),
+                eos = mapOf("дар" to 5f, "дом" to 5f),
+            )
+        assertEquals("дом", search.search(model, trie.root, limit = 4).first())
+        val gestureOnly = NeuralWordSearch(TEST_SPEC, beamSize = 4, maxSteps = 35, frequencyWeight = 0.0)
+        assertEquals("дар", gestureOnly.search(model, trie.root, limit = 4).first())
+    }
+
+    @Test
+    fun `a prefix leading to frequent words stays in a narrow beam`() {
+        // The model slightly prefers "а" first, but only rare words start with it. The search weighs each
+        // prefix by the most frequent word below it, so the rare prefix is pruned rather than the frequent one.
+        val trie = trieOf("аз" to 0.00001, "ах" to 0.00001, "бы" to 0.01, "бо" to 0.005)
+        val model =
+            ScriptedModel(
+                TEST_SPEC,
+                logits = mapOf("" to mapOf('а' to 1.3f, 'б' to 1f), "а" to mapOf('з' to 1f)),
+                eos = mapOf("аз" to 5f, "ах" to 5f, "бы" to 5f, "бо" to 5f),
+            )
+        val narrow = NeuralWordSearch(TEST_SPEC, beamSize = 2, maxSteps = 35)
+        val words = narrow.search(model, trie.root, limit = 4)
+        assertEquals("бы", words.first())
+        assertTrue("а" !in model.decodedPrefixes, "decoded ${model.decodedPrefixes}")
+    }
+
+    @Test
     fun `an empty dictionary gives no words`() {
         val model = ScriptedModel(TEST_SPEC, logits = emptyMap())
         assertEquals(emptyList(), search.search(model, trieOf().root, limit = 4))
