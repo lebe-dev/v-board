@@ -6,6 +6,9 @@ import java.util.Locale
 object TextRules {
     private const val NO_SPACE_AFTER = "([{\"'«„“/-\n\t "
 
+    /** Letters and hyphens make up a word: `что-то`. */
+    fun isInWord(c: Char): Boolean = c.isLetter() || c == '-'
+
     /**
      * Whether a word inserted after [textBefore] needs a separating space (the "phantom space"
      * inserted before a gesture word).

@@ -56,6 +56,41 @@ class BigramTable private constructor(
             return ln(exp(logCount) / exp(unigrams.get(id).toDouble()) + SMOOTHING) - logTotal
         }
 
+        /**
+         * Up to [limit] words starting with [prefix] (folded) seen most often right after the previous one,
+         * most frequent first (folded). Pairs are stored by word, not by count, so this walks all matching
+         * pairs: a few hundred for most words, tens of thousands for the most common ones without a prefix.
+         */
+        fun mostFrequent(
+            limit: Int,
+            prefix: String = "",
+        ): List<String> {
+            if (limit <= 0) return emptyList()
+            // Words, and so the pairs of one word, are sorted: the words with a prefix are a single run.
+            val key = prefix.encodeToByteArray()
+            val firstWord = firstOf(0, size) { compareAt(it, key) >= 0 }
+            val endWord = firstOf(firstWord, size) { comparePrefix(it, key) > 0 }
+            val wordOf = { index: Int -> entries.get(index) ushr COUNT_BITS }
+            val from = firstOf(starts.get(previous), starts.get(previous + 1)) { wordOf(it) >= firstWord }
+            val to = firstOf(from, starts.get(previous + 1)) { wordOf(it) >= endWord }
+            val best = IntArray(minOf(limit, to - from))
+            var count = 0
+            for (index in from until to) {
+                val logCount = countAt(index)
+                if (count == best.size && logCount <= countAt(best[count - 1])) continue
+                var slot = if (count < best.size) count++ else count - 1
+                // Strict comparison: equally frequent words keep the order of the table.
+                while (slot > 0 && countAt(best[slot - 1]) < logCount) {
+                    best[slot] = best[slot - 1]
+                    slot--
+                }
+                best[slot] = index
+            }
+            return List(count) { wordAt(wordOf(best[it])) }
+        }
+
+        private fun countAt(index: Int): Int = entries.get(index) and COUNT_MASK
+
         /** The quantized `ln count` of the pair, or NaN when the pair is not in the table. */
         private fun pairLogCount(word: Int): Double {
             var low = starts.get(previous)
@@ -89,6 +124,42 @@ class BigramTable private constructor(
             }
         }
         return -1
+    }
+
+    /** The first index in `from until to` where [isAfter] holds, or [to]; [isAfter] must hold for all the rest. */
+    private inline fun firstOf(
+        from: Int,
+        to: Int,
+        isAfter: (Int) -> Boolean,
+    ): Int {
+        var low = from
+        var high = to
+        while (low < high) {
+            val middle = (low + high) ushr 1
+            if (isAfter(middle)) high = middle else low = middle + 1
+        }
+        return low
+    }
+
+    /** Compares the first bytes of word [id] with [key]: zero when the word starts with it. */
+    private fun comparePrefix(
+        id: Int,
+        key: ByteArray,
+    ): Int {
+        val start = offsets.get(id)
+        val length = offsets.get(id + 1) - start
+        for (i in 0 until minOf(length, key.size)) {
+            val difference = (text.get(start + i).toInt() and BYTE_MASK) - (key[i].toInt() and BYTE_MASK)
+            if (difference != 0) return difference
+        }
+        return if (length < key.size) -1 else 0
+    }
+
+    private fun wordAt(id: Int): String {
+        val start = offsets.get(id)
+        val bytes = ByteArray(offsets.get(id + 1) - start)
+        for (i in bytes.indices) bytes[i] = text.get(start + i)
+        return bytes.decodeToString()
     }
 
     /** Compares the UTF-8 bytes of word [id] with [key], unsigned, as the file is sorted. */

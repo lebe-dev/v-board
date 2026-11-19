@@ -5,6 +5,7 @@ import android.os.Looper
 import android.util.Log
 import ru.tinyops.android.vboard.core.dict.BigramTable
 import ru.tinyops.android.vboard.core.dict.Dictionary
+import ru.tinyops.android.vboard.core.dict.NextWords
 import ru.tinyops.android.vboard.core.gesture.SlideEngine
 import ru.tinyops.android.vboard.core.gesture.SwitchableGestureEngine
 import ru.tinyops.android.vboard.core.gesture.neural.NeuralGestureEngine
@@ -32,6 +33,9 @@ class GestureDecoder(
         Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "gesture-decoder") }
     private val main = Handler(Looper.getMainLooper())
     private val dictionaries = ConcurrentHashMap<Language, Dictionary>()
+
+    /** Suggestions after the previous word, for languages with a word pair table; used on the main thread only. */
+    private val nextWords = ConcurrentHashMap<Language, NextWords>()
     private val requested = ConcurrentHashMap.newKeySet<Language>()
 
     /** Engines, touched only from [executor]. */
@@ -92,6 +96,7 @@ class GestureDecoder(
         }
         engine(language).setBigrams(table)
         withBigrams += language
+        nextWords[language] = NextWords(table, dictionaries.getValue(language))
         Log.i(TAG, "loaded word pairs of ${language.code}: ${table.size} words")
     }
 
@@ -106,6 +111,7 @@ class GestureDecoder(
                 } else if (!available && loaded) {
                     engine(language).setBigrams(null)
                     withBigrams -= language
+                    nextWords.remove(language)
                     Log.i(TAG, "released word pairs of ${language.code}")
                 }
             }
@@ -149,12 +155,33 @@ class GestureDecoder(
         }
     }
 
-    /** Prefix completions for tap typing; empty until the dictionary is loaded. */
+    /**
+     * Prefix completions for tap typing, weighed with the word before them in [precedingText] when the language
+     * has a word pair table; empty until the dictionary is loaded.
+     */
     fun completions(
         language: Language,
         prefix: String,
         limit: Int,
-    ): List<String> = dictionaries[language]?.completions(prefix, limit).orEmpty()
+        precedingText: String = "",
+    ): List<String> {
+        val dictionary = dictionaries[language] ?: return emptyList()
+        val previous = BigramTable.previousWord(precedingText)
+        val next = nextWords[language]
+        if (previous == null || next == null) return dictionary.completions(prefix, limit)
+        return next.completions(previous, prefix, limit)
+    }
+
+    /** The words that usually follow the last word of [precedingText]; empty without a word pair table. */
+    fun nextWords(
+        language: Language,
+        precedingText: String,
+        limit: Int,
+    ): List<String> {
+        val next = nextWords[language] ?: return emptyList()
+        val previous = BigramTable.previousWord(precedingText) ?: return emptyList()
+        return next.after(previous, limit)
+    }
 
     /** Better spellings of a lowercase [word] for the cursor standing on it; empty until the dictionary is loaded. */
     fun corrections(
