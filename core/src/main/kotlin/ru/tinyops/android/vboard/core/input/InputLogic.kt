@@ -41,16 +41,20 @@ interface TextEditor {
  *  - After a swiped word a "phantom space" is pending: the next letter or swipe inserts a
  *    space first, punctuation does not.
  *  - A swiped word is deleted by backspace as a whole and can be swapped for an alternative.
+ *  - With nothing composed and the cursor after a word and a space, the words that usually follow
+ *    it are offered; picking one inserts it with a space and offers the words after it.
  *
- * @param completions prefix completions (lowercase prefix -> words, most likely first)
+ * @param completions prefix completions (lowercase prefix and the text before the word -> words, most likely first)
  * @param onSuggestions receives the suggestions to display, primary first
  * @param corrections better spellings of a lowercase word the cursor stands on, most likely first; empty when the
  *   word is right or nothing is close
+ * @param predictions the words to offer after the text before the cursor (lowercase, most likely first)
  */
 class InputLogic(
-    private val completions: (String) -> List<String>,
+    private val completions: (prefix: String, precedingText: String) -> List<String>,
     private val onSuggestions: (List<String>) -> Unit,
     private val corrections: (String) -> List<String> = { emptyList() },
+    private val predictions: (precedingText: String) -> List<String> = { emptyList() },
 ) {
     val shift = ShiftController()
     var locale: Locale = Locale.ENGLISH
@@ -62,8 +66,13 @@ class InputLogic(
     private var composingIsGesture = false
     private var phantomSpace = false
 
+    /** The text before the word being typed, for its completions. */
+    private var beforeComposing = ""
+
     /** The word under the cursor that the shown corrections are for, null when none are shown. */
     private var misspelled: WordAtCursor? = null
+
+    private val strip = SuggestionStrip(onSuggestions, predictions)
     private var lastSpaceAt = Long.MIN_VALUE
 
     val composingText: String get() = composing.toString()
@@ -83,6 +92,7 @@ class InputLogic(
             if (phantomSpace && composing.isEmpty()) editor.commitText(" ")
             phantomSpace = false
             if (suggestionsAllowed) {
+                if (composing.isEmpty()) beforeComposing = editor.textBeforeCursor(CONTEXT_CHARS)?.toString().orEmpty()
                 composing.append(text)
                 editor.setComposingText(composing)
                 showCompletions()
@@ -94,6 +104,7 @@ class InputLogic(
             commitComposing(editor)
             phantomSpace = false
             editor.commitText(text)
+            strip.dropNextWords()
         }
         editor.endBatchEdit()
     }
@@ -113,6 +124,7 @@ class InputLogic(
             editor.commitText(" ")
             lastSpaceAt = nowMillis
         }
+        showPredictions(editor)
         editor.endBatchEdit()
     }
 
@@ -120,6 +132,7 @@ class InputLogic(
         commitComposing(editor)
         phantomSpace = false
         editor.sendEnter()
+        strip.dropNextWords()
     }
 
     fun backspace(editor: TextEditor) {
@@ -134,7 +147,10 @@ class InputLogic(
                 editor.setComposingText(composing)
                 showCompletions()
             }
-            else -> editor.sendBackspace()
+            else -> {
+                editor.sendBackspace()
+                strip.dropNextWords()
+            }
         }
     }
 
@@ -161,6 +177,7 @@ class InputLogic(
         }
         val length = TextRules.wordBeforeLength(editor.textBeforeCursor(WORD_LOOKBACK))
         if (length > 0) editor.replaceAroundCursor(length, 0, "")
+        strip.dropNextWords()
     }
 
     /** Deletes the selection and up to [CLEAR_LOOKAROUND] characters on each side of it. */
@@ -181,6 +198,15 @@ class InputLogic(
     ) {
         when {
             misspelled != null && composing.isEmpty() -> replaceMisspelled(editor, word)
+            strip.offersNextWords && composing.isEmpty() -> {
+                editor.beginBatchEdit()
+                editor.commitText("$word ")
+                // The space came with the word: a space right after it is not a double space.
+                lastSpaceAt = Long.MIN_VALUE
+                shift.onLetterTyped()
+                showPredictions(editor)
+                editor.endBatchEdit()
+            }
             composingIsGesture -> {
                 // Swap the swiped word for an alternative; it stays replaceable.
                 composing.setLength(0)
@@ -188,8 +214,11 @@ class InputLogic(
                 editor.setComposingText(word)
             }
             composing.isNotEmpty() -> {
+                editor.beginBatchEdit()
                 editor.commitText("$word ")
                 resetComposing()
+                showPredictions(editor)
+                editor.endBatchEdit()
             }
         }
     }
@@ -216,7 +245,7 @@ class InputLogic(
             composing.append(word)
             composingIsGesture = true
             editor.setComposingText(word)
-            onSuggestions(candidates)
+            strip.show(candidates)
         } else {
             editor.commitText(word)
         }
@@ -226,7 +255,7 @@ class InputLogic(
     }
 
     /** Live suggestions for a gesture still in progress. */
-    fun showGesturePreview(words: List<String>) = onSuggestions(casedForShift(words))
+    fun showGesturePreview(words: List<String>) = strip.show(casedForShift(words))
 
     /**
      * Reacts to a selection change reported by the editor. Updates without a composing region
@@ -246,7 +275,10 @@ class InputLogic(
             phantomSpace = false
         }
         when {
-            selectionStart != selectionEnd -> dropCorrections()
+            selectionStart != selectionEnd -> {
+                dropCorrections()
+                strip.dropNextWords()
+            }
             correct -> showCorrections(editor)
         }
     }
@@ -263,15 +295,27 @@ class InputLogic(
         }
         val word = if (suggestionsAllowed) wordAtCursor(editor) else null
         val better = word?.let { corrections(it.text.lowercase(locale)) }.orEmpty()
-        if (word == null || better.isEmpty()) return dropCorrections()
+        if (word == null || better.isEmpty()) {
+            val hadCorrections = misspelled != null
+            misspelled = null
+            if (!showPredictions(editor) && hadCorrections) strip.show(emptyList())
+            return
+        }
         misspelled = word
-        onSuggestions(better.map { TextRules.matchCase(it, word.text, locale) }.distinct().take(SUGGESTIONS))
+        strip.show(better.map { TextRules.matchCase(it, word.text, locale) }.distinct().take(SUGGESTIONS))
+    }
+
+    /** Offers the words that may follow the text before the cursor, if nothing is composed; true when offered. */
+    private fun showPredictions(editor: TextEditor): Boolean {
+        if (suggestionsAllowed && composing.isEmpty()) return strip.offerNextWords(editor, ::casedForShift)
+        strip.dropNextWords()
+        return false
     }
 
     private fun dropCorrections() {
         if (misspelled == null) return
         misspelled = null
-        onSuggestions(emptyList())
+        strip.show(emptyList())
     }
 
     private fun replaceMisspelled(
@@ -281,20 +325,20 @@ class InputLogic(
         val target = misspelled ?: return
         misspelled = null
         editor.replaceAroundCursor(target.before, target.after, word)
-        onSuggestions(emptyList())
+        strip.show(emptyList())
     }
 
     private fun wordAtCursor(editor: TextEditor): WordAtCursor? {
         val before =
             editor
                 .textBeforeCursor(MAX_WORD)
-                ?.takeLastWhile(::isInWord)
+                ?.takeLastWhile(TextRules::isInWord)
                 ?.toString()
                 .orEmpty()
         val after =
             editor
                 .textAfterCursor(MAX_WORD)
-                ?.takeWhile(::isInWord)
+                ?.takeWhile(TextRules::isInWord)
                 ?.toString()
                 .orEmpty()
         val text = before + after
@@ -302,8 +346,6 @@ class InputLogic(
         if (text.first() == '-' || text.last() == '-') return null
         return WordAtCursor(text, before.length, after.length)
     }
-
-    private fun isInWord(c: Char) = c.isLetter() || c == '-'
 
     private class WordAtCursor(
         val text: String,
@@ -323,6 +365,7 @@ class InputLogic(
         commitComposing(editor)
         phantomSpace = false
         lastSpaceAt = Long.MIN_VALUE
+        strip.dropNextWords()
     }
 
     /** Forgets all state, e.g. when a new editor gets focus. */
@@ -334,25 +377,25 @@ class InputLogic(
 
     /** Recomputes completions for the word being typed (e.g. once a dictionary is loaded). */
     fun refreshCompletions() {
-        if (!composingIsGesture) showCompletions()
+        if (composing.isNotEmpty() && !composingIsGesture) showCompletions()
     }
 
     private fun showCompletions() {
         if (composing.isEmpty() || !suggestionsAllowed) {
-            onSuggestions(emptyList())
+            strip.show(emptyList())
             return
         }
         val typed = composing.toString()
-        val words = completions(typed.lowercase(locale)).map { TextRules.matchCase(it, typed, locale) }
+        val words = completions(typed.lowercase(locale), beforeComposing).map { TextRules.matchCase(it, typed, locale) }
         // Primary slot: the most likely completion; the literal typed text comes second.
-        onSuggestions((listOf(words.firstOrNull() ?: typed, typed) + words).distinct().take(SUGGESTIONS))
+        strip.show((listOf(words.firstOrNull() ?: typed, typed) + words).distinct().take(SUGGESTIONS))
     }
 
     private fun resetComposing() {
         misspelled = null
         composing.setLength(0)
         composingIsGesture = false
-        onSuggestions(emptyList())
+        strip.show(emptyList())
     }
 
     private fun casedForShift(words: List<String>): List<String> =
@@ -362,6 +405,9 @@ class InputLogic(
         const val SUGGESTIONS = 3
         private const val MIN_CORRECTED = 2
         private const val MAX_WORD = 40
+
+        /** How much text before the cursor the next words and completions look at. */
+        internal const val CONTEXT_CHARS = 64
 
         /** A longer word is deleted in several steps. */
         private const val WORD_LOOKBACK = 64

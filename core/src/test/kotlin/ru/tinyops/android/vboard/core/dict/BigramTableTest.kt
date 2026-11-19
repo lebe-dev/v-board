@@ -133,6 +133,36 @@ class BigramTableTest {
     }
 
     @Test
+    fun `the words most often seen after the previous one come first`() {
+        val we = assertNotNull(table.context("мы"))
+        assertEquals(listOf("будем", "дома", "буду"), we.mostFrequent(5))
+        assertEquals(listOf("будем", "дома"), we.mostFrequent(2))
+        assertEquals(emptyList(), we.mostFrequent(0))
+    }
+
+    @Test
+    fun `equally frequent followers keep the order of the table`() {
+        val table = BigramTable.read(bigramTableOf(mapOf(("а" to "в") to 5L, ("а" to "б") to 5L, ("а" to "г") to 9L)))
+        assertEquals(listOf("г", "б", "в"), assertNotNull(table.context("а")).mostFrequent(3))
+    }
+
+    @Test
+    fun `followers can be limited to a prefix`() {
+        val we = assertNotNull(table.context("мы"))
+        assertEquals(listOf("будем", "буду"), we.mostFrequent(5, prefix = "буд"))
+        assertEquals(listOf("будем"), we.mostFrequent(5, prefix = "будем"))
+        assertEquals(listOf("дома"), we.mostFrequent(5, prefix = "д"))
+        assertEquals(emptyList(), we.mostFrequent(5, prefix = "будемте"))
+        assertEquals(emptyList(), we.mostFrequent(5, prefix = "я"))
+        assertEquals(emptyList(), we.mostFrequent(5, prefix = "а"))
+    }
+
+    @Test
+    fun `a word seen only second has no followers`() {
+        assertEquals(emptyList(), assertNotNull(table.context("дома")).mostFrequent(3))
+    }
+
+    @Test
     fun `a previous word the table does not know gives no context`() {
         assertNull(table.context("кот"))
         assertNull(table.context(""))

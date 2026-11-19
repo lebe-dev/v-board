@@ -93,6 +93,18 @@ private fun SuggestionStripView.applyLook(
 
 private const val PERCENT = 100f
 
+/** Input logic that takes its words from [decoder] in the current [language]. */
+private fun inputLogicOver(
+    decoder: GestureDecoder,
+    language: () -> Language,
+    onSuggestions: (List<String>) -> Unit,
+) = InputLogic(
+    completions = { prefix, before -> decoder.completions(language(), prefix, InputLogic.SUGGESTIONS, before) },
+    onSuggestions = onSuggestions,
+    corrections = { word -> decoder.corrections(language(), word, InputLogic.SUGGESTIONS) },
+    predictions = { before -> decoder.nextWords(language(), before, InputLogic.SUGGESTIONS) },
+)
+
 private fun Window?.keepScreenOn(keep: Boolean) {
     val flag = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
     if (keep) this?.addFlags(flag) else this?.clearFlags(flag)
@@ -163,12 +175,7 @@ class KeyboardService :
     internal lateinit var fullscreen: FullscreenControl
         private set
 
-    private fun createInputLogic() =
-        InputLogic(
-            completions = { prefix -> decoder.completions(language, prefix, InputLogic.SUGGESTIONS) },
-            onSuggestions = { words -> stripView?.setSuggestions(words) },
-            corrections = { word -> decoder.corrections(language, word, InputLogic.SUGGESTIONS) },
-        )
+    private fun createInputLogic() = inputLogicOver(decoder, { language }) { words -> stripView?.setSuggestions(words) }
 
     override fun onCreate() {
         super.onCreate()

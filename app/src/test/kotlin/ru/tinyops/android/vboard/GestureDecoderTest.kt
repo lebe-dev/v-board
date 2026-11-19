@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class GestureDecoderTest {
     private val opened = ArrayList<Language>()
     private var bigramsBroken = false
+    private var bigramsWithPair = false
 
     @Volatile private var bigramsAvailable = false
     private val bigramsOpened = AtomicInteger()
@@ -31,12 +32,13 @@ class GestureDecoderTest {
         GestureDecoder(
             openDictionary = { language ->
                 synchronized(opened) { opened += language }
-                Dictionary.parse("hello\t10\nhelp\t5\nworld\t3\n".byteInputStream())
+                Dictionary.parse("hello\t10\nhelp\t5\nworld\t3\nдом\t9\nдома\t1\nмы\t1\n".byteInputStream())
             },
             openBigrams = { language ->
                 if (language == Language.RUSSIAN) bigramsOpened.incrementAndGet()
                 when {
                     bigramsBroken -> throw IOException("truncated table")
+                    bigramsAvailable && language == Language.RUSSIAN && bigramsWithPair -> pairTable()
                     bigramsAvailable && language == Language.RUSSIAN -> emptyBigramTable()
                     else -> null
                 }
@@ -91,6 +93,25 @@ class GestureDecoderTest {
         await { loaded }
 
         assertEquals(listOf("hello"), decoder.completions(Language.RUSSIAN, "hell", 3))
+    }
+
+    @Test
+    fun `the word pair table gives the next words and weighs completions`() {
+        bigramsAvailable = true
+        bigramsWithPair = true
+        assertTrue(decoder.nextWords(Language.RUSSIAN, "мы ", 3).isEmpty())
+
+        decoder.load(Language.RUSSIAN)
+        await { decoder.nextWords(Language.RUSSIAN, "Мы ", 3).isNotEmpty() }
+
+        assertEquals(listOf("дома"), decoder.nextWords(Language.RUSSIAN, "Мы ", 3))
+        assertTrue(decoder.nextWords(Language.RUSSIAN, "Мы. ", 3).isEmpty())
+        assertEquals(listOf("дома", "дом"), decoder.completions(Language.RUSSIAN, "до", 3, "мы "))
+        assertEquals(listOf("дом", "дома"), decoder.completions(Language.RUSSIAN, "до", 3))
+
+        bigramsAvailable = false
+        decoder.refreshBigrams()
+        await { decoder.nextWords(Language.RUSSIAN, "мы ", 3).isEmpty() }
     }
 
     @Test
@@ -156,3 +177,22 @@ private fun emptyBigramTable(): BigramTable =
             .putInt(1)
             .rewind() as ByteBuffer,
     )
+
+/** "мы дома" seen 1000 times: two words, `дома` first in byte order, and one pair. */
+private fun pairTable(): BigramTable {
+    val text = "домамы".toByteArray(Charsets.UTF_8)
+    val buffer = ByteBuffer.allocate(24 + 12 + text.size + 8 + 8 + 12 + 4).order(ByteOrder.LITTLE_ENDIAN)
+    buffer
+        .putInt(0x4B424247)
+        .putInt(1)
+        .putInt(2)
+        .putInt(1)
+        .putLong(1000)
+    buffer.putInt(0).putInt(8).putInt(text.size)
+    buffer.put(text)
+    buffer.putFloat(-20f).putFloat(-5f)
+    buffer.putInt(0).putInt(1000)
+    buffer.putInt(0).putInt(0).putInt(1)
+    buffer.putInt(Math.round(Math.log(1000.0) * 256).toInt())
+    return BigramTable.read(buffer.rewind() as ByteBuffer)
+}

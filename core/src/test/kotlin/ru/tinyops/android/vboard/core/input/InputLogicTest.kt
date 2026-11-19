@@ -84,7 +84,9 @@ private class FakeEditor : TextEditor {
 
 class InputLogicTest {
     private val dictionary = listOf("hello", "help", "hell", "world", "word")
+    private val followers = mapOf("good" to listOf("morning", "luck"), "morning" to listOf("everyone"))
     private var suggestions: List<String> = emptyList()
+    private var completedAfter: String? = null
     private val editor = FakeEditor()
     private lateinit var logic: InputLogic
 
@@ -92,10 +94,118 @@ class InputLogicTest {
     fun setUp() {
         logic =
             InputLogic(
-                completions = { prefix -> dictionary.filter { it.startsWith(prefix) } },
+                completions = { prefix, before ->
+                    completedAfter = before
+                    dictionary.filter { it.startsWith(prefix) }
+                },
                 onSuggestions = { suggestions = it },
                 corrections = { word -> if (word == "helo") listOf("hello", "help") else emptyList() },
+                predictions = { before -> followers[before.trimEnd().substringAfterLast(' ').lowercase()].orEmpty() },
             )
+    }
+
+    @Test
+    fun `a space after a word offers the words that usually follow it`() {
+        type("good")
+        logic.typeSpace(editor, 0)
+        assertEquals(listOf("morning", "luck"), suggestions)
+    }
+
+    @Test
+    fun `picking a next word inserts it with a space and offers the words after it`() {
+        type("good")
+        logic.typeSpace(editor, 0)
+        logic.pickSuggestion(editor, "morning")
+        assertEquals("good morning ", editor.toString())
+        assertEquals(listOf("everyone"), suggestions)
+        logic.pickSuggestion(editor, "everyone")
+        assertEquals("good morning everyone ", editor.toString())
+        assertTrue(suggestions.isEmpty())
+    }
+
+    @Test
+    fun `a space right after a picked next word does not end the sentence`() {
+        type("good")
+        logic.typeSpace(editor, 1_000)
+        logic.pickSuggestion(editor, "luck")
+        logic.typeSpace(editor, 1_100)
+        assertEquals("good luck  ", editor.toString())
+    }
+
+    @Test
+    fun `picking a completion offers the words after it`() {
+        type("goo")
+        logic.pickSuggestion(editor, "good")
+        assertEquals("good ", editor.toString())
+        assertEquals(listOf("morning", "luck"), suggestions)
+    }
+
+    @Test
+    fun `typing a letter replaces the next words with completions`() {
+        type("good")
+        logic.typeSpace(editor, 0)
+        type("wo")
+        assertEquals(listOf("world", "wo", "word"), suggestions)
+        assertEquals("good ", completedAfter)
+    }
+
+    @Test
+    fun `punctuation, enter and a cursor move take the next words away`() {
+        type("good")
+        logic.typeSpace(editor, 0)
+        logic.typeCharacter(editor, ",")
+        assertTrue(suggestions.isEmpty())
+
+        type("good")
+        logic.typeSpace(editor, 0)
+        logic.typeEnter(editor)
+        assertTrue(suggestions.isEmpty())
+
+        type("good")
+        logic.typeSpace(editor, 0)
+        logic.startCursorMove(editor)
+        assertTrue(suggestions.isEmpty())
+    }
+
+    @Test
+    fun `backspace takes the next words away`() {
+        type("good")
+        logic.typeSpace(editor, 0)
+        logic.backspace(editor)
+        assertTrue(suggestions.isEmpty())
+    }
+
+    @Test
+    fun `a cursor placed after a word and a space offers the next words`() {
+        placeCursor("good ", 5)
+        assertEquals(listOf("morning", "luck"), suggestions)
+        logic.onSelectionChanged(editor, 0, 5, -1)
+        assertTrue(suggestions.isEmpty())
+    }
+
+    @Test
+    fun `no next words for a cursor right before a word or after a word without a space`() {
+        placeCursor("good luck", 5)
+        assertTrue(suggestions.isEmpty())
+        placeCursor("good luck", 4)
+        assertTrue(suggestions.isEmpty())
+    }
+
+    @Test
+    fun `next words follow caps lock`() {
+        type("good")
+        logic.typeSpace(editor, 0)
+        logic.shift.onLongPress()
+        logic.onSelectionChanged(editor, 5, 5, -1)
+        assertEquals(listOf("MORNING", "LUCK"), suggestions)
+    }
+
+    @Test
+    fun `no next words where suggestions are off`() {
+        logic.suggestionsAllowed = false
+        type("good")
+        logic.typeSpace(editor, 0)
+        assertTrue(suggestions.isEmpty())
     }
 
     private fun placeCursor(
@@ -373,7 +483,7 @@ class InputLogicTest {
         var loaded = false
         logic =
             InputLogic(
-                completions = { prefix -> if (loaded) dictionary.filter { it.startsWith(prefix) } else emptyList() },
+                completions = { prefix, _ -> if (loaded) dictionary.filter { it.startsWith(prefix) } else emptyList() },
                 onSuggestions = { suggestions = it },
             )
         type("wor")
