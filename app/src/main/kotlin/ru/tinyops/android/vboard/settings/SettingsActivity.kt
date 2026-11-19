@@ -331,6 +331,7 @@ internal enum class Screen(
     SERVERS(MAIN),
     DIAGNOSTICS(MAIN),
     APP_LOG(DIAGNOSTICS),
+    SWIPE_CALIBRATION(DIAGNOSTICS),
     UPDATES(MAIN),
     INTEGRATIONS(MAIN),
 }
@@ -409,8 +410,14 @@ private fun SettingsNavigation(
                         ),
                     onBack = back,
                 )
-            Screen.DIAGNOSTICS -> DiagnosticsScreen(onOpenLog = { screen = Screen.APP_LOG }, onBack = back)
-            Screen.FULLSCREEN, Screen.APP_LOG, Screen.UPDATES, Screen.INTEGRATIONS -> StandalonePage(current, back)
+            Screen.DIAGNOSTICS ->
+                DiagnosticsScreen(
+                    onOpenLog = { screen = Screen.APP_LOG },
+                    onOpenCalibration = { screen = Screen.SWIPE_CALIBRATION },
+                    onBack = back,
+                )
+            Screen.FULLSCREEN, Screen.APP_LOG, Screen.SWIPE_CALIBRATION, Screen.UPDATES, Screen.INTEGRATIONS ->
+                StandalonePage(current, back)
             Screen.CLIPBOARD, Screen.EMOJI, Screen.EMOJI_GROUPS, Screen.EMOJI_SINGLE, Screen.SLIDE_ENGINE,
             Screen.AUTOCORRECT, Screen.SUGGESTIONS, Screen.DELETE_KEY,
             ->
@@ -517,6 +524,7 @@ private fun StandalonePage(
 ) {
     when (page) {
         Screen.APP_LOG -> AppLogScreen(onBack)
+        Screen.SWIPE_CALIBRATION -> SwipeCalibrationScreen(onBack)
         Screen.UPDATES -> UpdatesScreen(onBack)
         Screen.INTEGRATIONS -> IntegrationsScreen(onBack)
         else -> FullscreenScreen(onBack)

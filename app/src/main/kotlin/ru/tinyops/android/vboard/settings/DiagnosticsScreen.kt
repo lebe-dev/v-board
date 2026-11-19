@@ -13,11 +13,12 @@ import ru.tinyops.android.vboard.diagnostics.ErrorReporting
 
 /**
  * Diagnostics: the switch that lets the app send technical error reports to the developer (off by default, shown
- * only in builds that can send them) and the link to the local application log.
+ * only in builds that can send them), the link to the local application log and the slide to type calibration.
  */
 @Composable
 internal fun DiagnosticsScreen(
     onOpenLog: () -> Unit,
+    onOpenCalibration: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -50,6 +51,15 @@ internal fun DiagnosticsScreen(
                         icon = R.drawable.ic_article,
                         prominent = true,
                         onClick = onOpenLog,
+                    )
+                }
+                item {
+                    SettingsLinkRow(
+                        title = stringResource(R.string.swipe_calibration_title),
+                        summary = stringResource(R.string.swipe_calibration_link_summary),
+                        icon = R.drawable.ic_gesture,
+                        prominent = true,
+                        onClick = onOpenCalibration,
                     )
                 }
             }

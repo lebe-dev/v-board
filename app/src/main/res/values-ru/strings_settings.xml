@@ -497,6 +497,27 @@
     <string name="app_log_saved">Журнал сохранён</string>
     <string name="app_log_save_failed">Не удалось сохранить журнал</string>
 
+    <!-- Slide to type calibration -->
+    <string name="swipe_calibration_title">Калибровка slide to type</string>
+    <string name="swipe_calibration_link_summary">Запишите, как вы свайпаете, чтобы настроить экспериментальный движок</string>
+    <string name="swipe_calibration_intro">Страница по очереди покажет русские слова. Наберите каждое жестом в поле ниже так, как набираете обычно, не целясь. Клавиатура запишет жест и перейдёт к следующему слову.</string>
+    <string name="swipe_calibration_privacy">Жесты хранятся в памяти, пока вы их не сохраните. В файл попадут точки жестов, размеры клавиш, предложенные слова, модель телефона и версия приложения.</string>
+    <string name="swipe_calibration_slide_off">Slide to type выключен: сначала включите его в настройках клавиатуры.</string>
+    <string name="swipe_calibration_start">Начать</string>
+    <string name="swipe_calibration_progress">Слово %1$d из %2$d</string>
+    <string name="swipe_calibration_field">Наберите слово жестом здесь</string>
+    <string name="swipe_calibration_wrong_language">Переключите клавиатуру на русский: калибруется только русская раскладка.</string>
+    <string name="swipe_calibration_skip">Пропустить слово</string>
+    <string name="swipe_calibration_undo">Повторить предыдущее слово</string>
+    <string name="swipe_calibration_finish">Завершить сейчас</string>
+    <string name="swipe_calibration_result">Первая подсказка верная: %1$d из %3$d. Среди подсказок: %2$d из %3$d.</string>
+    <string name="swipe_calibration_save">Сохранить в файл</string>
+    <string name="swipe_calibration_save_summary">Zip-архив для отправки разработчику</string>
+    <string name="swipe_calibration_saved">Калибровка сохранена</string>
+    <string name="swipe_calibration_save_failed">Не удалось сохранить калибровку</string>
+    <string name="swipe_calibration_restart">Начать заново</string>
+    <string name="swipe_calibration_clear">Удалить записанные жесты</string>
+
     <string name="updates_title">Обновления</string>
     <string name="updates_link_off">Автопроверка выключена</string>
     <string name="updates_link_daily">Проверка раз в сутки</string>
