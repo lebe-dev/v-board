@@ -507,6 +507,8 @@
     <string name="swipe_calibration_progress">Слово %1$d из %2$d</string>
     <string name="swipe_calibration_field">Наберите слово жестом здесь</string>
     <string name="swipe_calibration_wrong_language">Переключите клавиатуру на русский: калибруется только русская раскладка.</string>
+    <string name="swipe_calibration_other_keyboard">Сейчас выбрана другая клавиатура. Жесты записывает только V-Board: переключитесь на неё.</string>
+    <string name="swipe_calibration_choose_keyboard">Выбрать V-Board</string>
     <string name="swipe_calibration_skip">Пропустить слово</string>
     <string name="swipe_calibration_undo">Повторить предыдущее слово</string>
     <string name="swipe_calibration_finish">Завершить сейчас</string>

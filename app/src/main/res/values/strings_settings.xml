@@ -501,6 +501,8 @@
     <string name="swipe_calibration_progress">Word %1$d of %2$d</string>
     <string name="swipe_calibration_field">Swipe the word here</string>
     <string name="swipe_calibration_wrong_language">Switch the keyboard to Russian: only the Russian layout is calibrated.</string>
+    <string name="swipe_calibration_other_keyboard">Another keyboard is selected now. Only V-Board records the gestures: switch to it.</string>
+    <string name="swipe_calibration_choose_keyboard">Choose V-Board</string>
     <string name="swipe_calibration_skip">Skip this word</string>
     <string name="swipe_calibration_undo">Redo the previous word</string>
     <string name="swipe_calibration_finish">Finish now</string>

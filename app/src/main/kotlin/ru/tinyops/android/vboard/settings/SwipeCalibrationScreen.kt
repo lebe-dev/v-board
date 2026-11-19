@@ -49,6 +49,7 @@ import java.time.format.DateTimeFormatter
 internal fun SwipeCalibrationScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val state by SwipeCalibration.state.collectAsState()
+    val ownKeyboard = rememberOwnKeyboardSelected()
     val scope = rememberCoroutineScope()
     val save =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(MIME_ZIP)) { uri ->
@@ -78,12 +79,50 @@ internal fun SwipeCalibrationScreen(onBack: () -> Unit) {
             }
         },
     ) {
+        if (!ownKeyboard && (!state.started || state.current != null)) {
+            item { KeyboardWarning(onChoose = { KeyboardSelection.choose(context) }) }
+        }
         item {
             when {
                 !state.started -> IntroSection(slideEnabled = KeyboardPrefs(context).slideEnabled)
                 state.current != null -> PromptSection(state)
                 else -> ResultSection(state.samples, onSave = { save.launch(fileName()) })
             }
+        }
+    }
+}
+
+/** Whether V-Board is the keyboard of the system now, checked again on every switch and whenever the page returns. */
+@Composable
+private fun rememberOwnKeyboardSelected(): Boolean {
+    val context = LocalContext.current
+    var selected by remember { mutableStateOf(KeyboardSelection.isOwnSelected(context)) }
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
+    LaunchedEffect(windowFocused) { selected = KeyboardSelection.isOwnSelected(context) }
+    DisposableEffect(context) {
+        val stop = KeyboardSelection.observe(context) { selected = KeyboardSelection.isOwnSelected(context) }
+        onDispose { stop() }
+    }
+    return selected
+}
+
+/** Another keyboard does not record gestures: says so and offers to switch. */
+@Composable
+private fun KeyboardWarning(onChoose: () -> Unit) {
+    SettingsSection(null) {
+        item {
+            SettingsNote(
+                stringResource(R.string.swipe_calibration_other_keyboard),
+                icon = R.drawable.ic_warning,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        item {
+            SettingsLinkRow(
+                title = stringResource(R.string.swipe_calibration_choose_keyboard),
+                icon = R.drawable.ic_keyboard,
+                onClick = onChoose,
+            )
         }
     }
 }
