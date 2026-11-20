@@ -44,10 +44,10 @@ internal class UnisonHost(
 )
 
 /**
- * The clipboard sync through Unison, while it is turned on in the settings: a copy made in a text field (or
- * copied a moment before the keyboard opened) is handed to Unison, and the newest item copied on another device
- * is offered on the strip. Passwords, clips marked sensitive, private fields and what came from Unison itself are
- * never sent. A missing Unison is reported to the user once. Main thread only.
+ * The clipboard sync through Unison, while it is turned on in the settings: a copy is handed to Unison as soon as
+ * it happens, unless the keyboard types into a password or a private field, and the newest item copied on another
+ * device is offered on the strip. Clips marked sensitive and what came from Unison itself are never sent. A missing
+ * Unison is reported to the user once. Main thread only.
  */
 internal class UnisonControl(
     private val context: Context,

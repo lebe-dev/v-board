@@ -9,7 +9,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** A copy leaves the phone only from a text or number field that is neither a password nor private. */
+/** A copy leaves the phone unless the keyboard types into a password or a private field. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class EditorProfileClipboardSyncTest {
@@ -41,10 +41,14 @@ class EditorProfileClipboardSyncTest {
     }
 
     @Test
-    fun `private fields, other fields and no field do not`() {
+    fun `private fields do not`() {
         assertFalse(allowed(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
-        assertFalse(allowed(InputType.TYPE_NULL))
-        assertFalse(allowed(InputType.TYPE_CLASS_PHONE))
-        assertFalse(EditorProfile.from(null).clipboardSyncAllowed)
+    }
+
+    @Test
+    fun `fields without text and no field at all allow it`() {
+        assertTrue(allowed(InputType.TYPE_NULL))
+        assertTrue(allowed(InputType.TYPE_CLASS_PHONE))
+        assertTrue(EditorProfile.from(null).clipboardSyncAllowed)
     }
 }

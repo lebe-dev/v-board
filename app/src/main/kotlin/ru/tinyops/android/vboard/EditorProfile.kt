@@ -31,7 +31,10 @@ data class EditorProfile(
      * private tab of a browser does: nothing typed or dictated there is kept on the phone.
      */
     val incognito: Boolean = false,
-    /** A copy may leave the phone: a text or number field that is neither a password nor private. */
+    /**
+     * A copy may leave the phone unless the keyboard types into a password or a private field. A copy taken
+     * anywhere else, including in another app with no field at all, goes out.
+     */
     val clipboardSyncAllowed: Boolean = false,
 ) {
     /** Dictation goes where words can be swiped: text fields that are not passwords. */
@@ -73,20 +76,19 @@ data class EditorProfile(
                 // The flags against fullscreen are left out on purpose: the mode only starts at the user's tap.
                 fullscreenAllowed = isText && !isPassword,
                 incognito = incognito,
-                clipboardSyncAllowed = clipboardSyncAllowed(info, inputClass, variation) && !incognito,
+                clipboardSyncAllowed = clipboardSyncAllowed(inputClass, variation) && !incognito,
             )
         }
 
+        /** Only a password field holds a secret the synchronization must not take. */
         private fun clipboardSyncAllowed(
-            info: EditorInfo?,
             inputClass: Int,
             variation: Int,
         ): Boolean =
-            when {
-                info == null -> false
-                inputClass == InputType.TYPE_CLASS_TEXT -> variation !in PASSWORD_VARIATIONS
-                inputClass == InputType.TYPE_CLASS_NUMBER -> variation != InputType.TYPE_NUMBER_VARIATION_PASSWORD
-                else -> false
+            when (inputClass) {
+                InputType.TYPE_CLASS_TEXT -> variation !in PASSWORD_VARIATIONS
+                InputType.TYPE_CLASS_NUMBER -> variation != InputType.TYPE_NUMBER_VARIATION_PASSWORD
+                else -> true
             }
 
         private fun enterAction(info: EditorInfo?): EnterAction {
