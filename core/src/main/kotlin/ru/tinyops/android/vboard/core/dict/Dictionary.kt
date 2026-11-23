@@ -88,6 +88,13 @@ class Dictionary internal constructor(
 
     private fun alphabetOf(word: String): String = if (word.any { it in CYRILLIC }) RUSSIAN_LETTERS else LATIN_LETTERS
 
+    internal fun prefixRange(firstChar: Char): IntRange {
+        val prefix = firstChar.toString()
+        val from = lowerBound(prefix)
+        val to = lowerBound(prefix + Char.MAX_VALUE)
+        return from until to
+    }
+
     private fun indexOf(word: String): Int {
         val index = lowerBound(word)
         return if (index < words.size && words.compareAt(index, word) == 0) index else -1
@@ -160,6 +167,13 @@ internal class WordTable(
     private val text: CharBuffer,
 ) : WordSource {
     val size: Int get() = offsets.limit() - 1
+
+    fun lengthAt(index: Int): Int = offsets.get(index + 1) - offsets.get(index)
+
+    fun charAt(
+        index: Int,
+        pos: Int,
+    ): Char = text.get(offsets.get(index) + pos)
 
     override fun wordAt(index: Int): String {
         val start = offsets.get(index)

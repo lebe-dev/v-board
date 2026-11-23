@@ -1,9 +1,11 @@
 package ru.tinyops.android.vboard.core.input
 
+import ru.tinyops.android.vboard.core.dict.TapSuggestions
 import java.util.Locale
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** Mimics an EditText behind an InputConnection: one cursor and an optional composing region. */
@@ -565,5 +567,106 @@ class InputLogicTest {
         logic.shift.onLongPress()
         type("ё")
         assertEquals("Ё", editor.toString())
+    }
+
+    @Test
+    fun `autocorrect applies on space and backspace reverts to the original word`() {
+        var highlighted = false
+        val acLogic =
+            InputLogic(
+                completions = { _, _ -> emptyList() },
+                onSuggestions = { suggestions = it },
+                tapSuggestions = { typed, _, _ ->
+                    if (typed == "helo") {
+                        TapSuggestions(listOf("hello", "help"), autocorrect = "hello")
+                    } else {
+                        TapSuggestions(emptyList())
+                    }
+                },
+                onAutocorrectHighlight = { highlighted = it },
+            )
+        for (ch in "helo") acLogic.typeCharacter(editor, ch.toString())
+        assertEquals(listOf("hello", "helo", "help"), suggestions)
+        assertTrue(highlighted)
+
+        acLogic.typeSpace(editor, 1_000)
+        assertEquals("hello ", editor.toString())
+        assertFalse(highlighted)
+
+        acLogic.backspace(editor)
+        assertEquals("helo", editor.toString())
+
+        // A space after undoing keeps the user's literal word.
+        acLogic.typeSpace(editor, 2_000)
+        assertEquals("helo ", editor.toString())
+    }
+
+    @Test
+    fun `autocorrect applies on punctuation and respects capitalization`() {
+        val acLogic =
+            InputLogic(
+                completions = { _, _ -> emptyList() },
+                onSuggestions = { suggestions = it },
+                tapSuggestions = { typed, _, _ ->
+                    if (typed == "helo") {
+                        TapSuggestions(listOf("hello"), autocorrect = "hello")
+                    } else {
+                        TapSuggestions(emptyList())
+                    }
+                },
+            )
+        acLogic.shift.onTap(0)
+        for (ch in "helo") acLogic.typeCharacter(editor, ch.toString())
+        assertEquals(listOf("Hello", "Helo"), suggestions)
+
+        acLogic.typeCharacter(editor, ",")
+        assertEquals("Hello,", editor.toString())
+
+        acLogic.backspace(editor)
+        assertEquals("Helo", editor.toString())
+    }
+
+    @Test
+    fun `autocorrect disabled still shows corrections in strip without auto-replacing`() {
+        var highlighted = false
+        val acLogic =
+            InputLogic(
+                completions = { _, _ -> emptyList() },
+                onSuggestions = { suggestions = it },
+                tapSuggestions = { typed, _, _ ->
+                    if (typed == "helo") {
+                        TapSuggestions(listOf("hello", "help"), autocorrect = "hello")
+                    } else {
+                        TapSuggestions(emptyList())
+                    }
+                },
+                onAutocorrectHighlight = { highlighted = it },
+            )
+        acLogic.autocorrectEnabled = false
+        for (ch in "helo") acLogic.typeCharacter(editor, ch.toString())
+        assertEquals(listOf("hello", "helo", "help"), suggestions)
+        assertFalse(highlighted)
+
+        acLogic.typeSpace(editor, 1_000)
+        assertEquals("helo ", editor.toString())
+    }
+
+    @Test
+    fun `tapping the literal word in the strip keeps it without autocorrecting`() {
+        val acLogic =
+            InputLogic(
+                completions = { _, _ -> emptyList() },
+                onSuggestions = { suggestions = it },
+                tapSuggestions = { typed, _, _ ->
+                    if (typed == "helo") {
+                        TapSuggestions(listOf("hello"), autocorrect = "hello")
+                    } else {
+                        TapSuggestions(emptyList())
+                    }
+                },
+            )
+        for (ch in "helo") acLogic.typeCharacter(editor, ch.toString())
+        acLogic.pickSuggestion(editor, "helo")
+        assertEquals("helo ", editor.toString())
     }
 }

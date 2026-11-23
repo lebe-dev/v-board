@@ -5,10 +5,18 @@ import android.os.Looper
 import android.util.Log
 import ru.tinyops.android.vboard.core.dict.BigramTable
 import ru.tinyops.android.vboard.core.dict.Dictionary
+import ru.tinyops.android.vboard.core.dict.KeyProximity
 import ru.tinyops.android.vboard.core.dict.NextWords
+import ru.tinyops.android.vboard.core.dict.TapPoint
+import ru.tinyops.android.vboard.core.dict.TapSuggestOptions
+import ru.tinyops.android.vboard.core.dict.TapSuggester
+import ru.tinyops.android.vboard.core.dict.TapSuggestions
 import ru.tinyops.android.vboard.core.gesture.SlideEngine
 import ru.tinyops.android.vboard.core.gesture.SwitchableGestureEngine
 import ru.tinyops.android.vboard.core.gesture.neural.NeuralGestureEngine
+import ru.tinyops.android.vboard.core.layout.KeyboardGeometry
+import ru.tinyops.android.vboard.core.layout.KeyboardLayouts
+import ru.tinyops.android.vboard.core.layout.KeyboardMode
 import ru.tinyops.android.vboard.core.layout.Language
 import ru.tinyops.android.vboard.diagnostics.AppLog
 import ru.tinyops.android.vboard.diagnostics.ErrorReporting
@@ -36,6 +44,9 @@ class GestureDecoder(
 
     /** Suggestions after the previous word, for languages with a word pair table; used on the main thread only. */
     private val nextWords = ConcurrentHashMap<Language, NextWords>()
+    private val bigrams = ConcurrentHashMap<Language, BigramTable>()
+    private val proximities = ConcurrentHashMap<Language, KeyProximity>()
+    private val suggesters = ConcurrentHashMap<Language, TapSuggester>()
     private val requested = ConcurrentHashMap.newKeySet<Language>()
 
     /** Engines, touched only from [executor]. */
@@ -74,6 +85,7 @@ class GestureDecoder(
                     openDictionary(language).also { engine(language).setLanguageModel(it.languageModel) }
                 }
             dictionaries[language] = dictionary
+            rebuildSuggester(language)
             val millis = (System.nanoTime() - started) / NANOS_PER_MS
             Log.i(TAG, "loaded ${language.code}: ${dictionary.size} words in $millis ms")
             main.post(onLoaded)
@@ -96,7 +108,9 @@ class GestureDecoder(
         }
         engine(language).setBigrams(table)
         withBigrams += language
+        bigrams[language] = table
         nextWords[language] = NextWords(table, dictionaries.getValue(language))
+        rebuildSuggester(language)
         Log.i(TAG, "loaded word pairs of ${language.code}: ${table.size} words")
     }
 
@@ -111,7 +125,9 @@ class GestureDecoder(
                 } else if (!available && loaded) {
                     engine(language).setBigrams(null)
                     withBigrams -= language
+                    bigrams.remove(language)
                     nextWords.remove(language)
+                    rebuildSuggester(language)
                     Log.i(TAG, "released word pairs of ${language.code}")
                 }
             }
@@ -124,6 +140,15 @@ class GestureDecoder(
     ) {
         SwipeCalibration.setLayout(language, layout)
         executor.execute { engine(language).setLayout(layout) }
+    }
+
+    /** Updates key center coordinates used by manual-typing corrections for [language]. */
+    fun setGeometry(
+        language: Language,
+        geometry: KeyboardGeometry,
+    ) {
+        proximities[language] = KeyProximity.fromGeometry(geometry)
+        rebuildSuggester(language)
     }
 
     /**
@@ -183,12 +208,39 @@ class GestureDecoder(
         return next.after(previous, limit)
     }
 
+    /**
+     * Suggestions and typo corrections for manual tap typing, empty until the dictionary is loaded.
+     */
+    fun suggestForTap(
+        language: Language,
+        typed: String,
+        taps: List<TapPoint?>,
+        precedingText: String,
+        limit: Int,
+        options: TapSuggestOptions,
+    ): TapSuggestions {
+        val suggester = suggesters[language] ?: return TapSuggestions(emptyList())
+        return suggester.suggest(typed, taps, precedingText, limit, options)
+    }
+
     /** Better spellings of a lowercase [word] for the cursor standing on it; empty until the dictionary is loaded. */
     fun corrections(
         language: Language,
         word: String,
         limit: Int,
-    ): List<String> = dictionaries[language]?.corrections(word, limit).orEmpty()
+        options: TapSuggestOptions = TapSuggestOptions(),
+    ): List<String> =
+        suggesters[language]?.corrections(word, limit = limit, options = options)
+            ?: dictionaries[language]?.corrections(word, limit).orEmpty()
+
+    private fun rebuildSuggester(language: Language) {
+        val dictionary = dictionaries[language] ?: return
+        val proximity =
+            proximities.getOrPut(language) {
+                KeyProximity.fromSpec(KeyboardLayouts.spec(language, KeyboardMode.LETTERS))
+            }
+        suggesters[language] = TapSuggester(dictionary, proximity, bigrams[language], nextWords[language])
+    }
 
     fun shutdown() {
         executor.shutdownNow()

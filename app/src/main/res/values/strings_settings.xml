@@ -472,6 +472,17 @@
     <string name="settings_suggestion_timeout_5">After 5 seconds</string>
     <string name="settings_suggestion_timeout_10">After 10 seconds</string>
     <string name="settings_suggestion_timeout_off">Never</string>
+    <string name="settings_tap_corrections_section">Manual typing corrections</string>
+    <string name="settings_tap_corrections">Suggest typo corrections</string>
+    <string name="settings_tap_corrections_summary">Show spelling fixes on the strip as you type, taking neighboring keys, word pairs and letter "ё" into account</string>
+    <string name="settings_tap_autocorrect">Autocorrect on space</string>
+    <string name="settings_tap_autocorrect_summary">Automatically apply a confident correction on space or punctuation. Press Backspace right after to revert to what you typed</string>
+    <string name="settings_fuzzy_prefix">Fuzzy completions</string>
+    <string name="settings_fuzzy_prefix_summary">Suggest completions even when there is a typo in an unfinished word</string>
+    <string name="settings_two_edit_corrections">Fix two typos in long words</string>
+    <string name="settings_two_edit_corrections_summary">Search for corrections up to two edits away for words of 5 letters or more</string>
+    <string name="settings_spatial_tap_model">Use touch position on keys</string>
+    <string name="settings_spatial_tap_model_summary">Weigh neighboring letters by how close your finger landed to their keys</string>
     <string name="custom_button_name">Name</string>
     <string name="settings_github">Project on GitHub</string>
     <string name="diagnostics_title">Diagnostics</string>

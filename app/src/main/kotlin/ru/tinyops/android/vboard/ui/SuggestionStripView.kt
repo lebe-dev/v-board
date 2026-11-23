@@ -345,6 +345,9 @@ class SuggestionStripView(
             if (pressed == Hit.NONE) clear() else postDelayed(hideSuggestions, suggestionTimeoutMillis)
         }
 
+    /** Whether the middle suggestion will be applied automatically on space or punctuation. */
+    var autocorrectHighlight: Boolean = false
+
     fun setSuggestions(words: List<String>) {
         val next = words.take(SLOTS)
         removeCallbacks(hideSuggestions)
@@ -621,6 +624,7 @@ class SuggestionStripView(
         for ((slot, zone) in SLOT_ZONES.withIndex()) {
             val word = wordIn(zone, suggestions) ?: continue
             val paint = if (zone == Zone.SLOT_MIDDLE) boldPaint else textPaint
+            if (zone == Zone.SLOT_MIDDLE) paint.color = if (autocorrectHighlight) theme.accent else theme.suggestion
             val text = TextUtils.ellipsize(word, paint, slotWidth * TEXT_WIDTH, TextUtils.TruncateAt.END)
             val center = slotsLeft + slot * slotWidth + slotWidth / 2f
             canvas.drawText(text, 0, text.length, center, baseline, paint)

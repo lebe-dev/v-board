@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import ru.tinyops.android.vboard.core.clipboard.LinkCleaner
+import ru.tinyops.android.vboard.core.dict.TapSuggestOptions
 import ru.tinyops.android.vboard.core.gesture.SlideEngine
 import ru.tinyops.android.vboard.core.input.DeleteHoldMode
 import ru.tinyops.android.vboard.core.input.SpaceDragMode
@@ -115,6 +116,40 @@ class KeyboardPrefs(
         get() = prefs.getBoolean(KEY_SUGGEST_NEXT_WORD, true)
         set(value) = prefs.edit { putBoolean(KEY_SUGGEST_NEXT_WORD, value) }
 
+    /** Whether typo corrections are suggested while typing manually; on by default. */
+    var tapCorrections: Boolean
+        get() = prefs.getBoolean(KEY_TAP_CORRECTIONS, true)
+        set(value) = prefs.edit { putBoolean(KEY_TAP_CORRECTIONS, value) }
+
+    /** Whether confident typo corrections apply automatically on space or punctuation; on by default. */
+    var autocorrect: Boolean
+        get() = prefs.getBoolean(KEY_AUTOCORRECT, true)
+        set(value) = prefs.edit { putBoolean(KEY_AUTOCORRECT, value) }
+
+    /** Whether completions are suggested when an unfinished word contains a typo; on by default. */
+    var fuzzyPrefix: Boolean
+        get() = prefs.getBoolean(KEY_FUZZY_PREFIX, true)
+        set(value) = prefs.edit { putBoolean(KEY_FUZZY_PREFIX, value) }
+
+    /** Whether up to two typos are corrected in longer words; on by default. */
+    var twoEditCorrections: Boolean
+        get() = prefs.getBoolean(KEY_TWO_EDIT_CORRECTIONS, true)
+        set(value) = prefs.edit { putBoolean(KEY_TWO_EDIT_CORRECTIONS, value) }
+
+    /** Whether exact touch coordinates on keys weigh typing corrections; on by default. */
+    var spatialTapModel: Boolean
+        get() = prefs.getBoolean(KEY_SPATIAL_TAP_MODEL, true)
+        set(value) = prefs.edit { putBoolean(KEY_SPATIAL_TAP_MODEL, value) }
+
+    /** Current options for manual-typing suggestions and corrections. */
+    fun tapSuggestOptions(): TapSuggestOptions =
+        TapSuggestOptions(
+            corrections = tapCorrections,
+            fuzzyPrefix = tapCorrections && fuzzyPrefix,
+            twoEdits = tapCorrections && twoEditCorrections,
+            spatialModel = tapCorrections && spatialTapModel,
+        )
+
     /** Whether crash reports go to the developer; off until the user agrees. */
     var sendErrors: Boolean
         get() = prefs.getBoolean(KEY_SEND_ERRORS, false)
@@ -136,11 +171,13 @@ class KeyboardPrefs(
 
         private const val FILE = "keyboard_prefs"
         private const val KEY_AUTO_CAPITALIZE = "auto_capitalize"
+        private const val KEY_AUTOCORRECT = "autocorrect"
         private const val KEY_CLEAN_LINKS = "clean_links"
         private const val KEY_DELETE_HOLD = "delete_hold"
         private const val KEY_FULLSCREEN = "fullscreen_enabled"
         private const val KEY_FULLSCREEN_COLOR = "fullscreen_color"
         private const val KEY_FULLSCREEN_PLACEMENT = "fullscreen_placement"
+        private const val KEY_FUZZY_PREFIX = "fuzzy_prefix"
         private const val KEY_HIDDEN_SETTINGS = "hidden_settings"
         private const val KEY_LOG_ERRORS = "log_errors"
         private const val KEY_NEURAL_LOADING = "neural_model_loading"
@@ -148,11 +185,14 @@ class KeyboardPrefs(
         private const val KEY_SLIDE_ENABLED = "slide_enabled"
         private const val KEY_SLIDE_ENGINE = "slide_engine"
         private const val KEY_SPACE_DRAG = "space_drag_mode"
+        private const val KEY_SPATIAL_TAP_MODEL = "spatial_tap_model"
         private const val KEY_STRIP_BUTTON_WIDTH = "strip_button_width"
         private const val KEY_WORD_DELETE_INTERVAL = "word_delete_interval_ms"
         private const val KEY_STRIP_SECOND_ROW = "strip_second_row"
         private const val KEY_SUGGEST_ALWAYS = "suggest_always"
         private const val KEY_SUGGEST_NEXT_WORD = "suggest_next_word"
         private const val KEY_SUGGESTION_TIMEOUT = "suggestion_timeout_seconds"
+        private const val KEY_TAP_CORRECTIONS = "tap_corrections"
+        private const val KEY_TWO_EDIT_CORRECTIONS = "two_edit_corrections"
     }
 }
