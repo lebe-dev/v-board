@@ -33,3 +33,4 @@ app/src/main/assets/dict/
 __pycache__/
 
 /unison
+/tasks
