@@ -141,24 +141,26 @@ private fun CheckSection(check: UpdateCheck.State) {
                     },
             )
         }
+        if (check == UpdateCheck.State.UpToDate) {
+            item {
+                SettingsStatusRow(
+                    stringResource(R.string.updates_up_to_date),
+                    StatusTone.SUCCESS,
+                    R.drawable.ic_check_circle,
+                )
+            }
+        }
         item {
-            when (check) {
-                UpdateCheck.State.Checking ->
-                    SettingsStatusRow(stringResource(R.string.updates_checking), StatusTone.PROGRESS)
-                UpdateCheck.State.UpToDate ->
-                    SettingsStatusRow(
-                        stringResource(R.string.updates_up_to_date),
-                        StatusTone.SUCCESS,
-                        R.drawable.ic_check_circle,
-                    )
-                else ->
-                    SettingsLinkRow(
-                        title = stringResource(R.string.updates_check),
-                        summary =
-                            stringResource(R.string.updates_check_failed).takeIf { check == UpdateCheck.State.Failed },
-                        icon = R.drawable.ic_refresh,
-                        onClick = { UpdateCheck.start(context) },
-                    )
+            if (check == UpdateCheck.State.Checking) {
+                SettingsStatusRow(stringResource(R.string.updates_checking), StatusTone.PROGRESS)
+            } else {
+                SettingsLinkRow(
+                    title = stringResource(R.string.updates_check),
+                    summary =
+                        stringResource(R.string.updates_check_failed).takeIf { check == UpdateCheck.State.Failed },
+                    icon = R.drawable.ic_refresh,
+                    onClick = { UpdateCheck.start(context) },
+                )
             }
         }
     }
