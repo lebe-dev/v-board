@@ -11,15 +11,36 @@ import ru.tinyops.android.vboard.KeyboardPrefs
 import ru.tinyops.android.vboard.R
 import ru.tinyops.android.vboard.core.input.SuggestionTimeout
 
-/** The word suggestions on the strip: when they go away and where they are shown. */
+/** The word suggestions and manual-typing corrections on the strip. */
 @Composable
 internal fun SuggestionsScreen(onBack: () -> Unit) {
+    val prefs = KeyboardPrefs(LocalContext.current)
+    var tapCorrections by remember { mutableStateOf(prefs.tapCorrections) }
     SettingsPage(title = stringResource(R.string.settings_suggestions), onBack = onBack) {
         item {
             SettingsSection(null) {
                 item { SuggestionTimeoutRow() }
                 item { SuggestAlwaysRow() }
                 item { SuggestNextWordRow() }
+            }
+        }
+        item {
+            SettingsSection(stringResource(R.string.settings_tap_corrections_section)) {
+                item {
+                    TapCorrectionsRow(
+                        checked = tapCorrections,
+                        onCheckedChange = {
+                            tapCorrections = it
+                            prefs.tapCorrections = it
+                        },
+                    )
+                }
+                if (tapCorrections) {
+                    item { AutocorrectRow() }
+                    item { FuzzyPrefixRow() }
+                    item { TwoEditCorrectionsRow() }
+                    item { SpatialTapModelRow() }
+                }
             }
         }
     }
@@ -82,6 +103,94 @@ internal fun SuggestNextWordRow() {
         onCheckedChange = {
             nextWord = it
             prefs.suggestNextWord = it
+        },
+    )
+}
+
+/** Whether typo corrections are suggested on the strip while typing manually. */
+@Composable
+internal fun TapCorrectionsRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    SettingsSwitchRow(
+        title = stringResource(R.string.settings_tap_corrections),
+        summary = stringResource(R.string.settings_tap_corrections_summary),
+        icon = R.drawable.ic_auto_fix_high,
+        prominent = true,
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+    )
+}
+
+/** Whether confident typo corrections apply automatically on space or punctuation. */
+@Composable
+internal fun AutocorrectRow() {
+    val prefs = KeyboardPrefs(LocalContext.current)
+    var enabled by remember { mutableStateOf(prefs.autocorrect) }
+    SettingsSwitchRow(
+        title = stringResource(R.string.settings_tap_autocorrect),
+        summary = stringResource(R.string.settings_tap_autocorrect_summary),
+        icon = R.drawable.ic_auto_fix_high,
+        prominent = true,
+        checked = enabled,
+        onCheckedChange = {
+            enabled = it
+            prefs.autocorrect = it
+        },
+    )
+}
+
+/** Whether completions are suggested even when an unfinished word contains a typo. */
+@Composable
+internal fun FuzzyPrefixRow() {
+    val prefs = KeyboardPrefs(LocalContext.current)
+    var enabled by remember { mutableStateOf(prefs.fuzzyPrefix) }
+    SettingsSwitchRow(
+        title = stringResource(R.string.settings_fuzzy_prefix),
+        summary = stringResource(R.string.settings_fuzzy_prefix_summary),
+        icon = R.drawable.ic_text_fields,
+        prominent = true,
+        checked = enabled,
+        onCheckedChange = {
+            enabled = it
+            prefs.fuzzyPrefix = it
+        },
+    )
+}
+
+/** Whether up to two typos are corrected in longer words. */
+@Composable
+internal fun TwoEditCorrectionsRow() {
+    val prefs = KeyboardPrefs(LocalContext.current)
+    var enabled by remember { mutableStateOf(prefs.twoEditCorrections) }
+    SettingsSwitchRow(
+        title = stringResource(R.string.settings_two_edit_corrections),
+        summary = stringResource(R.string.settings_two_edit_corrections_summary),
+        icon = R.drawable.ic_auto_awesome,
+        prominent = true,
+        checked = enabled,
+        onCheckedChange = {
+            enabled = it
+            prefs.twoEditCorrections = it
+        },
+    )
+}
+
+/** Whether exact touch coordinates on keys weigh typing corrections. */
+@Composable
+internal fun SpatialTapModelRow() {
+    val prefs = KeyboardPrefs(LocalContext.current)
+    var enabled by remember { mutableStateOf(prefs.spatialTapModel) }
+    SettingsSwitchRow(
+        title = stringResource(R.string.settings_spatial_tap_model),
+        summary = stringResource(R.string.settings_spatial_tap_model_summary),
+        icon = R.drawable.ic_auto_awesome,
+        prominent = true,
+        checked = enabled,
+        onCheckedChange = {
+            enabled = it
+            prefs.spatialTapModel = it
         },
     )
 }

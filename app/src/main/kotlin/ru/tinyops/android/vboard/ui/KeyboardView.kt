@@ -13,6 +13,8 @@ import android.view.MotionEvent
 import android.view.View
 import ru.tinyops.android.vboard.EnterAction
 import ru.tinyops.android.vboard.PerfTrace
+import ru.tinyops.android.vboard.core.dict.KeyProximity
+import ru.tinyops.android.vboard.core.dict.TapPoint
 import ru.tinyops.android.vboard.core.input.CursorDrag
 import ru.tinyops.android.vboard.core.input.CursorEdgeScroll
 import ru.tinyops.android.vboard.core.input.DeleteHoldMode
@@ -133,6 +135,10 @@ class KeyboardView(
     var spaceDragMode: SpaceDragMode = SpaceDragMode.LINEAR
 
     var geometry: KeyboardGeometry? = null
+        private set
+
+    /** Normalized touch coordinate of the key press currently firing [Listener.onKey]. */
+    var lastTap: TapPoint? = null
         private set
 
     private val renderer = KeyRenderer(theme)
@@ -452,6 +458,7 @@ class KeyboardView(
         if (pointer.key.spec.type == KeyType.BACKSPACE) {
             cancelRepeat()
         } else if (!pointer.longPressed) {
+            lastTap = geometry?.let { KeyProximity.tapPoint(it, pointer.downX, pointer.downY) }
             listener?.onKey(pointer.key.spec)
             performClick()
         }

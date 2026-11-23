@@ -1,5 +1,7 @@
 package ru.tinyops.android.vboard.core.input
 
+import ru.tinyops.android.vboard.core.dict.TapPoint
+import ru.tinyops.android.vboard.core.dict.TapSuggestions
 import java.util.Locale
 
 /** The editing operations the input logic needs; implemented over an `InputConnection`. */
@@ -55,6 +57,9 @@ class InputLogic(
     private val onSuggestions: (List<String>) -> Unit,
     private val corrections: (String) -> List<String> = { emptyList() },
     private val predictions: (precedingText: String) -> List<String> = { emptyList() },
+    private val tapSuggestions: ((typed: String, taps: List<TapPoint?>, precedingText: String) -> TapSuggestions)? =
+        null,
+    private val onAutocorrectHighlight: (Boolean) -> Unit = {},
 ) {
     val shift = ShiftController()
     var locale: Locale = Locale.ENGLISH
@@ -65,7 +70,12 @@ class InputLogic(
     /** Whether the words that may follow are offered after a space; completions do not depend on it. */
     var nextWordsAllowed: Boolean = true
 
+    /** Whether confident typo corrections are applied automatically on space or punctuation. */
+    var autocorrectEnabled: Boolean = true
+
     private val composing = StringBuilder()
+    private val composingTaps = ArrayList<TapPoint?>()
+    private val autocorrect = AutocorrectState()
     private var composingIsGesture = false
     private var phantomSpace = false
 
@@ -85,9 +95,11 @@ class InputLogic(
     fun typeCharacter(
         editor: TextEditor,
         raw: String,
+        tap: TapPoint? = null,
     ) {
         val isWordCharacter = TextRules.isWordCharacter(raw)
         val text = if (isWordCharacter) TextRules.applyShift(raw, shift.state, locale) else raw
+        autocorrect.clearUndo()
         // One batch, so the editor reports a single, consistent selection update.
         editor.beginBatchEdit()
         if (composingIsGesture) commitComposing(editor)
@@ -97,6 +109,7 @@ class InputLogic(
             if (suggestionsAllowed) {
                 if (composing.isEmpty()) beforeComposing = editor.textBeforeCursor(CONTEXT_CHARS)?.toString().orEmpty()
                 composing.append(text)
+                repeat(text.length) { composingTaps.add(tap) }
                 editor.setComposingText(composing)
                 showCompletions()
             } else {
@@ -104,9 +117,17 @@ class InputLogic(
             }
             shift.onLetterTyped()
         } else {
-            commitComposing(editor)
+            val corrected =
+                composing.isNotEmpty() &&
+                    AutocorrectState.triggersAutocorrect(text) &&
+                    autocorrect.applyIfPending(editor, composing.toString(), text, autocorrectEnabled)
+            if (corrected) {
+                resetComposing()
+            } else {
+                commitComposing(editor)
+                editor.commitText(text)
+            }
             phantomSpace = false
-            editor.commitText(text)
             strip.dropNextWords()
         }
         editor.endBatchEdit()
@@ -116,22 +137,34 @@ class InputLogic(
         editor: TextEditor,
         nowMillis: Long,
     ) {
+        autocorrect.clearUndo()
         editor.beginBatchEdit()
-        commitComposing(editor)
-        phantomSpace = false
-        val quickSecondSpace = lastSpaceAt != Long.MIN_VALUE && nowMillis - lastSpaceAt < DOUBLE_SPACE_MILLIS
-        if (quickSecondSpace && TextRules.isDoubleSpacePeriod(editor.textBeforeCursor(2))) {
-            editor.replaceAroundCursor(1, 0, ". ")
-            lastSpaceAt = Long.MIN_VALUE
-        } else {
-            editor.commitText(" ")
+        val corrected =
+            !composingIsGesture &&
+                composing.isNotEmpty() &&
+                autocorrect.applyIfPending(editor, composing.toString(), " ", autocorrectEnabled)
+        if (corrected) {
+            resetComposing()
+            phantomSpace = false
             lastSpaceAt = nowMillis
+        } else {
+            commitComposing(editor)
+            phantomSpace = false
+            val quickSecondSpace = lastSpaceAt != Long.MIN_VALUE && nowMillis - lastSpaceAt < DOUBLE_SPACE_MILLIS
+            if (quickSecondSpace && TextRules.isDoubleSpacePeriod(editor.textBeforeCursor(2))) {
+                editor.replaceAroundCursor(1, 0, ". ")
+                lastSpaceAt = Long.MIN_VALUE
+            } else {
+                editor.commitText(" ")
+                lastSpaceAt = nowMillis
+            }
         }
         showPredictions(editor)
         editor.endBatchEdit()
     }
 
     fun typeEnter(editor: TextEditor) {
+        autocorrect.clearUndo()
         commitComposing(editor)
         phantomSpace = false
         editor.sendEnter()
@@ -142,13 +175,19 @@ class InputLogic(
         phantomSpace = false
         when {
             composingIsGesture -> {
+                autocorrect.clearUndo()
                 editor.setComposingText("")
                 resetComposing()
             }
             composing.isNotEmpty() -> {
+                autocorrect.clearUndo()
                 composing.setLength(composing.length - 1)
+                if (composingTaps.isNotEmpty()) composingTaps.removeAt(composingTaps.lastIndex)
                 editor.setComposingText(composing)
                 showCompletions()
+            }
+            autocorrect.undoIfMatching(editor) -> {
+                strip.dropNextWords()
             }
             else -> {
                 editor.sendBackspace()
@@ -172,6 +211,7 @@ class InputLogic(
 
     /** Deletes the word before the cursor with the spaces after it; a word being typed goes as a whole. */
     private fun deleteWord(editor: TextEditor) {
+        autocorrect.clearUndo()
         phantomSpace = false
         if (composing.isNotEmpty()) {
             editor.setComposingText("")
@@ -185,6 +225,7 @@ class InputLogic(
 
     /** Deletes the selection and up to [CLEAR_LOOKAROUND] characters on each side of it. */
     private fun deleteAll(editor: TextEditor) {
+        autocorrect.clearUndo()
         phantomSpace = false
         editor.beginBatchEdit()
         editor.finishComposingText()
@@ -199,6 +240,7 @@ class InputLogic(
         editor: TextEditor,
         word: String,
     ) {
+        autocorrect.clearUndo()
         when {
             misspelled != null && composing.isEmpty() -> replaceMisspelled(editor, word)
             strip.offersNextWords && composing.isEmpty() -> {
@@ -228,6 +270,7 @@ class InputLogic(
 
     /** A gesture started: whatever is being composed becomes final. */
     fun startGesture(editor: TextEditor) {
+        autocorrect.clearUndo()
         commitComposing(editor)
     }
 
@@ -274,11 +317,13 @@ class InputLogic(
     ) {
         val movedAway = candidatesEnd != -1 && (selectionStart != candidatesEnd || selectionEnd != candidatesEnd)
         if (composing.isNotEmpty() && movedAway) {
+            autocorrect.clearUndo()
             commitComposing(editor)
             phantomSpace = false
         }
         when {
             selectionStart != selectionEnd -> {
+                autocorrect.clearUndo()
                 dropCorrections()
                 strip.dropNextWords()
             }
@@ -367,6 +412,7 @@ class InputLogic(
 
     /** The finger is about to move the cursor: what was typed is final and a next space starts afresh. */
     fun startCursorMove(editor: TextEditor) {
+        autocorrect.clearUndo()
         commitComposing(editor)
         phantomSpace = false
         lastSpaceAt = Long.MIN_VALUE
@@ -375,6 +421,7 @@ class InputLogic(
 
     /** Forgets all state, e.g. when a new editor gets focus. */
     fun reset() {
+        autocorrect.reset()
         resetComposing()
         phantomSpace = false
         lastSpaceAt = Long.MIN_VALUE
@@ -387,18 +434,35 @@ class InputLogic(
 
     private fun showCompletions() {
         if (composing.isEmpty() || !suggestionsAllowed) {
+            autocorrect.clearPending()
+            onAutocorrectHighlight(false)
             strip.show(emptyList())
             return
         }
         val typed = composing.toString()
-        val words = completions(typed.lowercase(locale), beforeComposing).map { TextRules.matchCase(it, typed, locale) }
-        // Primary slot: the most likely completion; the literal typed text comes second.
-        strip.show((listOf(words.firstOrNull() ?: typed, typed) + words).distinct().take(SUGGESTIONS))
+        val lower = typed.lowercase(locale)
+        val result =
+            tapSuggestions?.invoke(lower, composingTaps, beforeComposing)
+                ?: TapSuggestions(completions(lower, beforeComposing))
+        val words = result.words.map { TextRules.matchCase(it, typed, locale) }
+        val pending =
+            result.autocorrect
+                ?.takeIf { autocorrectEnabled }
+                ?.let { TextRules.matchCase(it, typed, locale) }
+                ?.takeIf { it != typed }
+        autocorrect.setPending(pending)
+        onAutocorrectHighlight(pending != null)
+        val primary = pending ?: words.firstOrNull() ?: typed
+        // Primary slot: the most likely completion or correction; the literal typed text comes second.
+        strip.show((listOf(primary, typed) + words).distinct().take(SUGGESTIONS))
     }
 
     private fun resetComposing() {
+        autocorrect.clearPending()
+        onAutocorrectHighlight(false)
         misspelled = null
         composing.setLength(0)
+        composingTaps.clear()
         composingIsGesture = false
         strip.show(emptyList())
     }

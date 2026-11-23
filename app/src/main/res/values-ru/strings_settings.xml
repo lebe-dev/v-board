@@ -478,6 +478,17 @@
     <string name="settings_suggestion_timeout_5">Через 5 секунд</string>
     <string name="settings_suggestion_timeout_10">Через 10 секунд</string>
     <string name="settings_suggestion_timeout_off">Никогда</string>
+    <string name="settings_tap_corrections_section">Исправления при ручном наборе</string>
+    <string name="settings_tap_corrections">Подсказывать исправления опечаток</string>
+    <string name="settings_tap_corrections_summary">Показывать исправления на полосе во время набора с учётом соседних клавиш, пар слов и буквы "ё"</string>
+    <string name="settings_tap_autocorrect">Автоисправление по пробелу</string>
+    <string name="settings_tap_autocorrect_summary">Автоматически заменять опечатки при нажатии пробела или знака препинания. Нажатие Backspace сразу после этого вернёт исходное слово</string>
+    <string name="settings_fuzzy_prefix">Нечёткое дополнение слов</string>
+    <string name="settings_fuzzy_prefix_summary">Подсказывать продолжение слова, даже если в его начале есть опечатка</string>
+    <string name="settings_two_edit_corrections">Исправлять две опечатки в длинных словах</string>
+    <string name="settings_two_edit_corrections_summary">Искать исправления с двумя ошибками для слов от 5 букв</string>
+    <string name="settings_spatial_tap_model">Учитывать точку касания на клавише</string>
+    <string name="settings_spatial_tap_model_summary">Отдавать предпочтение соседней букве, если палец попал ближе к её краю</string>
     <string name="custom_button_name">Название</string>
     <string name="settings_github">Проект на GitHub</string>
     <string name="diagnostics_title">Диагностика</string>

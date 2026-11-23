@@ -96,14 +96,30 @@ private const val PERCENT = 100f
 /** Input logic that takes its words from [decoder] in the current [language]. */
 private fun inputLogicOver(
     decoder: GestureDecoder,
+    prefs: KeyboardPrefs,
     language: () -> Language,
-    onSuggestions: (List<String>) -> Unit,
+    strip: () -> SuggestionStripView?,
 ) = InputLogic(
     completions = { prefix, before -> decoder.completions(language(), prefix, InputLogic.SUGGESTIONS, before) },
-    onSuggestions = onSuggestions,
-    corrections = { word -> decoder.corrections(language(), word, InputLogic.SUGGESTIONS) },
+    onSuggestions = { words -> strip()?.setSuggestions(words) },
+    corrections = { word ->
+        decoder.corrections(language(), word, InputLogic.SUGGESTIONS, prefs.tapSuggestOptions())
+    },
     predictions = { before -> decoder.nextWords(language(), before, InputLogic.SUGGESTIONS) },
+    tapSuggestions = { typed, taps, before ->
+        decoder.suggestForTap(language(), typed, taps, before, InputLogic.SUGGESTIONS, prefs.tapSuggestOptions())
+    },
+    onAutocorrectHighlight = { highlight -> strip()?.autocorrectHighlight = highlight },
 )
+
+private fun GestureDecoder.applyGeometry(
+    geometry: KeyboardGeometry,
+    metrics: android.util.DisplayMetrics,
+) {
+    if (geometry.spec.mode != KeyboardMode.LETTERS) return
+    setGeometry(geometry.spec.language, geometry)
+    setLayout(geometry.spec.language, GestureLayoutFactory.create(geometry, metrics.xdpi, metrics.ydpi))
+}
 
 private fun Window?.keepScreenOn(keep: Boolean) {
     val flag = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
@@ -175,7 +191,7 @@ class KeyboardService :
     internal lateinit var fullscreen: FullscreenControl
         private set
 
-    private fun createInputLogic() = inputLogicOver(decoder, { language }) { words -> stripView?.setSuggestions(words) }
+    private fun createInputLogic() = inputLogicOver(decoder, keyboardPrefs, { language }) { stripView }
 
     override fun onCreate() {
         super.onCreate()
@@ -380,6 +396,7 @@ class KeyboardService :
             logic.shift.reset()
             logic.suggestionsAllowed = profile.suggestionsAllowed
             logic.nextWordsAllowed = keyboardPrefs.suggestNextWord
+            logic.autocorrectEnabled = keyboardPrefs.tapCorrections && keyboardPrefs.autocorrect
             stripView?.suggestionTimeoutMillis = keyboardPrefs.suggestionTimeout.millis
             stripView?.voiceAvailable = micShown
             stripView?.applyLook(clipboardPrefs, voicePrefs, keyboardPrefs)
@@ -437,7 +454,10 @@ class KeyboardService :
 
     private fun handleKey(key: KeySpec) {
         when (key.type) {
-            KeyType.CHARACTER -> onAlternate(key.output)
+            KeyType.CHARACTER -> {
+                textActions.reset()
+                editor()?.let { logic.typeCharacter(it, key.output, keyboardView?.lastTap) }
+            }
             KeyType.SPACE -> {
                 textActions.reset()
                 editor()?.let { logic.typeSpace(it, SystemClock.uptimeMillis()) }
@@ -796,11 +816,8 @@ class KeyboardService :
         }
     }
 
-    override fun onGeometryChanged(geometry: KeyboardGeometry) {
-        if (geometry.spec.mode != KeyboardMode.LETTERS) return
-        val metrics = resources.displayMetrics
-        decoder.setLayout(geometry.spec.language, GestureLayoutFactory.create(geometry, metrics.xdpi, metrics.ydpi))
-    }
+    override fun onGeometryChanged(geometry: KeyboardGeometry) =
+        decoder.applyGeometry(geometry, resources.displayMetrics)
 
     private fun onDictionaryLoaded() {
         keyboardView?.gestureEnabled = gesturesAvailable()
