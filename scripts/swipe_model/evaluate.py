@@ -19,6 +19,9 @@ rescored words also get the association with the previous word, as `BigramTable`
 --geometry-start-weight and --geometry-end-weight add to the rescored score how far the start and
 the end of the gesture lie from the path through the key centers of a word. See `Geometry`.
 
+--geometry-shape-weight and --geometry-location-weight add how far the whole gesture lies from that
+path, after moving both to one center and size and as drawn. See `Shape`.
+
 --report <file> writes a line per gesture: the suggestions, the place of the given word, and for a
 missed word its score forced through the decoder against the first suggestion. See `diagnose`.
 
@@ -64,6 +67,8 @@ ENDING_STEM = 3
 GEOMETRY_POINTS = 2
 GEOMETRY_STEP = 0.25
 KEY_SUBSTITUTES = {"ъ": "ь"}
+SHAPE_SAMPLES = 32
+SHAPE_MIN_SIZE = 1.0
 
 
 def read_spec(path: Path) -> dict:
@@ -774,6 +779,74 @@ class Geometry:
         return lambda word: association(word) - self.penalty(number, word)
 
 
+def spread(points: list, count: int) -> list:
+    """[count] points evenly along the path, both ends included."""
+    lengths = [0.0]
+    for a, b in zip(points, points[1:]):
+        lengths.append(lengths[-1] + math.dist(a, b))
+    total = lengths[-1]
+    if total == 0 or count < 2:
+        return [points[0]] * count
+    result = []
+    segment = 0
+    for i in range(count):
+        walked = total * i / (count - 1)
+        while segment < len(points) - 2 and lengths[segment + 1] < walked:
+            segment += 1
+        length = lengths[segment + 1] - lengths[segment]
+        ratio = (walked - lengths[segment]) / length if length else 0.0
+        (x0, y0), (x1, y1) = points[segment], points[segment + 1]
+        result.append((x0 + (x1 - x0) * ratio, y0 + (y1 - y0) * ratio))
+    return result
+
+
+def normalized(points: list) -> list:
+    """The points moved to their centroid and scaled so the larger side of their box is one, a box
+    smaller than SHAPE_MIN_SIZE key pitches is not enlarged."""
+    xs, ys = [x for x, _ in points], [y for _, y in points]
+    cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
+    size = max(max(xs) - min(xs), max(ys) - min(ys), SHAPE_MIN_SIZE)
+    return [((x - cx) / size, (y - cy) / size) for x, y in points]
+
+
+class Shape(Geometry):
+    """Whole path penalties for rescoring, after SHARK2: the gesture and the path through the key
+    centers of a word are resampled to [samples] points along their length. The shape channel is the
+    mean distance between the points after `normalized`, the location channel the mean distance as
+    drawn, in key pitches."""
+
+    def __init__(self, centers: dict, gestures: dict, shape_weight: float, location_weight: float,
+                 samples: int) -> None:
+        super().__init__(centers, gestures, 0.0, 0.0, samples)
+        self.shape_weight = shape_weight
+        self.location_weight = location_weight
+        self.samples = {}
+
+    def gesture_samples(self, number: int) -> tuple:
+        if number not in self.samples:
+            xs, ys = self.gestures[number]
+            drawn = spread([self.scaled(point) for point in zip(xs, ys)], self.points)
+            self.samples[number] = (drawn, normalized(drawn))
+        return self.samples[number]
+
+    def penalty(self, number: int, word: str) -> float:
+        key = (number, word)
+        if key not in self.penalties:
+            path = self.word_path(word)
+            if not path:
+                self.penalties[key] = 0.0
+                return 0.0
+            drawn, shape = self.gesture_samples(number)
+            word_points = spread(path, self.points)
+
+            def distance(a: list, b: list) -> float:
+                return sum(math.dist(p, q) for p, q in zip(a, b)) / self.points
+
+            self.penalties[key] = (self.shape_weight * distance(shape, normalized(word_points))
+                                   + self.location_weight * distance(drawn, word_points))
+        return self.penalties[key]
+
+
 class Scorer:
     """Turns the decoded hypotheses into metrics for one weight and smoothing of the context."""
 
@@ -786,6 +859,7 @@ class Scorer:
         self.context_rescored = arguments.context_rescored
         self.associations = {}
         self.geometry = None
+        self.shape = None
 
     def association_of(self, number: int, previous: str, smoothing: float):
         """Associations of the rescored words of a gesture, kept so that tuning tries weights quickly."""
@@ -814,6 +888,8 @@ class Scorer:
             association = lambda word: weight * of(word)  # noqa: E731
         if self.geometry is not None:
             association = self.geometry.wrap(number, association)
+        if self.shape is not None:
+            association = self.shape.wrap(number, association)
         rescoring_calls = min(count, len(full_scores)) if len(full_scores) >= 2 and count >= 2 else 0
         ranked = rank(finished, full_scores, count, association, self.frequency_weight)
         return words(ranked, CANDIDATES), rescoring_calls
@@ -887,6 +963,10 @@ def main() -> None:
     parser.add_argument("--geometry-start-weight", type=float, default=0.0, help="weight of the gesture start penalty")
     parser.add_argument("--geometry-end-weight", type=float, default=0.0, help="weight of the gesture end penalty")
     parser.add_argument("--geometry-points", type=int, default=GEOMETRY_POINTS, help="points compared at each end")
+    parser.add_argument("--geometry-shape-weight", type=float, default=0.0, help="weight of the whole path shape penalty")
+    parser.add_argument("--geometry-location-weight", type=float, default=0.0,
+                        help="weight of the whole path location penalty")
+    parser.add_argument("--geometry-samples", type=int, default=SHAPE_SAMPLES, help="points along the whole path")
     arguments = parser.parse_args()
 
     started = time.time()
@@ -913,6 +993,10 @@ def main() -> None:
         scorer.geometry = Geometry(centers, {number: (xs, ys) for number, _, xs, ys, _ in gestures},
                                    arguments.geometry_start_weight, arguments.geometry_end_weight,
                                    arguments.geometry_points)
+    if arguments.geometry_shape_weight or arguments.geometry_location_weight:
+        scorer.shape = Shape(centers, {number: (xs, ys) for number, _, xs, ys, _ in gestures},
+                             arguments.geometry_shape_weight, arguments.geometry_location_weight,
+                             arguments.geometry_samples)
     count = len(results)
     covered = sum(fold(result[1]) in vocabulary for result in results)
     print(f"Dictionary {arguments.dict.name}: {len(vocabulary)} words, {covered / count:.4f} of the gestures covered")
