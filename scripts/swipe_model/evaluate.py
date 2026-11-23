@@ -18,6 +18,9 @@ rescored words also get the association with the previous word, as `BigramTable`
 
 --report <file> writes a line per gesture: the suggestions, the place of the given word, and for a
 missed word its score forced through the decoder against the first suggestion. See `diagnose`.
+
+--trace <numbers> prints, for the gestures with these numbers, every step of the search and where the
+prefixes of the given word were cut. See `trace_search`.
 """
 
 import argparse
@@ -461,6 +464,140 @@ def forced_score(search: Search, memory, root: dict, word: str) -> tuple | None:
     return search.full_score(memory, tokens), word_frequency(nodes)
 
 
+def trace_search(search: Search, memory, root: dict, word: str) -> tuple:
+    """Search.__call__ for one gesture step by step, following the prefixes of [word] (marked *).
+
+    Returns the finished hypotheses, the same as the search gives, and the lines of the trace: every
+    popped prefix, its children, the continuations slotsToContinue cut from a prefix of the word and
+    the prefixes the beam pruned. Scores are model - prior, lower is better."""
+    target = word_tokens(search, fold(word)) or []
+    lines = []
+
+    def on_path(tokens: list) -> str:
+        return "*" if tokens == target[: len(tokens)] else " "
+
+    def child_prior(nodes: list, token: int) -> float:
+        if token == search.eos:
+            return search.prior(word_frequency(nodes))
+        return search.prior(max(node[BEST] for node in search.advance(nodes, token)))
+
+    def listed(entries) -> str:
+        return ", ".join(f"{on_path(tokens)}{text_of(search, tokens)} {score:.4f}" for score, tokens in entries)
+
+    order, step = 0, 0
+    partial = [(0.0, order, [search.sos], [root], 0.0)]
+    finished = []
+    while partial:
+        score, _, tokens, nodes, model_score = heapq.heappop(partial)
+        step += 1
+        lines.append(f"step {step}: pop {on_path(tokens)}{text_of(search, tokens)} score {score:.4f} "
+                     f"model {model_score:.4f}")
+        if on_path(tokens) == "*" and len(tokens) < len(target):
+            lines.extend(trace_slots(search, memory, model_score, tokens, nodes, target[len(tokens)], child_prior))
+        for child_model, child_tokens, child_nodes in search.expand(memory, model_score, tokens, nodes):
+            is_end = child_tokens[-1] == search.eos
+            frequency = word_frequency(child_nodes) if is_end else max(node[BEST] for node in child_nodes)
+            child_score = child_model - search.prior(frequency)
+            done = is_end or len(tokens) >= MAX_STEPS
+            lines.append(f"  + {on_path(child_tokens)}{text_of(search, child_tokens)} model {child_model:.4f} "
+                         f"prior {search.prior(frequency):.4f} score {child_score:.4f}" + (" finished" if done else ""))
+            if done:
+                finished.append((child_score, child_tokens, child_nodes))
+            else:
+                order += 1
+                heapq.heappush(partial, (child_score, order, child_tokens, child_nodes, child_model))
+        if len(partial) > search.beam:
+            kept = heapq.nsmallest(search.beam, partial)
+            orders = {entry[1] for entry in kept}
+            lines.append(f"  prune: kept {listed((e[0], e[2]) for e in kept)}")
+            lines.append(f"  prune: dropped {listed((e[0], e[2]) for e in sorted(partial) if e[1] not in orders)}")
+            partial = kept
+            heapq.heapify(partial)
+    finished.sort(key=lambda hypothesis: hypothesis[0])
+    lines.append(f"finished: {listed((e[0], e[1]) for e in finished[:8])}")
+    lines.extend(trace_forced_path(search, memory, root, target, child_prior))
+    return finished, lines
+
+
+def trace_slots(search: Search, memory, model_score: float, tokens: list, nodes: list, wanted: int,
+                child_prior) -> list:
+    """Every allowed continuation of a prefix of the word by letter probability, with the score it would
+    get and whether slotsToContinue keeps it; the wanted letter is marked *."""
+    allowed = search.allowed(nodes)
+    if len(allowed) < 2:
+        return []
+    chosen = search.logits(tokens, memory)[-1][allowed]
+    log_probs = (chosen - torch.logsumexp(chosen, 0)).tolist()
+    slots = sorted(range(len(allowed)), key=lambda slot: -log_probs[slot])
+    length = len(tokens)
+    lines = [f"  slots: {len(allowed)} allowed, {min(search.beam, len(allowed))} kept"]
+    for place, slot in enumerate(slots, 1):
+        token = allowed[slot]
+        if place > 8 and token != wanted:
+            continue
+        child_model = (model_score * length**LENGTH_PENALTY - log_probs[slot]) / (length + 1) ** LENGTH_PENALTY
+        prior = child_prior(nodes, token)
+        letter = WORD if token == search.eos else search.tokens[token]
+        lines.append(f"  {'*' if token == wanted else ' '}{place}. {letter} log_prob {log_probs[slot]:.4f} "
+                     f"model {child_model:.4f} prior {prior:.4f} score {child_model - prior:.4f} "
+                     + ("kept" if place <= search.beam else "cut"))
+    return lines
+
+
+def trace_forced_path(search: Search, memory, root: dict, target: list, child_prior) -> list:
+    """The scores every prefix of the word would get in the search if nothing cut it."""
+    if not target:
+        return ["forced path: the word has no tokens"]
+    lines = ["forced path of the word:"]
+    nodes, model_score = [root], 0.0
+    for length in range(1, len(target)):
+        tokens, token = target[:length], target[length]
+        allowed = search.allowed(nodes)
+        if token not in allowed:
+            lines.append(f"  {text_of(search, target[: length + 1])}: not in the dictionary")
+            break
+        if len(allowed) == 1:
+            log_probs, slot = [0.0], 0
+        else:
+            chosen = search.logits(tokens, memory)[-1][allowed]
+            log_probs = (chosen - torch.logsumexp(chosen, 0)).tolist()
+            slot = allowed.index(token)
+        place = 1 + sum(log_prob > log_probs[slot] for log_prob in log_probs)
+        prior = child_prior(nodes, token)
+        model_score = (model_score * length**LENGTH_PENALTY - log_probs[slot]) / (length + 1) ** LENGTH_PENALTY
+        lines.append(f"  {text_of(search, target[: length + 1])}: letter place {place} of {len(allowed)}, "
+                     f"log_prob {log_probs[slot]:.4f}, model {model_score:.4f}, prior {prior:.4f}, "
+                     f"score {model_score - prior:.4f}")
+        if token != search.eos:
+            nodes = search.advance(nodes, token)
+    return lines
+
+
+def text_of(search: Search, tokens: list) -> str:
+    """The letters of a hypothesis, $ after a finished word, ^ for the start alone."""
+    return (search.folded_word(tokens) + (WORD if tokens[-1] == search.eos else "")) or "^"
+
+
+def trace_gestures(arguments: argparse.Namespace, gestures: list) -> None:
+    """Prints the search trace for the gestures numbered in --trace, in this process."""
+    numbers = {int(number) for number in arguments.trace.split(",")}
+    start_worker(arguments)
+    search = STATE["search"]
+    for number, word, xs, ys, ts in gestures:
+        if number not in numbers:
+            continue
+        features = STATE["features"](xs, ys, ts)
+        if features is None:
+            print(f"Trace of gesture {number} ({word}): no features")
+            continue
+        memory = STATE["encode"].execute(list(features))[0]
+        expected, _ = search(memory, STATE["dictionary"], CANDIDATES)
+        finished, lines = trace_search(search, memory, STATE["dictionary"], word)
+        same = [(s, t) for s, t, _ in expected] == [(s, t) for s, t, _ in finished]
+        print(f"Trace of gesture {number} ({word}), the same as the search: {'yes' if same else 'NO'}")
+        print("\n".join(lines))
+
+
 def ending_error(word: str, other: str) -> bool:
     """The words share a stem of ENDING_STEM letters or more and differ only in their last
     ENDING_LETTERS letters or fewer."""
@@ -660,6 +797,7 @@ def main() -> None:
     parser.add_argument("--warm-up", type=int, default=WARM_UP, help="gestures of the grid to skip first")
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     parser.add_argument("--report", type=Path, help="write where the given word ended up for every gesture")
+    parser.add_argument("--trace", help="gesture numbers, comma separated: print how the search followed the word")
     arguments = parser.parse_args()
 
     started = time.time()
@@ -693,6 +831,8 @@ def main() -> None:
     print(f"Decoder calls per gesture: {plain['calls']:.1f}; {time.time() - started:.0f} s")
     if arguments.report:
         write_report(arguments.report, results)
+    if arguments.trace:
+        trace_gestures(arguments, gestures)
     if not (bigrams and contexts):
         return
     with_context = lambda result: result[0] in contexts  # noqa: E731
