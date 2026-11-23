@@ -28,6 +28,8 @@ import ru.tinyops.android.vboard.core.clipboard.ClipChip
 import ru.tinyops.android.vboard.core.clipboard.ClipEntry
 import ru.tinyops.android.vboard.core.clipboard.ClipKind
 import ru.tinyops.android.vboard.core.clipboard.ClipPayload
+import ru.tinyops.android.vboard.core.dict.BigramTable
+import ru.tinyops.android.vboard.core.gesture.GestureDecodeResult
 import ru.tinyops.android.vboard.core.gesture.GestureLayoutFactory
 import ru.tinyops.android.vboard.core.input.CursorEditor
 import ru.tinyops.android.vboard.core.input.CursorLines
@@ -44,6 +46,11 @@ import ru.tinyops.android.vboard.core.layout.KeyboardGeometry
 import ru.tinyops.android.vboard.core.layout.KeyboardLayouts
 import ru.tinyops.android.vboard.core.layout.KeyboardMode
 import ru.tinyops.android.vboard.core.layout.Language
+import ru.tinyops.android.vboard.diagnostics.SwipeCalibration
+import ru.tinyops.android.vboard.diagnostics.SwipeTypingLog
+import ru.tinyops.android.vboard.diagnostics.recordAfterDelete
+import ru.tinyops.android.vboard.diagnostics.recordAfterSuggestionPicked
+import ru.tinyops.android.vboard.diagnostics.recordAfterTextKey
 import ru.tinyops.android.vboard.emoji.EmojiAssets
 import ru.tinyops.android.vboard.emoji.EmojiPrefs
 import ru.tinyops.android.vboard.settings.SettingsActivity
@@ -121,10 +128,84 @@ private fun GestureDecoder.applyGeometry(
     setLayout(geometry.spec.language, GestureLayoutFactory.create(geometry, metrics.xdpi, metrics.ydpi))
 }
 
+private inline fun InputLogic.trackTextKey(action: () -> Unit) {
+    val wasGesture = isComposingGesture
+    val wasComposing = composingText
+    action()
+    recordAfterTextKey(wasGesture, wasComposing, isComposing)
+}
+
+private inline fun InputLogic.trackDelete(
+    step: DeleteHoldMode,
+    action: () -> Unit,
+) {
+    val wasGesture = isComposingGesture
+    action()
+    recordAfterDelete(step, wasGesture)
+}
+
+private inline fun InputLogic.trackSuggestion(
+    word: String,
+    action: () -> Unit,
+) {
+    val wasGesture = isComposingGesture
+    val wasComposing = isComposing
+    action()
+    recordAfterSuggestionPicked(wasGesture, wasComposing, word)
+}
+
+private fun GestureDecoder.decodeCompleted(
+    language: Language,
+    points: List<TouchPoint>,
+    context: String,
+    profile: EditorProfile,
+    onDecoded: (words: List<String>, record: (String) -> Unit) -> Unit,
+) {
+    val logSwipe = profile.swipeLogAllowed && !SwipeCalibration.listening && SwipeTypingLog.isRecording()
+    var detailed: GestureDecodeResult? = null
+    decode(
+        language = language,
+        points = points,
+        precedingText = context,
+        complete = true,
+        onDetails = if (logSwipe) ({ detailed = it }) else null,
+    ) { words ->
+        onDecoded(words) { inserted ->
+            val result = detailed
+            if (result != null && words.isNotEmpty()) {
+                val prev = BigramTable.previousWord(context)
+                SwipeTypingLog.recordSwipe(language, points, prev, result, inserted)
+            }
+        }
+    }
+}
+
 private fun Window?.keepScreenOn(keep: Boolean) {
     val flag = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
     if (keep) this?.addFlags(flag) else this?.clearFlags(flag)
 }
+
+/**
+ * Asks the editor about auto-capitalization only when the answer matters: the call blocks
+ * the main thread on the editor's process and selection updates arrive for every key press.
+ */
+private fun cursorNeedsCaps(
+    ic: InputConnection,
+    inputType: Int,
+    logic: InputLogic,
+): Boolean {
+    val capsFlags = inputType and AUTO_CAPS_FLAGS
+    if (capsFlags == 0 || logic.shift.state == ShiftState.LOCKED) return false
+    // Inside a composed word the cursor follows a letter: no new word or sentence starts here.
+    val allCaps = capsFlags and InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS != 0
+    if (logic.isComposing && !allCaps) return false
+    return ic.getCursorCapsMode(capsFlags) != 0
+}
+
+private const val AUTO_CAPS_FLAGS =
+    InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS or
+        InputType.TYPE_TEXT_FLAG_CAP_WORDS or
+        InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
 
 /**
  * The input method: Russian/English layouts with symbols pages, tap typing with prefix
@@ -393,6 +474,7 @@ class KeyboardService :
             if (themeKey != null && KeyboardThemes.selected(this).key != themeKey) setInputView(onCreateInputView())
             keyboardView?.emojiEnabled = emojiPrefs.enabled
             logic.reset()
+            SwipeTypingLog.onInputFinished()
             logic.shift.reset()
             logic.suggestionsAllowed = profile.suggestionsAllowed
             logic.nextWordsAllowed = keyboardPrefs.suggestNextWord
@@ -423,6 +505,7 @@ class KeyboardService :
         textActions.reset()
         editor()?.let { logic.commitComposing(it) }
         logic.reset()
+        SwipeTypingLog.onInputFinished()
         super.onFinishInputView(finishingInput)
         fullscreen.leave(applyNow = finishingInput)
     }
@@ -439,6 +522,7 @@ class KeyboardService :
         editor()?.let {
             logic.onSelectionChanged(it, newSelStart, newSelEnd, candidatesEnd, correct = !cursorDragging)
         }
+        if (!logic.isComposingGesture) SwipeTypingLog.onWordSettled()
         textActions.onSelectionChanged(newSelEnd)
         // Asking the editor about capitalization for every step would only slow the cursor down.
         if (cursorDragging) {
@@ -456,15 +540,15 @@ class KeyboardService :
         when (key.type) {
             KeyType.CHARACTER -> {
                 textActions.reset()
-                editor()?.let { logic.typeCharacter(it, key.output, keyboardView?.lastTap) }
+                logic.trackTextKey { editor()?.let { logic.typeCharacter(it, key.output, keyboardView?.lastTap) } }
             }
             KeyType.SPACE -> {
                 textActions.reset()
-                editor()?.let { logic.typeSpace(it, SystemClock.uptimeMillis()) }
+                logic.trackTextKey { editor()?.let { logic.typeSpace(it, SystemClock.uptimeMillis()) } }
             }
             KeyType.ENTER -> {
                 textActions.reset()
-                editor()?.let { logic.typeEnter(it) }
+                logic.trackTextKey { editor()?.let { logic.typeEnter(it) } }
             }
             KeyType.SHIFT -> logic.shift.onTap(SystemClock.uptimeMillis())
             KeyType.SYMBOLS -> switchMode(KeyboardMode.SYMBOLS)
@@ -487,7 +571,7 @@ class KeyboardService :
 
     override fun onDelete(step: DeleteHoldMode) {
         textActions.reset()
-        editor()?.let { logic.deleteBy(it, step) }
+        logic.trackDelete(step) { editor()?.let { logic.deleteBy(it, step) } }
     }
 
     override fun onShiftLongPress() {
@@ -501,7 +585,7 @@ class KeyboardService :
 
     override fun onSuggestionPicked(word: String) {
         textActions.reset()
-        editor()?.let { logic.pickSuggestion(it, word) }
+        logic.trackSuggestion(word) { editor()?.let { logic.pickSuggestion(it, word) } }
     }
 
     override fun onSettingsClicked() = openSettings(requestPermission = false)
@@ -807,10 +891,11 @@ class KeyboardService :
 
     override fun onGestureEnd(points: List<TouchPoint>) {
         val sequence = gestureSequence
-        decoder.decode(language, points, gestureContext, complete = true) { words ->
+        decoder.decodeCompleted(language, points, gestureContext, profile) { words, record ->
             if (sequence == gestureSequence) {
                 gestureInProgress = false
                 editor()?.let { logic.commitGesture(it, words) }
+                if (words.isNotEmpty()) record(logic.composingText.ifEmpty { words.first() })
                 syncShift()
             }
         }
@@ -855,24 +940,8 @@ class KeyboardService :
         if (!keyboardPrefs.autoCapitalize) return
         val ic = currentInputConnection ?: return
         val inputType = currentInputEditorInfo?.inputType ?: return
-        logic.shift.applyAutoCaps(cursorNeedsCaps(ic, inputType))
+        logic.shift.applyAutoCaps(cursorNeedsCaps(ic, inputType, logic))
         syncShift()
-    }
-
-    /**
-     * Asks the editor about auto-capitalization only when the answer matters: the call blocks
-     * the main thread on the editor's process and selection updates arrive for every key press.
-     */
-    private fun cursorNeedsCaps(
-        ic: InputConnection,
-        inputType: Int,
-    ): Boolean {
-        val capsFlags = inputType and AUTO_CAPS_FLAGS
-        if (capsFlags == 0 || logic.shift.state == ShiftState.LOCKED) return false
-        // Inside a composed word the cursor follows a letter: no new word or sentence starts here.
-        val allCaps = capsFlags and InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS != 0
-        if (logic.isComposing && !allCaps) return false
-        return ic.getCursorCapsMode(capsFlags) != 0
     }
 
     private fun textBeforeCursor(): String = editor()?.textBeforeCursor(CONTEXT_LENGTH)?.toString().orEmpty()
@@ -889,9 +958,5 @@ class KeyboardService :
 
         /** Even the widest letter is narrower than this part of the height of its line. */
         const val MAX_CHAR_WIDTH_OF_LINE_HEIGHT = 0.8f
-        const val AUTO_CAPS_FLAGS =
-            InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS or
-                InputType.TYPE_TEXT_FLAG_CAP_WORDS or
-                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
     }
 }

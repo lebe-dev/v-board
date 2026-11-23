@@ -3,6 +3,7 @@ package ru.tinyops.android.vboard
 import android.app.Application
 import ru.tinyops.android.vboard.diagnostics.AppLog
 import ru.tinyops.android.vboard.diagnostics.ErrorReporting
+import ru.tinyops.android.vboard.diagnostics.SwipeTypingLog
 
 /** Starts error reporting first, so that a crash while the keyboard starts is reported too. */
 class KeyboardApp : Application() {
@@ -10,6 +11,7 @@ class KeyboardApp : Application() {
         super.onCreate()
         AppLog.init(this)
         AppLog.recordCrashes()
+        SwipeTypingLog.init(this)
         ErrorReporting.sync(this)
     }
 }

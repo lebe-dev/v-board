@@ -640,4 +640,23 @@
     <string name="unison_status_missing">Unison is not installed</string>
     <string name="unison_status_refused">Unison refuses the keyboard: both apps must be signed with the same key</string>
     <string name="unison_note">Copies from password fields, private fields and items marked sensitive are never sent. The sync can be paused from the clipboard panel of the keyboard.</string>
+    <string name="swipe_log_title">Free typing swipe log</string>
+    <string name="swipe_log_link_on">Recording (%1$d)</string>
+    <plurals name="swipe_log_link_saved">
+        <item quantity="one">Off, %1$d gesture saved</item>
+        <item quantity="other">Off, %1$d gestures saved</item>
+    </plurals>
+    <string name="swipe_log_enable">Record free typing gestures</string>
+    <string name="swipe_log_enable_summary">Turns off automatically after 4 hours</string>
+    <string name="swipe_log_enable_until">Turns off automatically at %1$s</string>
+    <string name="swipe_log_privacy">Records only completed slide-to-type gestures, their suggestions, score details and whether you picked another suggestion or retyped the word. Keeps at most 500 recent gestures on this phone, skips password and incognito fields, never goes into error reports and is exported only when you share or save it.</string>
+    <string name="swipe_log_empty">No gestures recorded yet</string>
+    <string name="swipe_log_status">Gestures recorded: %1$d of %2$d (picked another suggestion: %3$d, retyped: %4$d)</string>
+    <string name="swipe_log_share">Share archive</string>
+    <string name="swipe_log_share_summary">Export as a zip file to send to the developer</string>
+    <string name="swipe_log_save">Save to file</string>
+    <string name="swipe_log_save_summary">Zip archive with gestures, layout and candidate scores</string>
+    <string name="swipe_log_clear">Clear log</string>
+    <string name="swipe_log_saved">Swipe log saved</string>
+    <string name="swipe_log_save_failed">Could not save the swipe log</string>
 </resources>

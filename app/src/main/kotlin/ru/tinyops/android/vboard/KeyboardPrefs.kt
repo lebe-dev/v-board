@@ -160,6 +160,25 @@ class KeyboardPrefs(
         get() = prefs.getBoolean(KEY_LOG_ERRORS, false)
         set(value) = prefs.edit { putBoolean(KEY_LOG_ERRORS, value) }
 
+    /**
+     * Wall-clock time (epoch millis) until which free-typing swipe logging stays enabled, or 0 when off.
+     * Turns itself off once [nowMillis] passes the stored deadline.
+     */
+    var swipeLogUntilMillis: Long
+        get() = prefs.getLong(KEY_SWIPE_LOG_UNTIL, 0L)
+        set(value) = prefs.edit { putLong(KEY_SWIPE_LOG_UNTIL, value.coerceAtLeast(0L)) }
+
+    /** Whether free-typing swipe logging is active at [nowMillis]; resets an expired deadline to 0. */
+    fun isSwipeLogActive(nowMillis: Long = System.currentTimeMillis()): Boolean {
+        val until = swipeLogUntilMillis
+        if (until <= 0L) return false
+        if (nowMillis >= until) {
+            swipeLogUntilMillis = 0L
+            return false
+        }
+        return true
+    }
+
     companion object {
         const val MIN_BUTTON_WIDTH = 60
         const val MAX_BUTTON_WIDTH = 100
@@ -192,6 +211,7 @@ class KeyboardPrefs(
         private const val KEY_SUGGEST_ALWAYS = "suggest_always"
         private const val KEY_SUGGEST_NEXT_WORD = "suggest_next_word"
         private const val KEY_SUGGESTION_TIMEOUT = "suggestion_timeout_seconds"
+        private const val KEY_SWIPE_LOG_UNTIL = "swipe_log_until_millis"
         private const val KEY_TAP_CORRECTIONS = "tap_corrections"
         private const val KEY_TWO_EDIT_CORRECTIONS = "two_edit_corrections"
     }

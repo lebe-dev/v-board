@@ -2,4 +2,5 @@
 <paths>
     <files-path name="clips" path="clipboard/images/" />
     <cache-path name="unison" path="unison/" />
+    <cache-path name="exports" path="exports/" />
 </paths>

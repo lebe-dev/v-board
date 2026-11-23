@@ -332,6 +332,7 @@ internal enum class Screen(
     DIAGNOSTICS(MAIN),
     APP_LOG(DIAGNOSTICS),
     SWIPE_CALIBRATION(DIAGNOSTICS),
+    SWIPE_LOG(DIAGNOSTICS),
     UPDATES(MAIN),
     INTEGRATIONS(MAIN),
 }
@@ -410,14 +411,10 @@ private fun SettingsNavigation(
                         ),
                     onBack = back,
                 )
-            Screen.DIAGNOSTICS ->
-                DiagnosticsScreen(
-                    onOpenLog = { screen = Screen.APP_LOG },
-                    onOpenCalibration = { screen = Screen.SWIPE_CALIBRATION },
-                    onBack = back,
-                )
-            Screen.FULLSCREEN, Screen.APP_LOG, Screen.SWIPE_CALIBRATION, Screen.UPDATES, Screen.INTEGRATIONS ->
-                StandalonePage(current, back)
+            Screen.DIAGNOSTICS -> DiagnosticsPage(navigate = { screen = it }, onBack = back)
+            Screen.FULLSCREEN, Screen.APP_LOG, Screen.SWIPE_CALIBRATION, Screen.SWIPE_LOG, Screen.UPDATES,
+            Screen.INTEGRATIONS,
+            -> StandalonePage(current, back)
             Screen.CLIPBOARD, Screen.EMOJI, Screen.EMOJI_GROUPS, Screen.EMOJI_SINGLE, Screen.SLIDE_ENGINE,
             Screen.AUTOCORRECT, Screen.SUGGESTIONS, Screen.DELETE_KEY,
             ->
@@ -516,6 +513,18 @@ private fun mainLinks(
         ),
 )
 
+/** The diagnostics hub and its sub-pages. */
+@Composable
+private fun DiagnosticsPage(
+    navigate: (Screen) -> Unit,
+    onBack: () -> Unit,
+) = DiagnosticsScreen(
+    onOpenLog = { navigate(Screen.APP_LOG) },
+    onOpenCalibration = { navigate(Screen.SWIPE_CALIBRATION) },
+    onOpenSwipeLog = { navigate(Screen.SWIPE_LOG) },
+    onBack = onBack,
+)
+
 /** The pages without sub-pages: the fullscreen mode, the application log, the updates and the integrations. */
 @Composable
 private fun StandalonePage(
@@ -525,6 +534,7 @@ private fun StandalonePage(
     when (page) {
         Screen.APP_LOG -> AppLogScreen(onBack)
         Screen.SWIPE_CALIBRATION -> SwipeCalibrationScreen(onBack)
+        Screen.SWIPE_LOG -> SwipeLogScreen(onBack)
         Screen.UPDATES -> UpdatesScreen(onBack)
         Screen.INTEGRATIONS -> IntegrationsScreen(onBack)
         else -> FullscreenScreen(onBack)

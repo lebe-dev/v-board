@@ -40,6 +40,9 @@ data class EditorProfile(
     /** Dictation goes where words can be swiped: text fields that are not passwords. */
     val voiceAllowed: Boolean get() = gesturesAllowed
 
+    /** Free-typing swipe logging skips passwords and fields with `IME_FLAG_NO_PERSONALIZED_LEARNING`. */
+    val swipeLogAllowed: Boolean get() = gesturesAllowed && !incognito
+
     companion object {
         private val PASSWORD_VARIATIONS =
             setOf(

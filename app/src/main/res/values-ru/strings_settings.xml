@@ -648,4 +648,25 @@
     <string name="unison_status_missing">Unison не установлен</string>
     <string name="unison_status_refused">Unison не принимает клавиатуру: оба приложения должны быть подписаны одним ключом</string>
     <string name="unison_note">Скопированное из полей паролей, приватных полей и помеченное как секретное никогда не отправляется. Синхронизацию можно приостановить в панели буфера обмена на клавиатуре.</string>
+    <string name="swipe_log_title">Журнал свободного набора</string>
+    <string name="swipe_log_link_on">Запись включена (%1$d)</string>
+    <plurals name="swipe_log_link_saved">
+        <item quantity="one">Выключен, сохранён %1$d жест</item>
+        <item quantity="few">Выключен, сохранено %1$d жеста</item>
+        <item quantity="many">Выключен, сохранено %1$d жестов</item>
+        <item quantity="other">Выключен, сохранено %1$d жеста</item>
+    </plurals>
+    <string name="swipe_log_enable">Записывать жесты при обычном наборе</string>
+    <string name="swipe_log_enable_summary">Автоматически выключается через 4 часа</string>
+    <string name="swipe_log_enable_until">Выключится автоматически в %1$s</string>
+    <string name="swipe_log_privacy">Записывает завершённые жесты slide to type, предложенные слова с оценками и то, выбрали ли вы другую подсказку или перенабрали слово. Хранит не более 500 последних жестов только на телефоне, не пишет поля паролей и приватные поля, не попадает в отчёты об ошибках и выгружается только вручную.</string>
+    <string name="swipe_log_empty">Жестов пока нет</string>
+    <string name="swipe_log_status">Записано %1$d из %2$d жестов (выбрана другая подсказка: %3$d, перенабрано: %4$d)</string>
+    <string name="swipe_log_share">Поделиться архивом</string>
+    <string name="swipe_log_share_summary">Выгрузить zip-архив для отправки разработчику</string>
+    <string name="swipe_log_save">Сохранить в файл</string>
+    <string name="swipe_log_save_summary">Zip-архив с жестами, раскладкой и оценками кандидатов</string>
+    <string name="swipe_log_clear">Очистить журнал</string>
+    <string name="swipe_log_saved">Журнал сохранён</string>
+    <string name="swipe_log_save_failed">Не удалось сохранить журнал</string>
 </resources>

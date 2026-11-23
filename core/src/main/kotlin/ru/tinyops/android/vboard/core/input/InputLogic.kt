@@ -92,6 +92,8 @@ class InputLogic(
 
     val isComposing: Boolean get() = composing.isNotEmpty()
 
+    val isComposingGesture: Boolean get() = composingIsGesture
+
     fun typeCharacter(
         editor: TextEditor,
         raw: String,

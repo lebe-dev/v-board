@@ -11,6 +11,7 @@ import ru.tinyops.android.vboard.core.dict.TapPoint
 import ru.tinyops.android.vboard.core.dict.TapSuggestOptions
 import ru.tinyops.android.vboard.core.dict.TapSuggester
 import ru.tinyops.android.vboard.core.dict.TapSuggestions
+import ru.tinyops.android.vboard.core.gesture.GestureDecodeResult
 import ru.tinyops.android.vboard.core.gesture.SlideEngine
 import ru.tinyops.android.vboard.core.gesture.SwitchableGestureEngine
 import ru.tinyops.android.vboard.core.gesture.neural.NeuralGestureEngine
@@ -21,6 +22,7 @@ import ru.tinyops.android.vboard.core.layout.Language
 import ru.tinyops.android.vboard.diagnostics.AppLog
 import ru.tinyops.android.vboard.diagnostics.ErrorReporting
 import ru.tinyops.android.vboard.diagnostics.SwipeCalibration
+import ru.tinyops.android.vboard.diagnostics.SwipeTypingLog
 import ru.tinyops.android.vboard.stt.model.KeyboardLayout
 import ru.tinyops.android.vboard.stt.model.TouchPoint
 import java.util.concurrent.ConcurrentHashMap
@@ -139,6 +141,7 @@ class GestureDecoder(
         layout: KeyboardLayout,
     ) {
         SwipeCalibration.setLayout(language, layout)
+        SwipeTypingLog.setLayout(language, layout)
         executor.execute { engine(language).setLayout(layout) }
     }
 
@@ -153,13 +156,15 @@ class GestureDecoder(
 
     /**
      * Decodes a gesture in the background; [onResult] receives candidates on the main thread. A finished
-     * gesture made during a calibration is recorded with them.
+     * gesture made during a calibration is recorded with them. When [onDetails] is provided, score
+     * components and the answering engine code are also returned for the opt-in free typing log.
      */
     fun decode(
         language: Language,
         points: List<TouchPoint>,
         precedingText: String,
         complete: Boolean,
+        onDetails: ((GestureDecodeResult) -> Unit)? = null,
         onResult: (List<String>) -> Unit,
     ) {
         val record = if (complete) SwipeCalibration.recorder(language) else null
@@ -171,10 +176,17 @@ class GestureDecoder(
                     engine.routesToNeural(complete) -> PerfTrace.DECODE_NEURAL
                     else -> PerfTrace.DECODE_FINAL
                 }
-            val words = PerfTrace.section(section) { engine.decode(points, precedingText, complete) }
-            val engineCode = slideEngine.code
+            val detailed =
+                if (onDetails != null) {
+                    PerfTrace.section(section) { engine.decodeDetailed(points, precedingText, complete) }
+                } else {
+                    null
+                }
+            val words = detailed?.words ?: PerfTrace.section(section) { engine.decode(points, precedingText, complete) }
+            val engineCode = detailed?.engine ?: slideEngine.code
             main.post {
                 record?.invoke(points, words, engineCode)
+                if (detailed != null) onDetails?.invoke(detailed)
                 onResult(words)
             }
         }

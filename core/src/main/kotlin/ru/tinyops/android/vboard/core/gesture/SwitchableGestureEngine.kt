@@ -2,11 +2,19 @@ package ru.tinyops.android.vboard.core.gesture
 
 import ru.tinyops.android.vboard.core.dict.BigramTable
 import ru.tinyops.android.vboard.core.gesture.neural.NeuralGestureEngine
+import ru.tinyops.android.vboard.core.gesture.neural.ScoredCandidate
 import ru.tinyops.android.vboard.core.layout.Language
 import ru.tinyops.android.vboard.stt.lm.LanguageModel
 import ru.tinyops.android.vboard.stt.lm.WordTrie
 import ru.tinyops.android.vboard.stt.model.KeyboardLayout
 import ru.tinyops.android.vboard.stt.model.TouchPoint
+
+/** Result of decoding a gesture together with optional neural score details and the engine code that answered. */
+data class GestureDecodeResult(
+    val words: List<String>,
+    val details: List<ScoredCandidate>,
+    val engine: String,
+)
 
 /**
  * Sends gestures of one language to the chosen [SlideEngine].
@@ -82,6 +90,26 @@ class SwitchableGestureEngine(
         return words.ifEmpty { classic.decode(points, precedingText, complete) }
     }
 
+    /** Like [decode], returning neural score details and the actual engine code that produced the result. */
+    fun decodeDetailed(
+        points: List<TouchPoint>,
+        precedingText: String,
+        complete: Boolean,
+    ): GestureDecodeResult {
+        if (routesToNeural(complete)) {
+            val detailed = neuralDetailed(points, precedingText)
+            if (detailed.isNotEmpty()) {
+                return GestureDecodeResult(
+                    words = detailed.map { it.word },
+                    details = detailed,
+                    engine = SlideEngine.EXPERIMENTAL.code,
+                )
+            }
+        }
+        val words = classic.decode(points, precedingText, complete)
+        return GestureDecodeResult(words = words, details = emptyList(), engine = SlideEngine.DEFAULT.code)
+    }
+
     private fun neuralWords(
         points: List<TouchPoint>,
         precedingText: String,
@@ -91,6 +119,21 @@ class SwitchableGestureEngine(
         return try {
             val context = bigrams?.let { table -> BigramTable.previousWord(precedingText)?.let(table::context) }
             engine.decode(points, trie, context)
+        } catch (expected: Throwable) {
+            fail(expected)
+            emptyList()
+        }
+    }
+
+    private fun neuralDetailed(
+        points: List<TouchPoint>,
+        precedingText: String,
+    ): List<ScoredCandidate> {
+        val engine = neural ?: return emptyList()
+        val trie = trie ?: return emptyList()
+        return try {
+            val context = bigrams?.let { table -> BigramTable.previousWord(precedingText)?.let(table::context) }
+            engine.decodeDetailed(points, trie, context)
         } catch (expected: Throwable) {
             fail(expected)
             emptyList()
