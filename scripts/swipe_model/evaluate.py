@@ -15,6 +15,9 @@ A calibration archive saved by the keyboard has no warm-up: measure it with --wa
 With --contexts (written by `bigrams.py contexts`) and --bigrams (written by `bigrams.py build`) the
 rescored words also get the association with the previous word, as `BigramTable` does in the keyboard.
 --tune picks the weight and the smoothing on one half of the gestures and reports the other, both ways.
+
+--report <file> writes a line per gesture: the suggestions, the place of the given word, and for a
+missed word its score forced through the decoder against the first suggestion. See `diagnose`.
 """
 
 import argparse
@@ -49,6 +52,9 @@ FOLDED_LETTERS = {"ё": "е"}
 CONTEXT_WEIGHT = 0.4
 CONTEXT_SMOOTHING = 30000.0
 CONTEXT_RESCORED = 6
+LONG_WORD = 8
+ENDING_LETTERS = 2
+ENDING_STEM = 3
 
 
 def read_spec(path: Path) -> dict:
@@ -404,17 +410,19 @@ def start_worker(arguments: argparse.Namespace) -> None:
         program = Runtime.get().load_program(str(arguments.model))
         STATE["encode"] = program.load_method("encode")
         rescored = max(arguments.rescored, arguments.context_rescored)
+        STATE["rescored"] = arguments.rescored
         STATE["search"] = Search(
             STATE["spec"], program.load_method("decode"), arguments.beam, rescored, arguments.frequency_weight
         )
 
 
 def decode_gesture(gesture: tuple) -> tuple:
-    """The finished hypotheses without their trie nodes' children, their full scores and decoder calls."""
+    """The finished hypotheses without their trie nodes' children, their full scores and decoder calls;
+    with a report, also what `diagnose` found."""
     number, word, xs, ys, ts = gesture
     features = STATE["features"](xs, ys, ts)
     if features is None:
-        return number, word, [], [], 0
+        return (number, word, [], [], 0) + ((diagnose(None, None, word, [], [], 0),) if STATE.get("report") else ())
     search = STATE["search"]
     search.calls = 0
     memory = STATE["encode"].execute(list(features))[0]
@@ -423,7 +431,127 @@ def decode_gesture(gesture: tuple) -> tuple:
     # Trie nodes do not travel between processes cheaply; keep only the words they end.
     light = [(score, search.folded_word(tokens), [{WORD: node[WORD]} for node in nodes if WORD in node])
              for score, tokens, nodes in finished]
+    if STATE.get("report"):
+        return number, word, light, full_scores, calls, diagnose(search, memory, word, light, full_scores, calls)
     return number, word, light, full_scores, calls
+
+
+def word_tokens(search: Search, word: str) -> list | None:
+    """The decoder tokens of [word] from the start token to the end token, with ё folded as the search
+    does; None when a letter has no token."""
+    index = {letter: token for token, letter in enumerate(search.tokens)}
+    tokens = [search.sos]
+    for letter in word:
+        token = index.get(letter, index.get(FOLDED_LETTERS.get(letter, letter)))
+        if token is None:
+            return None
+        tokens.append(token)
+    return tokens + [search.eos]
+
+
+def forced_score(search: Search, memory, root: dict, word: str) -> tuple | None:
+    """The full score of [word] forced through the decoder over an encoded gesture, and the frequency
+    the dictionary gives it (0 when absent). Lower full_score - search.prior(frequency) is better."""
+    tokens = word_tokens(search, word)
+    if tokens is None:
+        return None
+    nodes = [root]
+    for token in tokens[1:-1]:
+        nodes = search.advance(nodes, token)
+    return search.full_score(memory, tokens), word_frequency(nodes)
+
+
+def ending_error(word: str, other: str) -> bool:
+    """The words share a stem of ENDING_STEM letters or more and differ only in their last
+    ENDING_LETTERS letters or fewer."""
+    if word == other:
+        return False
+    stem = len(os.path.commonprefix([word, other]))
+    return stem >= ENDING_STEM and max(len(word), len(other)) - stem <= ENDING_LETTERS
+
+
+def diagnose(search, memory, word: str, finished: list, full_scores: list, calls: int) -> dict:
+    """Where the given word ended up for one gesture, without the previous word."""
+    target = fold(word)
+    entry = {"word": word, "suggestions": [], "place": 0, "in_finished": False, "category": "empty",
+             "target_score": None, "top_score": None, "length": len(target), "ending": False,
+             "long": len(target) >= LONG_WORD, "calls": calls}
+    if search is None:
+        return entry
+    rescored = STATE["rescored"]
+    entry["calls"] += min(rescored, len(full_scores)) if len(full_scores) >= 2 and rescored >= 2 else 0
+    ranked = rank(finished, full_scores, rescored, lambda _: 0.0, search.frequency_weight)
+    suggestions = words(ranked, CANDIDATES)
+    candidates = list(dict.fromkeys(fold(suggestion) for suggestion in suggestions))
+    entry["suggestions"] = suggestions
+    entry["in_finished"] = any(fold(hypothesis[1]) == target for hypothesis in finished)
+    if not candidates:
+        return entry
+    entry["ending"] = ending_error(target, candidates[0])
+    if target in candidates:
+        entry["place"] = candidates.index(target) + 1
+        entry["category"] = "top1" if entry["place"] == 1 else "top4"
+        if entry["place"] == 1:
+            return entry
+    scores = [forced_score(search, memory, STATE["dictionary"], text) for text in (target, candidates[0])]
+    if None in scores:
+        entry["category"] = entry["category"] if entry["place"] else "unknown"
+        return entry
+    (target_full, target_frequency), (top_full, top_frequency) = scores
+    entry["target_score"] = target_full - search.prior(target_frequency)
+    entry["top_score"] = top_full - search.prior(top_frequency)
+    if entry["place"]:
+        return entry
+    if target_frequency == 0:
+        entry["category"] = "unknown"
+    else:
+        entry["category"] = "lost-better" if entry["target_score"] < entry["top_score"] else "lost-worse"
+    return entry
+
+
+REPORT_COLUMNS = ("number", "grid", "word", "suggestions", "place", "in_finished", "category",
+                  "target_score", "top_score", "length", "ending", "long", "calls")
+
+
+def write_report(path: Path, results: list) -> None:
+    """One tab separated line per gesture, then a summary by category and feature on stdout."""
+    lines = ["\t".join(REPORT_COLUMNS)]
+    for result in results:
+        entry = result[5]
+        values = {**entry, "number": result[0], "grid": GRID, "suggestions": ",".join(entry["suggestions"]),
+                  "place": entry["place"] or "-", "in_finished": int(entry["in_finished"]),
+                  "ending": int(entry["ending"]), "long": int(entry["long"])}
+        for key in ("target_score", "top_score"):
+            values[key] = "" if entry[key] is None else f"{entry[key]:.4f}"
+        lines.append("\t".join(str(values[column]) for column in REPORT_COLUMNS))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    entries = [result[5] for result in results]
+    print(f"Report written to {path}")
+
+    def show(title: str, chosen: list) -> None:
+        listed = ""
+        if 0 < len(chosen) <= 15:
+            listed = ": " + ", ".join(f"{e['word']} -> {e['suggestions'][0] if e['suggestions'] else '-'}"
+                                      for e in chosen)
+        print(f"  {title}: {len(chosen)}{listed}")
+
+    print("By category:")
+    show("first", [e for e in entries if e["category"] == "top1"])
+    for place in range(2, CANDIDATES + 1):
+        show(f"in the four at place {place}", [e for e in entries if e["category"] == "top4" and e["place"] == place])
+    show("lost, its score better than the winner's", [e for e in entries if e["category"] == "lost-better"])
+    show("lost, its score worse than the winner's", [e for e in entries if e["category"] == "lost-worse"])
+    show("lost, not in the dictionary", [e for e in entries if e["category"] == "unknown"])
+    show("no suggestions", [e for e in entries if e["category"] == "empty"])
+    missed = [e for e in entries if e["category"] != "top1"]
+    print("Missed first place:")
+    show("among all finished hypotheses before rescoring", [e for e in missed if e["in_finished"]])
+    show("ending errors", [e for e in missed if e["ending"]])
+    long_words = [e for e in entries if e["long"]]
+    long_first = sum(e["category"] == "top1" for e in long_words)
+    print(f"Long words ({LONG_WORD}+ letters): {len(long_words)}, first {long_first}, missed {len(long_words) - long_first}")
 
 
 class Scorer:
@@ -453,7 +581,7 @@ class Scorer:
         return association
 
     def candidates(self, result: tuple, weight: float, smoothing: float) -> tuple:
-        number, _, finished, full_scores, _ = result
+        number, _, finished, full_scores = result[:4]
         previous = self.contexts.get(number) if self.bigrams else None
         if previous not in (self.bigrams.ids if self.bigrams else ()):
             previous = None
@@ -531,6 +659,7 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=0, help="gestures to measure, all when 0")
     parser.add_argument("--warm-up", type=int, default=WARM_UP, help="gestures of the grid to skip first")
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
+    parser.add_argument("--report", type=Path, help="write where the given word ended up for every gesture")
     arguments = parser.parse_args()
 
     started = time.time()
@@ -542,6 +671,7 @@ def main() -> None:
     STATE["spec"] = spec
     STATE["features"] = Features(spec, centers)
     STATE["dictionary"] = read_dictionary(arguments.dict)
+    STATE["report"] = arguments.report is not None
     vocabulary = words_of(STATE["dictionary"])
 
     # Forked workers share the dictionary built above instead of each reading it again.
@@ -561,6 +691,8 @@ def main() -> None:
     plain = scorer.measure(0.0, smoothing)
     print(f"Gestures {count}, top1 {plain['top1']:.4f}, swipe_mrr {plain['mrr']:.4f}")
     print(f"Decoder calls per gesture: {plain['calls']:.1f}; {time.time() - started:.0f} s")
+    if arguments.report:
+        write_report(arguments.report, results)
     if not (bigrams and contexts):
         return
     with_context = lambda result: result[0] in contexts  # noqa: E731
