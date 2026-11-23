@@ -9,6 +9,20 @@ import kotlin.math.max
 import kotlin.math.pow
 
 /**
+ * Score breakdown for one neural slide-to-type candidate, in the search's cost units (smaller is better).
+ * [totalScore] equals `modelScore + frequencyTerm + bigramTerm + geometryTerm`.
+ */
+data class ScoredCandidate(
+    val word: String,
+    val searchScore: Double,
+    val modelScore: Double,
+    val frequencyTerm: Double,
+    val bigramTerm: Double,
+    val geometryTerm: Double,
+    val totalScore: Double,
+)
+
+/**
  * A best-first beam search over the decoder, limited to the words of a dictionary: at every step the
  * logits are renormalized over the tokens the dictionary allows after the prefix.
  *
@@ -26,9 +40,10 @@ import kotlin.math.pow
  * keys then keeps the frequent word it was meant for in the beam instead of a rare word that happens to
  * lie closer to the path. The same weight applies when the best words are rescored.
  *
- * With the previous word known, the rescored words also get its association with them from a
- * [BigramTable], weighted by [CONTEXT_WEIGHT]: the model alone often cannot tell endings apart
- * (`будет` and `будем`) or short words (`не`, `на`). More words are rescored then, [contextRescored].
+ * Rescored candidates also get a path geometry penalty from [GestureGeometry.PathScorer] when available,
+ * and with the previous word known their association from a [BigramTable], weighted by [CONTEXT_WEIGHT]:
+ * the model alone often cannot tell endings apart (`будет` and `будем`) or short words (`не`, `на`).
+ * More words are rescored then, [contextRescored].
  *
  * A letter the model has no token for (`ё` when training folded it into `е`) is reached through its
  * base letter. Such a hypothesis stands for several words at once: they share a score and come out
@@ -48,6 +63,11 @@ class NeuralWordSearch(
         val modelScore: Double,
         val score: Double,
         val nodes: List<TrieNode>,
+        var rescoredModel: Double = modelScore,
+        var frequencyTerm: Double = score - modelScore,
+        var bigramTerm: Double = 0.0,
+        var geometryTerm: Double = 0.0,
+        var totalScore: Double = score,
     )
 
     /** Base letter to the letter reached through it. */
@@ -56,14 +76,32 @@ class NeuralWordSearch(
 
     /**
      * The best words for the gesture the [model] has encoded, best first, at most [limit]; [context]
-     * holds the associations with the word before the cursor, if it is known.
+     * holds the associations with the word before the cursor, if it is known, and [geometry] scores
+     * how closely each rescored candidate matches the gesture path.
      */
     fun search(
         model: SwipeSequenceModel,
         root: TrieNode,
         limit: Int,
         context: BigramTable.Context? = null,
-    ): List<String> {
+        geometry: GestureGeometry.PathScorer? = null,
+    ): List<String> = words(runSearch(model, root, context, geometry), limit)
+
+    /** Like [search], returning each candidate with its score breakdown. */
+    fun searchDetailed(
+        model: SwipeSequenceModel,
+        root: TrieNode,
+        limit: Int,
+        context: BigramTable.Context? = null,
+        geometry: GestureGeometry.PathScorer? = null,
+    ): List<ScoredCandidate> = scoredWords(runSearch(model, root, context, geometry), limit)
+
+    private fun runSearch(
+        model: SwipeSequenceModel,
+        root: TrieNode,
+        context: BigramTable.Context?,
+        geometry: GestureGeometry.PathScorer?,
+    ): List<Hypothesis> {
         val partial = PriorityQueue<Hypothesis>(compareBy { it.score })
         val finished = ArrayList<Hypothesis>()
         partial += Hypothesis(longArrayOf(spec.sosId.toLong()), 0.0, 0.0, listOf(root))
@@ -73,18 +111,20 @@ class NeuralWordSearch(
             prune(partial)
         }
         finished.sortBy { it.score }
-        rescore(model, finished, context)
-        return words(finished, limit)
+        rescore(model, finished, context, geometry)
+        return finished
     }
 
     /**
      * Puts the first of the sorted [finished] in the order of [fullScore], less the weighted word
-     * frequency and the weighted association with the previous word when there is a [context].
+     * frequency and the weighted association with the previous word when there is a [context],
+     * plus the path [geometry] penalty.
      */
     private fun rescore(
         model: SwipeSequenceModel,
         finished: MutableList<Hypothesis>,
         context: BigramTable.Context?,
+        geometry: GestureGeometry.PathScorer?,
     ) {
         val count = minOf(if (context == null) rescored else contextRescored, finished.size)
         if (count < 2) return
@@ -92,9 +132,18 @@ class NeuralWordSearch(
         val reordered =
             best
                 .map { hypothesis ->
-                    val association = context?.association(foldedWord(hypothesis.tokens)) ?: 0.0
-                    val score = fullScore(model, hypothesis.tokens) - prior(wordFrequency(hypothesis.nodes))
-                    hypothesis to score - CONTEXT_WEIGHT * association
+                    val word = foldedWord(hypothesis.tokens)
+                    val full = fullScore(model, hypothesis.tokens)
+                    val frequencyTerm = -prior(wordFrequency(hypothesis.nodes))
+                    val bigramTerm = -CONTEXT_WEIGHT * (context?.association(word) ?: 0.0)
+                    val geometryTerm = geometry?.penalty(word) ?: 0.0
+                    val total = full + frequencyTerm + bigramTerm + geometryTerm
+                    hypothesis.rescoredModel = full
+                    hypothesis.frequencyTerm = frequencyTerm
+                    hypothesis.bigramTerm = bigramTerm
+                    hypothesis.geometryTerm = geometryTerm
+                    hypothesis.totalScore = total
+                    hypothesis to total
                 }.sortedBy { it.second }
                 .map { it.first }
         for (index in reordered.indices) best[index] = reordered[index]
@@ -242,6 +291,35 @@ class NeuralWordSearch(
             }
         }
         return result.toList()
+    }
+
+    /** Like [words], preserving each candidate's score breakdown from [finished]. */
+    private fun scoredWords(
+        finished: List<Hypothesis>,
+        limit: Int,
+    ): List<ScoredCandidate> {
+        val seen = HashSet<String>()
+        val result = ArrayList<ScoredCandidate>(limit)
+        for (hypothesis in finished) {
+            val words = hypothesis.nodes.filter { it.isWord }.sortedByDescending { it.frequency }
+            for (node in words) {
+                if (result.size == limit) return result
+                val word = node.word
+                if (word != null && seen.add(word)) {
+                    result +=
+                        ScoredCandidate(
+                            word = word,
+                            searchScore = hypothesis.score,
+                            modelScore = hypothesis.rescoredModel,
+                            frequencyTerm = hypothesis.frequencyTerm,
+                            bigramTerm = hypothesis.bigramTerm,
+                            geometryTerm = hypothesis.geometryTerm,
+                            totalScore = hypothesis.totalScore,
+                        )
+                }
+            }
+        }
+        return result
     }
 
     companion object {

@@ -167,22 +167,23 @@ class SwitchableGestureEngineTest {
 
     @Test
     fun `the experimental engine weighs the word before the cursor`() {
+        // 'ъ' and 'ь' share the same key center in path geometry, so only the bigram breaks the tie.
         val tie =
             ScriptedModel(
                 TEST_SPEC,
-                logits = mapOf("" to mapOf('а' to 5f), "а" to mapOf('б' to 5f, 'в' to 5f)),
-                eos = mapOf("аб" to 5f, "ав" to 5f),
+                logits = mapOf("" to mapOf('а' to 5f), "а" to mapOf('ъ' to 5f, 'ь' to 5f)),
+                eos = mapOf("аъ" to 5f, "аь" to 5f),
             )
         val engine =
             engine(model = tie).apply {
                 slideEngine = SlideEngine.EXPERIMENTAL
-                setLanguageModel(Dictionary.parse("аб\t1\nав\t1".byteInputStream()).languageModel)
+                setLanguageModel(Dictionary.parse("аъ\t1\nаь\t1".byteInputStream()).languageModel)
             }
-        assertEquals("аб", engine.decode(points, "Мы ", complete = true).first(), "no table yet")
-        engine.setBigrams(BigramTable.read(bigramTableOf(mapOf(("мы" to "ав") to 50L, ("мы" to "аб") to 1L))))
-        assertEquals("ав", engine.decode(points, "Мы ", complete = true).first())
-        assertEquals("аб", engine.decode(points, "Мы. ", complete = true).first(), "a new sentence has no context")
-        assertEquals("аб", engine.decode(points, "", complete = true).first())
+        assertEquals("аъ", engine.decode(points, "Мы ", complete = true).first(), "no table yet")
+        engine.setBigrams(BigramTable.read(bigramTableOf(mapOf(("мы" to "аь") to 50L, ("мы" to "аъ") to 1L))))
+        assertEquals("аь", engine.decode(points, "Мы ", complete = true).first())
+        assertEquals("аъ", engine.decode(points, "Мы. ", complete = true).first(), "a new sentence has no context")
+        assertEquals("аъ", engine.decode(points, "", complete = true).first())
     }
 
     @Test

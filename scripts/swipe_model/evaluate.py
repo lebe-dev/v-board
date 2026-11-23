@@ -66,9 +66,11 @@ ENDING_LETTERS = 2
 ENDING_STEM = 3
 GEOMETRY_POINTS = 2
 GEOMETRY_STEP = 0.25
+GEOMETRY_END_WEIGHT = 0.2
 KEY_SUBSTITUTES = {"ъ": "ь"}
 SHAPE_SAMPLES = 32
 SHAPE_MIN_SIZE = 1.0
+SHAPE_WEIGHT = 1.0
 
 
 def read_spec(path: Path) -> dict:
@@ -961,9 +963,11 @@ def main() -> None:
     parser.add_argument("--report", type=Path, help="write where the given word ended up for every gesture")
     parser.add_argument("--trace", help="gesture numbers, comma separated: print how the search followed the word")
     parser.add_argument("--geometry-start-weight", type=float, default=0.0, help="weight of the gesture start penalty")
-    parser.add_argument("--geometry-end-weight", type=float, default=0.0, help="weight of the gesture end penalty")
+    parser.add_argument("--geometry-end-weight", type=float, default=GEOMETRY_END_WEIGHT,
+                        help="weight of the gesture end penalty")
     parser.add_argument("--geometry-points", type=int, default=GEOMETRY_POINTS, help="points compared at each end")
-    parser.add_argument("--geometry-shape-weight", type=float, default=0.0, help="weight of the whole path shape penalty")
+    parser.add_argument("--geometry-shape-weight", type=float, default=SHAPE_WEIGHT,
+                        help="weight of the whole path shape penalty")
     parser.add_argument("--geometry-location-weight", type=float, default=0.0,
                         help="weight of the whole path location penalty")
     parser.add_argument("--geometry-samples", type=int, default=SHAPE_SAMPLES, help="points along the whole path")
