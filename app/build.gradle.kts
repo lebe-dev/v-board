@@ -151,7 +151,7 @@ android {
         minSdk = 34
         targetSdk = 36
         versionCode = 10
-        versionName = "1.2.0-beta.6"
+        versionName = "1.2.0"
         buildConfigField("String", "GIT_HASH", "\"${gitShortHash.get()}\"")
         buildConfigField("String", "SENTRY_DSN", "\"${sentryDsn.get()}\"")
         buildConfigField("String", "WORD_PAIRS_URL", "\"\"")
