@@ -146,8 +146,9 @@ class KeyboardPrefs(
         TapSuggestOptions(
             corrections = tapCorrections,
             fuzzyPrefix = tapCorrections && fuzzyPrefix,
-            twoEdits = tapCorrections && twoEditCorrections,
+            twoEdits = twoEditCorrections,
             spatialModel = tapCorrections && spatialTapModel,
+            autocorrect = autocorrect,
         )
 
     /** Whether crash reports go to the developer; off until the user agrees. */

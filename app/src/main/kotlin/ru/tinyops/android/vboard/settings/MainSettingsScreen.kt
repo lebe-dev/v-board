@@ -272,7 +272,8 @@ private fun TypingSection(
 ) {
     val prefs = KeyboardPrefs(LocalContext.current)
     val engine = prefs.slideEngine
-    val autocorrectOn = prefs.autoCapitalize || prefs.cleanLinks
+    val autocorrectOn =
+        prefs.autoCapitalize || prefs.cleanLinks || prefs.autocorrect || prefs.twoEditCorrections
     val autocorrect = if (autocorrectOn) R.string.settings_fullscreen_on else R.string.feature_off
     val fullscreen = if (prefs.fullscreenEnabled) R.string.settings_fullscreen_on else R.string.feature_off
     SettingsSection(stringResource(R.string.settings_typing)) {

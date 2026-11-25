@@ -478,7 +478,7 @@ class KeyboardService :
             logic.shift.reset()
             logic.suggestionsAllowed = profile.suggestionsAllowed
             logic.nextWordsAllowed = keyboardPrefs.suggestNextWord
-            logic.autocorrectEnabled = keyboardPrefs.tapCorrections && keyboardPrefs.autocorrect
+            logic.autocorrectEnabled = keyboardPrefs.autocorrect
             stripView?.suggestionTimeoutMillis = keyboardPrefs.suggestionTimeout.millis
             stripView?.voiceAvailable = micShown
             stripView?.applyLook(clipboardPrefs, voicePrefs, keyboardPrefs)

@@ -38,18 +38,19 @@ class TapSuggester(
         val pool = LinkedHashMap<String, Candidate>()
 
         addExactCompletions(typed, precedingText, limit, context, pool)
-        if (options.corrections) {
+        if (options.corrections || options.autocorrect) {
             collectCorrections(typed, taps, known, options, context, pool)
         }
 
         val ranked = pool.values.sortedWith(compareByDescending<Candidate> { it.score }.thenBy { it.word })
         val autocorrect =
-            if (options.corrections && !known && typed.length >= MIN_CORRECTION_LEN) {
+            if (options.autocorrect && !known && typed.length >= MIN_CORRECTION_LEN) {
                 pickAutocorrect(typed, ranked)
             } else {
                 null
             }
-        return TapSuggestions(buildWordList(ranked, autocorrect, limit), autocorrect)
+        val shown = if (options.corrections) ranked else ranked.filter { it.edits == 0 }
+        return TapSuggestions(buildWordList(shown, autocorrect, limit), autocorrect)
     }
 
     private fun collectCorrections(

@@ -305,7 +305,68 @@ class InputLogicTest {
         placeCursor("helo", 4)
         type("w")
         logic.onSelectionChanged(editor, 5, 5, 5)
-        assertEquals(listOf("world", "w", "word"), suggestions)
+        assertEquals("helow", editor.composing)
+        assertEquals(listOf("helow"), suggestions)
+    }
+
+    @Test
+    fun `deleting back into a previous word reopens the whole word for suggestions and replacement`() {
+        placeCursor("hello world", 11)
+        repeat(" world".length) { logic.backspace(editor) }
+        assertEquals("hello", editor.toString())
+
+        logic.backspace(editor)
+        assertEquals("hell", editor.toString())
+        assertEquals("hell", editor.composing)
+        assertEquals(listOf("hello", "hell"), suggestions)
+
+        logic.pickSuggestion(editor, "hello")
+        assertEquals("hello ", editor.toString())
+    }
+
+    @Test
+    fun `returning by backspace and typing the ending replaces the whole word`() {
+        val acLogic =
+            InputLogic(
+                completions = { prefix, _ -> dictionary.filter { it.startsWith(prefix) } },
+                onSuggestions = { suggestions = it },
+                tapSuggestions = { typed, _, _ ->
+                    if (typed == "helol") {
+                        TapSuggestions(listOf("hello"), autocorrect = "hello")
+                    } else {
+                        TapSuggestions(dictionary.filter { it.startsWith(typed) })
+                    }
+                },
+            )
+        editor.text.append("good helo there")
+        editor.cursor = editor.text.length
+        acLogic.onSelectionChanged(editor, editor.cursor, editor.cursor, -1)
+        repeat(" there".length) { acLogic.backspace(editor) }
+        acLogic.typeCharacter(editor, "l")
+        assertEquals("helol", editor.composing)
+        acLogic.typeSpace(editor, 1_000)
+        assertEquals("good hello ", editor.toString())
+    }
+
+    @Test
+    fun `reopening a word keeps the preceding word as context`() {
+        placeCursor("good worl", 9)
+        logic.backspace(editor)
+        assertEquals("wor", editor.composing)
+        assertEquals("good ", completedAfter)
+        assertEquals(listOf("world", "wor", "word"), suggestions)
+    }
+
+    @Test
+    fun `editing in the middle of a word does not compose past the cursor`() {
+        placeCursor("hello", 2)
+        logic.backspace(editor)
+        assertEquals("hllo", editor.toString())
+        assertEquals("", editor.composing)
+        type("e")
+        assertEquals("hello", editor.toString())
+        assertEquals("e", editor.composing)
+        assertEquals(2, editor.cursor)
     }
 
     @Test

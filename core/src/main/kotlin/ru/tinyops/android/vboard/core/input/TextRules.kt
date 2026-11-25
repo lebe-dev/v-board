@@ -71,8 +71,10 @@ object TextRules {
         }
 
     /** Characters that are part of a word being composed. */
-    fun isWordCharacter(text: String): Boolean =
-        text.isNotEmpty() && text[0].isLetter() && text.all { it.isLetter() || it.isCombiningMark() }
+    fun isWordCharacter(text: String): Boolean = text.isNotEmpty() && text[0].isLetter() && text.all(::isComposableChar)
+
+    /** Whether [c] can belong to a word being composed (a letter or a combining mark). */
+    fun isComposableChar(c: Char): Boolean = c.isLetter() || c.isCombiningMark()
 
     private fun Char.isCombiningMark(): Boolean = Character.getType(this) == Character.NON_SPACING_MARK.toInt()
 

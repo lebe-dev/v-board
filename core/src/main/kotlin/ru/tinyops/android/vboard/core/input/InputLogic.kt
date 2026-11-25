@@ -109,7 +109,9 @@ class InputLogic(
             if (phantomSpace && composing.isEmpty()) editor.commitText(" ")
             phantomSpace = false
             if (suggestionsAllowed) {
-                if (composing.isEmpty()) beforeComposing = editor.textBeforeCursor(CONTEXT_CHARS)?.toString().orEmpty()
+                if (composing.isEmpty() && !reopenWord(editor, dropLast = 0, extraLength = text.length)) {
+                    beforeComposing = editor.textBeforeCursor(CONTEXT_CHARS)?.toString().orEmpty()
+                }
                 composing.append(text)
                 repeat(text.length) { composingTaps.add(tap) }
                 editor.setComposingText(composing)
@@ -190,6 +192,12 @@ class InputLogic(
             }
             autocorrect.undoIfMatching(editor) -> {
                 strip.dropNextWords()
+            }
+            suggestionsAllowed && reopenWord(editor, dropLast = 1, extraLength = 0) -> {
+                editor.beginBatchEdit()
+                editor.setComposingText(composing)
+                showCompletions()
+                editor.endBatchEdit()
             }
             else -> {
                 editor.sendBackspace()
@@ -380,31 +388,6 @@ class InputLogic(
         strip.show(emptyList())
     }
 
-    private fun wordAtCursor(editor: TextEditor): WordAtCursor? {
-        val before =
-            editor
-                .textBeforeCursor(MAX_WORD)
-                ?.takeLastWhile(TextRules::isInWord)
-                ?.toString()
-                .orEmpty()
-        val after =
-            editor
-                .textAfterCursor(MAX_WORD)
-                ?.takeWhile(TextRules::isInWord)
-                ?.toString()
-                .orEmpty()
-        val text = before + after
-        if (text.length < MIN_CORRECTED || text.length >= MAX_WORD) return null
-        if (text.first() == '-' || text.last() == '-') return null
-        return WordAtCursor(text, before.length, after.length)
-    }
-
-    private class WordAtCursor(
-        val text: String,
-        val before: Int,
-        val after: Int,
-    )
-
     /** Commits the composing text, if any. */
     fun commitComposing(editor: TextEditor) {
         if (composing.isEmpty()) return
@@ -459,6 +442,24 @@ class InputLogic(
         strip.show((listOf(primary, typed) + words).distinct().take(SUGGESTIONS))
     }
 
+    private fun reopenWord(
+        editor: TextEditor,
+        dropLast: Int,
+        extraLength: Int,
+    ): Boolean {
+        val context = editor.textBeforeCursor(CONTEXT_CHARS + MAX_WORD)?.toString().orEmpty()
+        val after = editor.textAfterCursor(1)?.firstOrNull()
+        val word = trailingComposableWord(context, after) ?: return false
+        val kept = word.dropLast(dropLast)
+        if (kept.isEmpty() || word.length + extraLength >= MAX_WORD) return false
+        beforeComposing = context.dropLast(word.length).takeLast(CONTEXT_CHARS)
+        misspelled = null
+        editor.replaceAroundCursor(word.length, 0, "")
+        composing.append(kept)
+        repeat(kept.length) { composingTaps.add(null) }
+        return true
+    }
+
     private fun resetComposing() {
         autocorrect.clearPending()
         onAutocorrectHighlight(false)
@@ -474,8 +475,7 @@ class InputLogic(
 
     companion object {
         const val SUGGESTIONS = 3
-        private const val MIN_CORRECTED = 2
-        private const val MAX_WORD = 40
+        internal const val MAX_WORD = 40
 
         /** How much text before the cursor the next words and completions look at. */
         internal const val CONTEXT_CHARS = 64
@@ -485,4 +485,43 @@ class InputLogic(
         private const val CLEAR_LOOKAROUND = 100_000
         const val DOUBLE_SPACE_MILLIS = 500L
     }
+}
+
+private const val MIN_CORRECTED = 2
+
+private class WordAtCursor(
+    val text: String,
+    val before: Int,
+    val after: Int,
+)
+
+private fun wordAtCursor(editor: TextEditor): WordAtCursor? {
+    val before =
+        editor
+            .textBeforeCursor(InputLogic.MAX_WORD)
+            ?.takeLastWhile(TextRules::isInWord)
+            ?.toString()
+            .orEmpty()
+    val after =
+        editor
+            .textAfterCursor(InputLogic.MAX_WORD)
+            ?.takeWhile(TextRules::isInWord)
+            ?.toString()
+            .orEmpty()
+    val text = before + after
+    if (text.length < MIN_CORRECTED || text.length >= InputLogic.MAX_WORD) return null
+    if (text.first() == '-' || text.last() == '-') return null
+    return WordAtCursor(text, before.length, after.length)
+}
+
+private fun trailingComposableWord(
+    context: String,
+    after: Char?,
+): String? {
+    if (after != null && TextRules.isInWord(after)) return null
+    val word = context.takeLastWhile(TextRules::isComposableChar)
+    if (word.isEmpty() || !word.first().isLetter()) return null
+    val prev = context.getOrNull(context.length - word.length - 1)
+    if (prev != null && (prev.isDigit() || prev == '_')) return null
+    return word
 }

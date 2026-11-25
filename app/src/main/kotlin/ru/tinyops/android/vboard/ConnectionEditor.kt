@@ -25,7 +25,7 @@ internal class ConnectionEditor(
     ) {
         ic.beginBatchEdit()
         ic.deleteSurroundingText(before, after)
-        ic.commitText(text, 1)
+        if (text.isNotEmpty()) ic.commitText(text, 1)
         ic.endBatchEdit()
     }
 

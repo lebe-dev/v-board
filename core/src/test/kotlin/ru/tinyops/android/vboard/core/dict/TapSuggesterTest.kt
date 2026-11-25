@@ -113,4 +113,12 @@ class TapSuggesterTest {
         assertTrue(result.words.isEmpty())
         assertNull(result.autocorrect)
     }
+
+    @Test
+    fun `autocorrect still works when strip typo suggestions are disabled`() {
+        val ru = TapSuggester(bundledDictionary(Language.RUSSIAN), ruProximity)
+        val result = ru.suggest("пртвет", options = TapSuggestOptions(corrections = false, autocorrect = true))
+        assertEquals("привет", result.autocorrect)
+        assertEquals(listOf("привет"), result.words)
+    }
 }

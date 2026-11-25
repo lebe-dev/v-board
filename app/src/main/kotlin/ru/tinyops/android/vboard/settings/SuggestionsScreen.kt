@@ -36,9 +36,7 @@ internal fun SuggestionsScreen(onBack: () -> Unit) {
                     )
                 }
                 if (tapCorrections) {
-                    item { AutocorrectRow() }
                     item { FuzzyPrefixRow() }
-                    item { TwoEditCorrectionsRow() }
                     item { SpatialTapModelRow() }
                 }
             }
@@ -123,24 +121,6 @@ internal fun TapCorrectionsRow(
     )
 }
 
-/** Whether confident typo corrections apply automatically on space or punctuation. */
-@Composable
-internal fun AutocorrectRow() {
-    val prefs = KeyboardPrefs(LocalContext.current)
-    var enabled by remember { mutableStateOf(prefs.autocorrect) }
-    SettingsSwitchRow(
-        title = stringResource(R.string.settings_tap_autocorrect),
-        summary = stringResource(R.string.settings_tap_autocorrect_summary),
-        icon = R.drawable.ic_auto_fix_high,
-        prominent = true,
-        checked = enabled,
-        onCheckedChange = {
-            enabled = it
-            prefs.autocorrect = it
-        },
-    )
-}
-
 /** Whether completions are suggested even when an unfinished word contains a typo. */
 @Composable
 internal fun FuzzyPrefixRow() {
@@ -155,24 +135,6 @@ internal fun FuzzyPrefixRow() {
         onCheckedChange = {
             enabled = it
             prefs.fuzzyPrefix = it
-        },
-    )
-}
-
-/** Whether up to two typos are corrected in longer words. */
-@Composable
-internal fun TwoEditCorrectionsRow() {
-    val prefs = KeyboardPrefs(LocalContext.current)
-    var enabled by remember { mutableStateOf(prefs.twoEditCorrections) }
-    SettingsSwitchRow(
-        title = stringResource(R.string.settings_two_edit_corrections),
-        summary = stringResource(R.string.settings_two_edit_corrections_summary),
-        icon = R.drawable.ic_auto_awesome,
-        prominent = true,
-        checked = enabled,
-        onCheckedChange = {
-            enabled = it
-            prefs.twoEditCorrections = it
         },
     )
 }

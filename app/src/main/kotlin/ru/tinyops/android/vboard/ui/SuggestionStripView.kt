@@ -27,10 +27,12 @@ import kotlin.math.abs
 
 /**
  * The strip above the keys: settings (cog) on the left, voice input (microphone in a round button)
- * on the right, and the clipboard history in the place the user chose. Between them, three suggestion
+ * on the right, and the clipboard history in the place the user chose. Between them, up to three suggestion
  * slots while typing (the cog and the clipboard button are hidden then and the slots span their room):
- * the first suggestion is the primary one and is shown in the middle slot in bold, the second on
- * the left and the third on the right. With nothing to suggest, the recently copied text, image
+ * when all words fit in three slots, the primary suggestion is shown in the middle in bold, the second on
+ * the left and the third on the right; when long words do not fit, only the first two are shown side by side
+ * (primary on the left), and if they share a long prefix and still overflow, their beginning is ellipsized
+ * so the differing endings stay visible. With nothing to suggest, the recently copied text, image
  * and the links found in it are shown as chips, centered, that paste on tap. Left of the microphone
  * sits the proofread button, while proofreading is on and the field has text. The custom buttons
  * and the clipboard button stand on the left, in the center or on the right of the room between the
@@ -309,6 +311,7 @@ class SuggestionStripView(
     private val activePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = theme.voiceActive }
     private val haloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = theme.voiceHalo }
     private val spinner = StripSpinner(theme.stripIconSize)
+    private val slotRenderer = StripSuggestions(theme, textPaint, boldPaint, dividerPaint)
 
     /** Light icons mean a dark keyboard, whichever theme it comes from. */
     private val darkTheme = ColorUtils.calculateLuminance(theme.stripIcon) > HALF_LUMINANCE
@@ -459,7 +462,8 @@ class SuggestionStripView(
     /** The right end of the area between the buttons. */
     private val slotsRight: Float get() = proofreadLeft
 
-    private val slotWidth: Float get() = (slotsRight - slotsLeft) / SLOTS
+    internal val displayedSuggestions: List<String>
+        get() = slotRenderer.displayed(suggestions, slotsLeft, slotsRight)
 
     private val unit: Float get() = theme.stripIconSize / UNITS_PER_ICON
 
@@ -563,12 +567,7 @@ class SuggestionStripView(
             custom >= customsShown && buttonsVisible ->
                 if (custom - customsShown < clipboardCount) Zone.CLIPBOARD else Zone.FULLSCREEN
             showsChips -> chipZoneAt(x)
-            else ->
-                when (((x - slotsLeft) / slotWidth).toInt().coerceIn(0, SLOTS - 1)) {
-                    0 -> Zone.SLOT_LEFT
-                    1 -> Zone.SLOT_MIDDLE
-                    else -> Zone.SLOT_RIGHT
-                }.takeIf { wordIn(it, suggestions) != null } ?: Zone.NONE
+            else -> slotRenderer.zoneAt(suggestions, x, slotsLeft, slotsRight)
         }
 
     private fun chipZoneAt(x: Float): Zone = CHIP_ZONES.getOrNull(clipChips.indexAt(x, chipRoom)) ?: Zone.NONE
@@ -617,23 +616,9 @@ class SuggestionStripView(
 
     /** The error in red, or else the suggested words. */
     private fun drawMiddle(canvas: Canvas) {
-        val room = slotWidth * SLOTS * TEXT_WIDTH
-        if (errorNotice.draw(canvas, slotsLeft + slotWidth * SLOTS / 2f, room, rowHeight.toFloat())) return
-        if (suggestions.isEmpty()) return
-        val baseline = textPaint.baselineIn(rowHeight)
-        for ((slot, zone) in SLOT_ZONES.withIndex()) {
-            val word = wordIn(zone, suggestions) ?: continue
-            val paint = if (zone == Zone.SLOT_MIDDLE) boldPaint else textPaint
-            if (zone == Zone.SLOT_MIDDLE) paint.color = if (autocorrectHighlight) theme.accent else theme.suggestion
-            val text = TextUtils.ellipsize(word, paint, slotWidth * TEXT_WIDTH, TextUtils.TruncateAt.END)
-            val center = slotsLeft + slot * slotWidth + slotWidth / 2f
-            canvas.drawText(text, 0, text.length, center, baseline, paint)
-        }
-        val dividerHeight = rowHeight * DIVIDER_HEIGHT
-        for (slot in 1 until SLOTS) {
-            val x = slotsLeft + slot * slotWidth
-            canvas.drawRect(x, (rowHeight - dividerHeight) / 2f, x + 1f, (rowHeight + dividerHeight) / 2f, dividerPaint)
-        }
+        val room = (slotsRight - slotsLeft) * TEXT_WIDTH
+        if (errorNotice.draw(canvas, (slotsLeft + slotsRight) / 2f, room, rowHeight.toFloat())) return
+        slotRenderer.draw(canvas, suggestions, slotsLeft, slotsRight, rowHeight, autocorrectHighlight)
     }
 
     /** The custom buttons of the strip, then those of the second row under it. */
@@ -751,10 +736,7 @@ class SuggestionStripView(
                     top = (bottom - rowHeight).toFloat()
                     left to left + slotSize
                 }
-                else -> {
-                    val left = slotsLeft + SLOT_ZONES.indexOf(pressed.zone) * slotWidth
-                    left to left + slotWidth
-                }
+                else -> slotRenderer.boundsOf(suggestions, pressed.zone, slotsLeft, slotsRight) ?: return
             }
         val inset = rowHeight * PRESSED_INSET
         val side = minOf(inset, (right - left) * PRESSED_INSET)
@@ -863,7 +845,12 @@ class SuggestionStripView(
                 val (left, bottom) = boxOf(index) ?: return
                 groupPopup.toggle(this, button, (left + slotSize / 2f).toInt(), bottom, downTime)
             }
-            else -> wordIn(zone, suggestions)?.let(listener::onSuggestionPicked)
+            else ->
+                slotRenderer
+                    .activeSlots(suggestions, slotsLeft, slotsRight)
+                    .firstOrNull { it.zone == zone }
+                    ?.word
+                    ?.let(listener::onSuggestionPicked)
         }
     }
 
@@ -907,7 +894,6 @@ class SuggestionStripView(
         const val SLOTS = 3
         val SLOT_ZONES = listOf(Zone.SLOT_LEFT, Zone.SLOT_MIDDLE, Zone.SLOT_RIGHT)
         const val TEXT_WIDTH = 0.9f
-        const val DIVIDER_HEIGHT = 0.4f
         const val PRESSED_INSET = 0.12f
         const val ACTIVE_RADIUS = 0.36f
 
@@ -951,16 +937,4 @@ private fun VoiceState.statusText(): Int =
                 speech -> R.string.voice_status_speech
                 else -> R.string.voice_status_listening
             }
-    }
-
-/** Slot order is left, middle, right; suggestion order is primary, second, third. */
-private fun wordIn(
-    zone: SuggestionStripView.Zone,
-    suggestions: List<String>,
-): String? =
-    when (zone) {
-        SuggestionStripView.Zone.SLOT_MIDDLE -> suggestions.getOrNull(0)
-        SuggestionStripView.Zone.SLOT_LEFT -> suggestions.getOrNull(1)
-        SuggestionStripView.Zone.SLOT_RIGHT -> suggestions.getOrNull(2)
-        else -> null
     }

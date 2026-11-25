@@ -27,6 +27,9 @@ mirror is what suggestions replace and what the strip sees. Rules:
 - A letter typed while `suggestionsAllowed` is false is committed immediately; there is no composing
   region and no suggestions.
 - Space, enter, punctuation, a cursor move or picking a suggestion commits the composing word.
+- Deleting into the end of a committed word or typing at its end (when no word character follows the
+  cursor) pulls that word back into the composing region so completions, corrections and replacement
+  apply to the whole word rather than only the edited suffix.
 - After a swiped word, a composing region stays so that alternatives can replace it. The next typed
   letter commits it first.
 - A swipe after a word without a trailing space inserts a "phantom space". The same happens before the
@@ -111,6 +114,11 @@ bounds. See [Keyboard service](keyboard-service.md) for the two space-drag modes
 
 `SuggestionStripView` only renders what `InputLogic` gives it. Notable rules:
 
+- Up to three suggestions are shown. When all fit in three equal slots, the primary suggestion stands
+  in the middle in bold with the second on the left and the third on the right. When long words do not
+  fit in three slots, only the first two are shown side by side (primary on the left). If a word still
+  overflows its slot and the shown words share a long prefix, the beginning is ellipsized instead of
+  the end so differing endings stay readable.
 - Chips disappear after the configured suggestion timeout.
 - Swipe previews during a live gesture use the same strip, so a user sees candidates before lifting
   the finger.

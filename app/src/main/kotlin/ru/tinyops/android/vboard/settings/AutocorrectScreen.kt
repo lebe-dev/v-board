@@ -16,6 +16,8 @@ internal fun AutocorrectScreen(onBack: () -> Unit) {
     val prefs = KeyboardPrefs(LocalContext.current)
     var autoCapitalize by remember { mutableStateOf(prefs.autoCapitalize) }
     var cleanLinks by remember { mutableStateOf(prefs.cleanLinks) }
+    var autocorrect by remember { mutableStateOf(prefs.autocorrect) }
+    var twoEditCorrections by remember { mutableStateOf(prefs.twoEditCorrections) }
     SettingsPage(title = stringResource(R.string.settings_autocorrect), onBack = onBack) {
         item {
             SettingsSection(null) {
@@ -38,6 +40,28 @@ internal fun AutocorrectScreen(onBack: () -> Unit) {
                         onCheckedChange = {
                             cleanLinks = it
                             prefs.cleanLinks = it
+                        },
+                    )
+                }
+                item {
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.settings_tap_autocorrect),
+                        summary = stringResource(R.string.settings_tap_autocorrect_summary),
+                        checked = autocorrect,
+                        onCheckedChange = {
+                            autocorrect = it
+                            prefs.autocorrect = it
+                        },
+                    )
+                }
+                item {
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.settings_two_edit_corrections),
+                        summary = stringResource(R.string.settings_two_edit_corrections_summary),
+                        checked = twoEditCorrections,
+                        onCheckedChange = {
+                            twoEditCorrections = it
+                            prefs.twoEditCorrections = it
                         },
                     )
                 }
