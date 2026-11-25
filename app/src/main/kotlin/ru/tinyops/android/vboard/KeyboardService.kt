@@ -496,7 +496,6 @@ class KeyboardService :
 
     override fun onFinishInputView(finishingInput: Boolean) {
         cursorDragging = false
-        editor()?.let { logic.showCorrections(it) }
         stopKeepingCursorOnLine()
         closeClipboardPanel()
         onEmojiBack()
@@ -706,6 +705,7 @@ class KeyboardService :
     override fun onSpaceDragEnd() {
         cursorDragging = false
         stopKeepingCursorOnLine()
+        editor()?.let { logic.showCorrections(it) }
         updateAutoCaps()
     }
 
@@ -906,7 +906,7 @@ class KeyboardService :
 
     private fun onDictionaryLoaded() {
         keyboardView?.gestureEnabled = gesturesAvailable()
-        logic.refreshCompletions()
+        logic.refreshCompletions(editor())
     }
 
     // endregion

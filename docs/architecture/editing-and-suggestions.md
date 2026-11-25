@@ -59,12 +59,14 @@ edits and the spatial tap model.
 confident autocorrection exists and autocorrect is enabled, it takes the primary slot and the word is
 shown with a highlight. On space or on `, . ! ? ; :` the pending correction is applied instead of
 committing the typed spelling. One backspace immediately after an applied correction restores the
-original spelling.
+original spelling. A completed valid word is not echoed back on the strip when there is no pending
+autocorrection.
 
 When the cursor is not composing, `showCorrections` looks at the word under the cursor. If that word
 is not in the dictionary, its corrections replace the strip; picking one replaces the word in place,
-including the part after the cursor. This is the tap-correction flow for words that were already
-committed.
+including the part after the cursor. When no completions, cursor corrections or next-word predictions
+are active and the current input contains a single misspelled word with corrections (`SingleInputCorrection`),
+those corrections are offered on the strip without requiring the cursor to move onto that word.
 
 ## Next-word predictions
 

@@ -84,6 +84,7 @@ class InputLogic(
 
     /** The word under the cursor that the shown corrections are for, null when none are shown. */
     private var misspelled: WordAtCursor? = null
+    private val singleCorrection = SingleInputCorrection()
 
     private val strip = SuggestionStrip(onSuggestions, predictions)
     private var lastSpaceAt = Long.MIN_VALUE
@@ -115,7 +116,7 @@ class InputLogic(
                 composing.append(text)
                 repeat(text.length) { composingTaps.add(tap) }
                 editor.setComposingText(composing)
-                showCompletions()
+                showCompletions(editor)
             } else {
                 editor.commitText(text)
             }
@@ -163,7 +164,7 @@ class InputLogic(
                 lastSpaceAt = nowMillis
             }
         }
-        showPredictions(editor)
+        if (!showPredictions(editor) && !showSingleInputCorrection(editor)) strip.dropNextWords()
         editor.endBatchEdit()
     }
 
@@ -188,7 +189,7 @@ class InputLogic(
                 composing.setLength(composing.length - 1)
                 if (composingTaps.isNotEmpty()) composingTaps.removeAt(composingTaps.lastIndex)
                 editor.setComposingText(composing)
-                showCompletions()
+                showCompletions(editor)
             }
             autocorrect.undoIfMatching(editor) -> {
                 strip.dropNextWords()
@@ -196,7 +197,7 @@ class InputLogic(
             suggestionsAllowed && reopenWord(editor, dropLast = 1, extraLength = 0) -> {
                 editor.beginBatchEdit()
                 editor.setComposingText(composing)
-                showCompletions()
+                showCompletions(editor)
                 editor.endBatchEdit()
             }
             else -> {
@@ -253,6 +254,9 @@ class InputLogic(
         autocorrect.clearUndo()
         when {
             misspelled != null && composing.isEmpty() -> replaceMisspelled(editor, word)
+            singleCorrection.apply(editor, word) { commitComposing(editor) } -> {
+                if (!showPredictions(editor)) strip.show(emptyList())
+            }
             strip.offersNextWords && composing.isEmpty() -> {
                 editor.beginBatchEdit()
                 editor.commitText("$word ")
@@ -325,7 +329,13 @@ class InputLogic(
         candidatesEnd: Int,
         correct: Boolean = true,
     ) {
-        val movedAway = candidatesEnd != -1 && (selectionStart != candidatesEnd || selectionEnd != candidatesEnd)
+        val movedAway =
+            if (candidatesEnd != -1) {
+                selectionStart != candidatesEnd || selectionEnd != candidatesEnd
+            } else {
+                composing.isNotEmpty() &&
+                    editor.textBeforeCursor(composing.length)?.toString() != composing.toString()
+            }
         if (composing.isNotEmpty() && movedAway) {
             autocorrect.clearUndo()
             commitComposing(editor)
@@ -334,7 +344,11 @@ class InputLogic(
         when {
             selectionStart != selectionEnd -> {
                 autocorrect.clearUndo()
-                dropCorrections()
+                if (misspelled != null || singleCorrection.target != null) {
+                    misspelled = null
+                    singleCorrection.clear()
+                    strip.show(emptyList())
+                }
                 strip.dropNextWords()
             }
             correct -> showCorrections(editor)
@@ -354,11 +368,15 @@ class InputLogic(
         val word = if (suggestionsAllowed) wordAtCursor(editor) else null
         val better = word?.let { corrections(it.text.lowercase(locale)) }.orEmpty()
         if (word == null || better.isEmpty()) {
-            val hadCorrections = misspelled != null
+            val hadCorrections = misspelled != null || singleCorrection.target != null
             misspelled = null
-            if (!showPredictions(editor) && hadCorrections) strip.show(emptyList())
+            singleCorrection.clear()
+            if (!showPredictions(editor) && !showSingleInputCorrection(editor) && hadCorrections) {
+                strip.show(emptyList())
+            }
             return
         }
+        singleCorrection.clear()
         misspelled = word
         strip.show(better.map { TextRules.matchCase(it, word.text, locale) }.distinct().take(SUGGESTIONS))
     }
@@ -372,10 +390,11 @@ class InputLogic(
         return false
     }
 
-    private fun dropCorrections() {
-        if (misspelled == null) return
-        misspelled = null
-        strip.show(emptyList())
+    private fun showSingleInputCorrection(editor: TextEditor): Boolean {
+        if (!suggestionsAllowed) return false
+        val found = singleCorrection.findAndFormat(editor, locale, corrections, SUGGESTIONS) ?: return false
+        strip.show(found)
+        return true
     }
 
     private fun replaceMisspelled(
@@ -413,14 +432,15 @@ class InputLogic(
     }
 
     /** Recomputes completions for the word being typed (e.g. once a dictionary is loaded). */
-    fun refreshCompletions() {
-        if (composing.isNotEmpty() && !composingIsGesture) showCompletions()
+    fun refreshCompletions(editor: TextEditor? = null) {
+        if (composing.isNotEmpty() && !composingIsGesture) showCompletions(editor)
     }
 
-    private fun showCompletions() {
+    private fun showCompletions(editor: TextEditor?) {
         if (composing.isEmpty() || !suggestionsAllowed) {
             autocorrect.clearPending()
             onAutocorrectHighlight(false)
+            singleCorrection.clear()
             strip.show(emptyList())
             return
         }
@@ -437,9 +457,19 @@ class InputLogic(
                 ?.takeIf { it != typed }
         autocorrect.setPending(pending)
         onAutocorrectHighlight(pending != null)
-        val primary = pending ?: words.firstOrNull() ?: typed
-        // Primary slot: the most likely completion or correction; the literal typed text comes second.
-        strip.show((listOf(primary, typed) + words).distinct().take(SUGGESTIONS))
+        val offered =
+            if (pending == null && words.any { it == typed }) {
+                words.filter { it != typed }.take(SUGGESTIONS)
+            } else {
+                val primary = pending ?: words.firstOrNull() ?: typed
+                (listOf(primary, typed) + words).distinct().take(SUGGESTIONS)
+            }
+        if (offered.isNotEmpty()) {
+            singleCorrection.clear()
+            strip.show(offered)
+        } else if (editor == null || !showSingleInputCorrection(editor)) {
+            strip.show(emptyList())
+        }
     }
 
     private fun reopenWord(
@@ -464,6 +494,7 @@ class InputLogic(
         autocorrect.clearPending()
         onAutocorrectHighlight(false)
         misspelled = null
+        singleCorrection.clear()
         composing.setLength(0)
         composingTaps.clear()
         composingIsGesture = false

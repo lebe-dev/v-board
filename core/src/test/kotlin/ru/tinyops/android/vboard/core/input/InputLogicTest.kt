@@ -270,17 +270,35 @@ class InputLogicTest {
     }
 
     @Test
-    fun `a cursor after a space or on a known word offers nothing`() {
-        placeCursor("say helo now", 9)
+    fun `a cursor after a space or on a known word offers nothing when there is no single fixable word`() {
+        placeCursor("say hello now", 10)
         assertTrue(suggestions.isEmpty())
-        placeCursor("say helo now", 11)
+        placeCursor("say helo helo", 3)
         assertTrue(suggestions.isEmpty())
     }
 
     @Test
-    fun `moving off the word takes the corrections away`() {
-        placeCursor("say helo now", 6)
-        placeCursor("say helo now", 1)
+    fun `moving off the word takes the corrections away when more than one word is misspelled`() {
+        placeCursor("say helo helo", 6)
+        assertEquals(listOf("hello", "help"), suggestions)
+        placeCursor("say helo helo", 1)
+        assertTrue(suggestions.isEmpty())
+    }
+
+    @Test
+    fun `a single misspelled word in the input is offered without moving the cursor onto it`() {
+        editor.text.append("helo ")
+        editor.cursor = editor.text.length
+        type("world")
+        assertEquals(listOf("hello", "help"), suggestions)
+        logic.pickSuggestion(editor, "hello")
+        assertEquals("hello world", editor.toString())
+        assertEquals(11, editor.cursor)
+    }
+
+    @Test
+    fun `a complete valid word is not suggested as its own completion`() {
+        type("world")
         assertTrue(suggestions.isEmpty())
     }
 
@@ -318,7 +336,7 @@ class InputLogicTest {
         logic.backspace(editor)
         assertEquals("hell", editor.toString())
         assertEquals("hell", editor.composing)
-        assertEquals(listOf("hello", "hell"), suggestions)
+        assertEquals(listOf("hello"), suggestions)
 
         logic.pickSuggestion(editor, "hello")
         assertEquals("hello ", editor.toString())
@@ -526,6 +544,18 @@ class InputLogicTest {
         type("hel")
         logic.onSelectionChanged(editor, selectionStart = 0, selectionEnd = 0, candidatesEnd = -1)
         assertEquals("hel", editor.composing)
+    }
+
+    @Test
+    fun `tapping an earlier misspelled word shows corrections even when candidatesEnd is -1`() {
+        editor.text.append("helo ")
+        editor.cursor = editor.text.length
+        type("world")
+        // Simulate tapping inside "helo" in an editor that drops composing without reporting candidatesEnd.
+        editor.cursor = 2
+        logic.onSelectionChanged(editor, selectionStart = 2, selectionEnd = 2, candidatesEnd = -1)
+        assertEquals("", editor.composing)
+        assertEquals(listOf("hello", "help"), suggestions)
     }
 
     @Test

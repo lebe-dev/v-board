@@ -121,4 +121,17 @@ class TapSuggesterTest {
         assertEquals("привет", result.autocorrect)
         assertEquals(listOf("привет"), result.words)
     }
+
+    @Test
+    fun `cursor corrections fix a missing letter in a long russian word`() {
+        val ru = TapSuggester(bundledDictionary(Language.RUSSIAN), ruProximity)
+        assertTrue("предложение" in ru.corrections("прдложение"))
+    }
+
+    @Test
+    fun `cursor corrections fix a rare corpus typo when a much more common word is one edit away`() {
+        val ru = TapSuggester(bundledDictionary(Language.RUSSIAN), ruProximity)
+        assertEquals("сделать", ru.corrections("сделат").firstOrNull())
+        assertTrue(ru.corrections("семиклассница").isEmpty())
+    }
 }

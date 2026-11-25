@@ -62,14 +62,16 @@ class TapSuggester(
         pool: MutableMap<String, Candidate>,
     ) {
         addYoVariants(typed, context, pool)
-        if (typed.length >= MIN_CORRECTION_LEN) {
-            addOneEditCorrections(typed, taps, options.spatialModel, context, pool)
-        }
-        if (options.fuzzyPrefix && typed.length >= MIN_FUZZY_PREFIX_LEN) {
-            addFuzzyPrefixCompletions(typed, taps, options.spatialModel, context, pool)
-        }
-        if (options.twoEdits && !known && typed.length >= MIN_TWO_EDIT_LEN) {
-            addTwoEditCorrections(typed, taps, options.spatialModel, context, pool)
+        if (!known) {
+            if (typed.length >= MIN_CORRECTION_LEN) {
+                addOneEditCorrections(typed, taps, options.spatialModel, context, pool)
+            }
+            if (options.fuzzyPrefix && typed.length >= MIN_FUZZY_PREFIX_LEN) {
+                addFuzzyPrefixCompletions(typed, taps, options.spatialModel, context, pool)
+            }
+            if (options.twoEdits && typed.length >= MIN_TWO_EDIT_LEN) {
+                addTwoEditCorrections(typed, taps, options.spatialModel, context, pool)
+            }
         }
     }
 
@@ -93,18 +95,24 @@ class TapSuggester(
         limit: Int = DEFAULT_LIMIT,
         options: TapSuggestOptions = TapSuggestOptions(),
     ): List<String> {
-        if (word.length < MIN_CORRECTION_LEN || limit <= 0 || dictionary.contains(word)) return emptyList()
+        if (word.length < MIN_CORRECTION_LEN || limit <= 0) return emptyList()
+        val ownFreq = dictionary.frequency(word)
+        if (ownFreq != null && ownFreq >= RARE_WORD_MAX_FREQ) return emptyList()
         val context = previousContext(precedingText)
         val pool = LinkedHashMap<String, Candidate>()
         addYoVariants(word, context, pool)
         addOneEditCorrections(word, emptyList(), spatialModel = false, context, pool)
-        if (options.twoEdits && word.length >= MIN_TWO_EDIT_LEN) {
+        if (ownFreq == null && options.twoEdits && word.length >= MIN_TWO_EDIT_LEN) {
             addTwoEditCorrections(word, emptyList(), spatialModel = false, context, pool)
         }
+        val ownScore = ownFreq?.let { wordScore(word, it, context) }
         return pool.values
+            .asSequence()
+            .filter { ownScore == null || it.score > ownScore }
             .sortedWith(compareByDescending<Candidate> { it.score }.thenBy { it.word })
             .take(limit)
             .map { it.word }
+            .toList()
     }
 
     private fun previousContext(precedingText: String): BigramTable.Context? {
@@ -314,22 +322,26 @@ class TapSuggester(
         pool: MutableMap<String, Candidate>,
     ) {
         val frequency = dictionary.frequency(word) ?: return
-        val bigram = context?.association(word.replace('ё', 'е')) ?: 0.0
         val extensionPenalty =
             if (edits == 0) {
                 EXACT_EXTENSION_PENALTY * extraChars
             } else {
                 FUZZY_EXTENSION_BASE + FUZZY_EXTENSION_PER_CHAR * extraChars
             }
-        val score =
-            ln(frequency.coerceAtLeast(MIN_FREQ)) +
-                BIGRAM_WEIGHT * bigram -
-                EDIT_WEIGHT * editCost -
-                extensionPenalty
+        val score = wordScore(word, frequency, context) - EDIT_WEIGHT * editCost - extensionPenalty
         val existing = pool[word]
         if (existing == null || score > existing.score) {
             pool[word] = Candidate(word, editCost, edits, extraChars, score)
         }
+    }
+
+    private fun wordScore(
+        word: String,
+        frequency: Double,
+        context: BigramTable.Context?,
+    ): Double {
+        val bigram = context?.association(word.replace('ё', 'е')) ?: 0.0
+        return ln(frequency.coerceAtLeast(MIN_FREQ)) + BIGRAM_WEIGHT * bigram
     }
 
     private fun pickAutocorrect(
@@ -358,6 +370,7 @@ class TapSuggester(
         private const val FUZZY_PREFIX_PER_VARIANT = 2
         private const val MAX_FIRST_NEIGHBORS = 4
         private const val MIN_FREQ = 1e-12
+        private const val RARE_WORD_MAX_FREQ = 1e-6
         private const val BIGRAM_WEIGHT = 1.0
         private const val EDIT_WEIGHT = 4.5
         private const val EXACT_EXTENSION_PENALTY = 0.02
