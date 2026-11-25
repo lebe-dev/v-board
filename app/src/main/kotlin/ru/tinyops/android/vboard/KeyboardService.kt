@@ -482,6 +482,7 @@ class KeyboardService :
             logic.suggestionsAllowed = profile.suggestionsAllowed
             logic.nextWordsAllowed = keyboardPrefs.suggestNextWord
             logic.autocorrectEnabled = keyboardPrefs.autocorrect
+            logic.trimSpaceBeforePunctuation = keyboardPrefs.trimSpaceBeforePunctuation
             tapSuggestOptions = keyboardPrefs.tapSuggestOptions()
             stripView?.suggestionTimeoutMillis = keyboardPrefs.suggestionTimeout.millis
             stripView?.voiceAvailable = micShown

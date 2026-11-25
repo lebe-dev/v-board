@@ -74,4 +74,27 @@ class TextRulesTest {
         assertFalse(TextRules.isWordCharacter("1"))
         assertFalse(TextRules.isWordCharacter(","))
     }
+
+    @Test
+    fun `spaces before attached punctuation are counted after words and closers`() {
+        assertEquals(1, TextRules.spacesBeforePunctuation("Саша мыла раму ", "?"))
+        assertEquals(1, TextRules.spacesBeforePunctuation("Саша ", ","))
+        assertEquals(2, TextRules.spacesBeforePunctuation("Саша  ", ","))
+        assertEquals(1, TextRules.spacesBeforePunctuation("100 ", "!"))
+        assertEquals(1, TextRules.spacesBeforePunctuation("(тест) ", ","))
+        assertEquals(1, TextRules.spacesBeforePunctuation("«тест» ", "."))
+        assertEquals(1, TextRules.spacesBeforePunctuation("слово ", "…"))
+    }
+
+    @Test
+    fun `spaces are kept before non-attached marks or after openers and whitespace`() {
+        assertEquals(0, TextRules.spacesBeforePunctuation(" ", "?"))
+        assertEquals(0, TextRules.spacesBeforePunctuation("Саша\n ", ","))
+        assertEquals(0, TextRules.spacesBeforePunctuation("Саша, ", "."))
+        assertEquals(0, TextRules.spacesBeforePunctuation("Саша - ", "?"))
+        assertEquals(0, TextRules.spacesBeforePunctuation("(", "?"))
+        assertEquals(0, TextRules.spacesBeforePunctuation("( ", "?"))
+        assertEquals(0, TextRules.spacesBeforePunctuation("Саша ", ")"))
+        assertEquals(0, TextRules.spacesBeforePunctuation("Саша ", "-"))
+    }
 }

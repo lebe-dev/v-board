@@ -126,6 +126,11 @@ class KeyboardPrefs(
         get() = prefs.getBoolean(KEY_AUTOCORRECT, true)
         set(value) = prefs.edit { putBoolean(KEY_AUTOCORRECT, value) }
 
+    /** Whether accidental spaces right before punctuation are removed; on by default. */
+    var trimSpaceBeforePunctuation: Boolean
+        get() = prefs.getBoolean(KEY_TRIM_SPACE_BEFORE_PUNCTUATION, true)
+        set(value) = prefs.edit { putBoolean(KEY_TRIM_SPACE_BEFORE_PUNCTUATION, value) }
+
     /** Whether completions are suggested when an unfinished word contains a typo; on by default. */
     var fuzzyPrefix: Boolean
         get() = prefs.getBoolean(KEY_FUZZY_PREFIX, true)
@@ -214,6 +219,7 @@ class KeyboardPrefs(
         private const val KEY_SUGGESTION_TIMEOUT = "suggestion_timeout_seconds"
         private const val KEY_SWIPE_LOG_UNTIL = "swipe_log_until_millis"
         private const val KEY_TAP_CORRECTIONS = "tap_corrections"
+        private const val KEY_TRIM_SPACE_BEFORE_PUNCTUATION = "trim_space_before_punctuation"
         private const val KEY_TWO_EDIT_CORRECTIONS = "two_edit_corrections"
     }
 }

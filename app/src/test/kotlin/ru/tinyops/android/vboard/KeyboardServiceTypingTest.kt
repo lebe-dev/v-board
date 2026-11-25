@@ -258,6 +258,22 @@ class KeyboardServiceTypingTest {
         assertFalse(prefs.neuralModelLoading)
     }
 
+    @Test
+    fun `accidental space before punctuation is removed unless turned off in settings`() {
+        val (field, _) = start()
+        type("hi")
+        press(KeyType.SPACE)
+        type("?")
+        assertEquals("hi?", field.text)
+
+        KeyboardPrefs(context).trimSpaceBeforePunctuation = false
+        val (disabledField, _) = start()
+        type("hi")
+        press(KeyType.SPACE)
+        type("?")
+        assertEquals("hi ?", disabledField.text)
+    }
+
     private companion object {
         const val STEPS = 6
     }

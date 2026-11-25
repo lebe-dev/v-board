@@ -18,6 +18,7 @@ internal fun AutocorrectScreen(onBack: () -> Unit) {
     var cleanLinks by remember { mutableStateOf(prefs.cleanLinks) }
     var autocorrect by remember { mutableStateOf(prefs.autocorrect) }
     var twoEditCorrections by remember { mutableStateOf(prefs.twoEditCorrections) }
+    var trimSpaceBeforePunctuation by remember { mutableStateOf(prefs.trimSpaceBeforePunctuation) }
     SettingsPage(title = stringResource(R.string.settings_autocorrect), onBack = onBack) {
         item {
             SettingsSection(null) {
@@ -62,6 +63,17 @@ internal fun AutocorrectScreen(onBack: () -> Unit) {
                         onCheckedChange = {
                             twoEditCorrections = it
                             prefs.twoEditCorrections = it
+                        },
+                    )
+                }
+                item {
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.autocorrect_trim_space_before_punctuation),
+                        summary = stringResource(R.string.autocorrect_trim_space_before_punctuation_summary),
+                        checked = trimSpaceBeforePunctuation,
+                        onCheckedChange = {
+                            trimSpaceBeforePunctuation = it
+                            prefs.trimSpaceBeforePunctuation = it
                         },
                     )
                 }

@@ -209,6 +209,8 @@
     <string name="autocorrect_capitalize_summary">Включать Shift в начале предложения или поля, если поле этого просит, и выключать после буквы</string>
     <string name="autocorrect_clean_links">Убирать рекламные метки из ссылок</string>
     <string name="autocorrect_clean_links_summary">Удалять utm_source, gclid, fbclid и похожие параметры из ссылок, вставленных из буфера клавиатуры</string>
+    <string name="autocorrect_trim_space_before_punctuation">Убирать пробел перед знаками препинания</string>
+    <string name="autocorrect_trim_space_before_punctuation_summary">Удалять случайный пробел прямо перед запятой, точкой, вопросительным знаком и другими знаками препинания</string>
     <string name="settings_fullscreen">Полноэкранный режим</string>
     <string name="settings_fullscreen_on">Вкл</string>
     <string name="settings_fullscreen_enabled">Показывать кнопку в полосе</string>

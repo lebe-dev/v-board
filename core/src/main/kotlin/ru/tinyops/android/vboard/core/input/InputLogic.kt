@@ -97,6 +97,9 @@ class InputLogic(
     /** Whether confident typo corrections are applied automatically on space or punctuation. */
     var autocorrectEnabled: Boolean = true
 
+    /** Whether accidental spaces right before punctuation are removed when typing `, . ! ? ; : …`. */
+    var trimSpaceBeforePunctuation: Boolean = true
+
     private val composing = StringBuilder()
     private val composingTaps = ArrayList<TapPoint?>()
     private val autocorrect = AutocorrectState()
@@ -146,15 +149,17 @@ class InputLogic(
             }
             shift.onLetterTyped()
         } else {
+            val hadComposing = composing.isNotEmpty()
             val corrected =
-                composing.isNotEmpty() &&
+                hadComposing &&
                     AutocorrectState.triggersAutocorrect(text) &&
                     autocorrect.applyIfPending(editor, composing.toString(), text, autocorrectEnabled)
             if (corrected) {
                 resetComposing()
             } else {
                 commitComposing(editor)
-                editor.commitText(text)
+                val canTrim = !hadComposing && suggestionsAllowed && trimSpaceBeforePunctuation
+                commitPunctuation(editor, text, canTrim)
             }
             phantomSpace = false
             clearCorrections()
@@ -551,9 +556,24 @@ class InputLogic(
 
         /** A longer word is deleted in several steps. */
         private const val WORD_LOOKBACK = 64
+        internal const val PUNCTUATION_LOOKBACK = 16
         private const val CLEAR_LOOKAROUND = 100_000
         const val DOUBLE_SPACE_MILLIS = 500L
     }
+}
+
+private fun commitPunctuation(
+    editor: TextEditor,
+    text: String,
+    trimSpaces: Boolean,
+) {
+    val spaces =
+        if (trimSpaces && TextRules.isAttachedPunctuation(text)) {
+            TextRules.spacesBeforePunctuation(editor.textBeforeCursor(InputLogic.PUNCTUATION_LOOKBACK), text)
+        } else {
+            0
+        }
+    if (spaces > 0) editor.replaceAroundCursor(spaces, 0, text) else editor.commitText(text)
 }
 
 private const val MIN_CORRECTED = 2

@@ -5,9 +5,32 @@ import java.util.Locale
 /** Pure text rules used by the input logic. */
 object TextRules {
     private const val NO_SPACE_AFTER = "([{\"'«„“/-\n\t "
+    private const val ATTACHED_PUNCTUATION = ",.!?;:…"
+    private const val NO_ATTACH_BEFORE = "([{\\«„/-–—+=*<>|,.!?;:…"
 
     /** Letters and hyphens make up a word: `что-то`. */
     fun isInWord(c: Char): Boolean = c.isLetter() || c == '-'
+
+    /** Whether [text] is a single punctuation mark that attaches directly to the preceding word. */
+    fun isAttachedPunctuation(text: String): Boolean = text.length == 1 && text[0] in ATTACHED_PUNCTUATION
+
+    /**
+     * How many spaces immediately before the cursor should be removed when typing [typed]
+     * punctuation, or 0 when the text before the cursor should stay unchanged.
+     */
+    fun spacesBeforePunctuation(
+        textBefore: CharSequence?,
+        typed: String,
+    ): Int {
+        if (!isAttachedPunctuation(typed) || textBefore.isNullOrEmpty()) return 0
+        var i = textBefore.length
+        while (i > 0 && textBefore[i - 1] == ' ') i--
+        val spaces = textBefore.length - i
+        if (spaces == 0 || i == 0) return 0
+        val prev = textBefore[i - 1]
+        if (prev.isWhitespace() || prev in NO_ATTACH_BEFORE) return 0
+        return spaces
+    }
 
     /**
      * Whether a word inserted after [textBefore] needs a separating space (the "phantom space"

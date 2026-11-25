@@ -60,7 +60,8 @@ confident autocorrection exists and autocorrect is enabled, it takes the primary
 shown with a highlight. On space or on `, . ! ? ; :` the pending correction is applied instead of
 committing the typed spelling. One backspace immediately after an applied correction restores the
 original spelling. A completed valid word is not echoed back on the strip when there is no pending
-autocorrection.
+autocorrection. When `trimSpaceBeforePunctuation` is enabled and `suggestionsAllowed` is true, typing
+`, . ! ? ; : …` removes accidental spaces before the cursor when preceded by a word or closing mark.
 
 When the cursor is not composing, `showCorrections` looks at the word under the cursor. If that word
 is not in the dictionary, its corrections replace the strip; picking one replaces the word in place,

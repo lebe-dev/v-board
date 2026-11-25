@@ -123,7 +123,7 @@ class SingleInputCorrectionTest {
         logic.typeCharacter(editor, ",")
         assertTrue(suggestions.isEmpty())
         logic.pickSuggestion(editor, "hello")
-        assertEquals("helo ,", editor.toString())
+        assertEquals("helo,", editor.toString())
 
         placeCursor("helo ", 5)
         assertEquals(listOf("hello", "help"), suggestions)
