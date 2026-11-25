@@ -29,6 +29,7 @@ import ru.tinyops.android.vboard.core.clipboard.ClipEntry
 import ru.tinyops.android.vboard.core.clipboard.ClipKind
 import ru.tinyops.android.vboard.core.clipboard.ClipPayload
 import ru.tinyops.android.vboard.core.dict.BigramTable
+import ru.tinyops.android.vboard.core.dict.TapSuggestOptions
 import ru.tinyops.android.vboard.core.gesture.GestureDecodeResult
 import ru.tinyops.android.vboard.core.gesture.GestureLayoutFactory
 import ru.tinyops.android.vboard.core.input.CursorEditor
@@ -103,18 +104,18 @@ private const val PERCENT = 100f
 /** Input logic that takes its words from [decoder] in the current [language]. */
 private fun inputLogicOver(
     decoder: GestureDecoder,
-    prefs: KeyboardPrefs,
+    tapSuggestOptions: () -> TapSuggestOptions,
     language: () -> Language,
     strip: () -> SuggestionStripView?,
 ) = InputLogic(
     completions = { prefix, before -> decoder.completions(language(), prefix, InputLogic.SUGGESTIONS, before) },
     onSuggestions = { words -> strip()?.setSuggestions(words) },
     corrections = { word ->
-        decoder.corrections(language(), word, InputLogic.SUGGESTIONS, prefs.tapSuggestOptions())
+        decoder.corrections(language(), word, InputLogic.SUGGESTIONS, tapSuggestOptions())
     },
     predictions = { before -> decoder.nextWords(language(), before, InputLogic.SUGGESTIONS) },
     tapSuggestions = { typed, taps, before ->
-        decoder.suggestForTap(language(), typed, taps, before, InputLogic.SUGGESTIONS, prefs.tapSuggestOptions())
+        decoder.suggestForTap(language(), typed, taps, before, InputLogic.SUGGESTIONS + 1, tapSuggestOptions())
     },
     onAutocorrectHighlight = { highlight -> strip()?.autocorrectHighlight = highlight },
 )
@@ -268,15 +269,17 @@ class KeyboardService :
     private var cursorKeptOnLine = false
 
     private lateinit var keyboardPrefs: KeyboardPrefs
+    private var tapSuggestOptions = TapSuggestOptions()
 
     internal lateinit var fullscreen: FullscreenControl
         private set
 
-    private fun createInputLogic() = inputLogicOver(decoder, keyboardPrefs, { language }) { stripView }
+    private fun createInputLogic() = inputLogicOver(decoder, { tapSuggestOptions }, { language }) { stripView }
 
     override fun onCreate() {
         super.onCreate()
         keyboardPrefs = KeyboardPrefs(this)
+        tapSuggestOptions = keyboardPrefs.tapSuggestOptions()
         decoder =
             GestureDecoder(
                 openDictionary = { language -> DictionaryAssets.open(assets, language) },
@@ -479,6 +482,7 @@ class KeyboardService :
             logic.suggestionsAllowed = profile.suggestionsAllowed
             logic.nextWordsAllowed = keyboardPrefs.suggestNextWord
             logic.autocorrectEnabled = keyboardPrefs.autocorrect
+            tapSuggestOptions = keyboardPrefs.tapSuggestOptions()
             stripView?.suggestionTimeoutMillis = keyboardPrefs.suggestionTimeout.millis
             stripView?.voiceAvailable = micShown
             stripView?.applyLook(clipboardPrefs, voicePrefs, keyboardPrefs)

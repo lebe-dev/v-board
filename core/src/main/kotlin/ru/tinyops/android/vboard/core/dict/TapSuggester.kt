@@ -148,14 +148,23 @@ class TapSuggester(
         pool: MutableMap<String, Candidate>,
     ) {
         if ('е' !in typed) return
+        val sb = StringBuilder(typed)
         for (i in typed.indices) {
             if (typed[i] != 'е') continue
-            val candidate = typed.substring(0, i) + 'ё' + typed.substring(i + 1)
-            if (dictionary.contains(candidate)) {
-                offer(candidate, TapEditDistance.YO_COST, edits = 1, extraChars = 0, context, pool)
+            sb.setCharAt(i, 'ё')
+            val index = dictionary.indexOf(sb)
+            if (index >= 0) {
+                offerAt(sb.toString(), index, TapEditDistance.YO_COST, edits = 1, extraChars = 0, context, pool)
             }
+            sb.setCharAt(i, 'е')
         }
     }
+
+    private class OneEditSink(
+        val context: BigramTable.Context?,
+        val pool: MutableMap<String, Candidate>,
+        val sb: StringBuilder,
+    )
 
     private fun addOneEditCorrections(
         typed: String,
@@ -165,23 +174,37 @@ class TapSuggester(
         pool: MutableMap<String, Candidate>,
     ) {
         val alphabet = alphabetOf(typed)
+        val sink = OneEditSink(context, pool, StringBuilder(typed.length + 1))
+        val sb = sink.sb
         for (i in typed.indices) {
-            val deleted = typed.removeRange(i, i + 1)
-            if (deleted.isNotEmpty() && dictionary.contains(deleted)) {
-                offer(deleted, TapEditDistance.deleteCost(typed, i, proximity), edits = 1, 0, context, pool)
-            }
-            if (i + 1 < typed.length && typed[i] != typed[i + 1]) {
-                val swapped = typed.substring(0, i) + typed[i + 1] + typed[i] + typed.substring(i + 2)
-                if (dictionary.contains(swapped)) {
-                    offer(swapped, TapEditDistance.TRANSPOSE_COST, edits = 1, 0, context, pool)
+            if (typed.length > 1) {
+                sb.setLength(0)
+                sb.append(typed, 0, i).append(typed, i + 1, typed.length)
+                val delIdx = dictionary.indexOf(sb)
+                if (delIdx >= 0) {
+                    val cost = TapEditDistance.deleteCost(typed, i, proximity)
+                    offerAt(sb.toString(), delIdx, cost, edits = 1, 0, context, pool)
                 }
             }
-            addLetterEditsAt(typed, i, alphabet, taps.getOrNull(i), spatialModel, context, pool)
+            if (i + 1 < typed.length && typed[i] != typed[i + 1]) {
+                sb.setLength(0)
+                sb.append(typed)
+                sb.setCharAt(i, typed[i + 1])
+                sb.setCharAt(i + 1, typed[i])
+                val swapIdx = dictionary.indexOf(sb)
+                if (swapIdx >= 0) {
+                    offerAt(sb.toString(), swapIdx, TapEditDistance.TRANSPOSE_COST, edits = 1, 0, context, pool)
+                }
+            }
+            addLetterEditsAt(typed, i, alphabet, taps.getOrNull(i), spatialModel, sink)
         }
+        sb.setLength(0)
+        sb.append(typed).append(' ')
         for (letter in alphabet) {
-            val appended = typed + letter
-            if (dictionary.contains(appended)) {
-                offer(appended, TapEditDistance.INSERT_COST, edits = 1, 0, context, pool)
+            sb.setCharAt(typed.length, letter)
+            val insIdx = dictionary.indexOf(sb)
+            if (insIdx >= 0) {
+                offerAt(sb.toString(), insIdx, TapEditDistance.INSERT_COST, edits = 1, 0, context, pool)
             }
         }
     }
@@ -192,24 +215,28 @@ class TapSuggester(
         alphabet: String,
         tap: TapPoint?,
         spatialModel: Boolean,
-        context: BigramTable.Context?,
-        pool: MutableMap<String, Candidate>,
+        sink: OneEditSink,
     ) {
-        val prefix = typed.substring(0, index)
-        val suffixFrom = typed.substring(index)
-        val suffixAfter = typed.substring(index + 1)
+        val sb = sink.sb
         val original = typed[index]
+        sb.setLength(0)
+        sb.append(typed)
         for (letter in alphabet) {
-            if (letter != original) {
-                val replaced = prefix + letter + suffixAfter
-                if (dictionary.contains(replaced)) {
-                    val cost = TapEditDistance.substitutionCost(original, letter, tap, proximity, spatialModel)
-                    offer(replaced, cost, edits = 1, 0, context, pool)
-                }
+            if (letter == original) continue
+            sb.setCharAt(index, letter)
+            val dictIndex = dictionary.indexOf(sb)
+            if (dictIndex >= 0) {
+                val cost = TapEditDistance.substitutionCost(original, letter, tap, proximity, spatialModel)
+                offerAt(sb.toString(), dictIndex, cost, edits = 1, 0, sink.context, sink.pool)
             }
-            val inserted = prefix + letter + suffixFrom
-            if (dictionary.contains(inserted)) {
-                offer(inserted, TapEditDistance.INSERT_COST, edits = 1, 0, context, pool)
+        }
+        sb.setLength(0)
+        sb.append(typed, 0, index).append(' ').append(typed, index, typed.length)
+        for (letter in alphabet) {
+            sb.setCharAt(index, letter)
+            val dictIndex = dictionary.indexOf(sb)
+            if (dictIndex >= 0) {
+                offerAt(sb.toString(), dictIndex, TapEditDistance.INSERT_COST, edits = 1, 0, sink.context, sink.pool)
             }
         }
     }
@@ -286,8 +313,9 @@ class TapSuggester(
             }
         for (letter in nearFirst.take(MAX_FIRST_NEIGHBORS)) buckets += letter
 
+        val scratch = TapEditDistance.TwoEditScratch(typed.length)
         for (firstChar in buckets) {
-            scanTwoEditBucket(typed, firstChar, taps, spatialModel, context, pool)
+            scanTwoEditBucket(typed, firstChar, taps, spatialModel, scratch, context, pool)
         }
     }
 
@@ -296,21 +324,42 @@ class TapSuggester(
         firstChar: Char,
         taps: List<TapPoint?>,
         spatialModel: Boolean,
+        scratch: TapEditDistance.TwoEditScratch,
         context: BigramTable.Context?,
         pool: MutableMap<String, Candidate>,
     ) {
         val table = dictionary.words
         for (index in dictionary.prefixRange(firstChar)) {
-            val dist = TapEditDistance.withinTwo(typed, table, index)
+            val dist = TapEditDistance.withinTwo(typed, table, index, scratch = scratch)
             if (dist > 2) continue
             val word = table.wordAt(index)
             if (word !in pool) {
                 val cost = TapEditDistance.weightedCost(typed, word, taps, proximity, spatialModel)
                 if (cost <= MAX_TWO_EDIT_COST) {
-                    offer(word, cost, edits = dist, extraChars = 0, context = context, pool = pool)
+                    offerAt(word, index, cost, edits = dist, extraChars = 0, context = context, pool = pool)
                 }
             }
         }
+    }
+
+    private fun offerAt(
+        word: String,
+        dictIndex: Int,
+        editCost: Double,
+        edits: Int,
+        extraChars: Int,
+        context: BigramTable.Context?,
+        pool: MutableMap<String, Candidate>,
+    ) {
+        offerWithFrequency(
+            word = word,
+            frequency = dictionary.frequencies[dictIndex],
+            editCost = editCost,
+            edits = edits,
+            extraChars = extraChars,
+            context = context,
+            pool = pool,
+        )
     }
 
     private fun offer(
@@ -322,6 +371,18 @@ class TapSuggester(
         pool: MutableMap<String, Candidate>,
     ) {
         val frequency = dictionary.frequency(word) ?: return
+        offerWithFrequency(word, frequency, editCost, edits, extraChars, context, pool)
+    }
+
+    private fun offerWithFrequency(
+        word: String,
+        frequency: Double,
+        editCost: Double,
+        edits: Int,
+        extraChars: Int,
+        context: BigramTable.Context?,
+        pool: MutableMap<String, Candidate>,
+    ) {
         val extensionPenalty =
             if (edits == 0) {
                 EXACT_EXTENSION_PENALTY * extraChars

@@ -15,11 +15,33 @@ internal class SingleInputCorrection {
         val tail: String,
     )
 
+    private class CachedScan(
+        val rawBefore: String,
+        val rawAfter: String,
+        val locale: Locale,
+        val suggestions: List<String>?,
+        val target: Target?,
+    )
+
     var target: Target? = null
         private set
 
+    private var cachedLocale: Locale? = null
+    private var lastScan: CachedScan? = null
+    private val wordCache =
+        object : LinkedHashMap<String, List<String>>(CACHE_INITIAL_CAPACITY, CACHE_LOAD_FACTOR, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<String>>): Boolean =
+                size > MAX_WORD_CACHE
+        }
+
     fun clear() {
         target = null
+    }
+
+    fun invalidate() {
+        target = null
+        lastScan = null
+        wordCache.clear()
     }
 
     fun findAndFormat(
@@ -28,28 +50,44 @@ internal class SingleInputCorrection {
         corrections: (String) -> List<String>,
         limit: Int,
     ): List<String>? {
-        val rawBefore = editor.textBeforeCursor(SCAN_CHARS)?.toString().orEmpty()
-        val rawAfter = editor.textAfterCursor(SCAN_CHARS)?.toString().orEmpty()
+        if (cachedLocale != locale) {
+            wordCache.clear()
+            lastScan = null
+            cachedLocale = locale
+        }
+        val around = editor.textAroundCursor(SCAN_CHARS, SCAN_CHARS)
+        val rawBefore = around.before.toString()
+        val rawAfter = around.after.toString()
+        lastScan?.let { cached ->
+            if (cached.rawBefore == rawBefore && cached.rawAfter == rawAfter && cached.locale == locale) {
+                target = cached.target
+                return cached.suggestions
+            }
+        }
         val full = rawBefore + rawAfter
         val cursor = rawBefore.length
         var found: FoundWord? = null
         forEachWordSpan(full, rawBefore.length == SCAN_CHARS, rawAfter.length == SCAN_CHARS) { start, end ->
             val word = full.substring(start, end)
-            val fixes = corrections(word.lowercase(locale))
+            val lower = word.lowercase(locale)
+            val fixes = wordCache.getOrPut(lower) { corrections(lower) }
             if (fixes.isNotEmpty()) {
                 if (found != null) {
-                    target = null
-                    return null
+                    return recordAndReturn(rawBefore, rawAfter, locale, null, null)
                 }
                 found = FoundWord(start, end, word, fixes)
             }
         }
-        val single = found ?: return clearAndNull()
-        target = buildTarget(single, full, cursor) ?: return clearAndNull()
-        return single.fixes
-            .map { TextRules.matchCase(it, single.text, locale) }
-            .distinct()
-            .take(limit)
+        val single = found ?: return recordAndReturn(rawBefore, rawAfter, locale, null, null)
+        val newTarget =
+            buildTarget(single, full, cursor)
+                ?: return recordAndReturn(rawBefore, rawAfter, locale, null, null)
+        val suggestions =
+            single.fixes
+                .map { TextRules.matchCase(it, single.text, locale) }
+                .distinct()
+                .take(limit)
+        return recordAndReturn(rawBefore, rawAfter, locale, suggestions, newTarget)
     }
 
     fun apply(
@@ -59,6 +97,7 @@ internal class SingleInputCorrection {
     ): Boolean {
         val current = target ?: return false
         target = null
+        lastScan = null
         editor.beginBatchEdit()
         commitComposing()
         editor.replaceAroundCursor(
@@ -70,9 +109,16 @@ internal class SingleInputCorrection {
         return true
     }
 
-    private fun clearAndNull(): List<String>? {
-        target = null
-        return null
+    private fun recordAndReturn(
+        rawBefore: String,
+        rawAfter: String,
+        locale: Locale,
+        suggestions: List<String>?,
+        newTarget: Target?,
+    ): List<String>? {
+        target = newTarget
+        lastScan = CachedScan(rawBefore, rawAfter, locale, suggestions, newTarget)
+        return suggestions
     }
 
     private fun buildTarget(
@@ -99,6 +145,9 @@ internal class SingleInputCorrection {
         const val SCAN_CHARS = 512
         const val MIN_WORD = 2
         const val MAX_WORD = 40
+        const val MAX_WORD_CACHE = 256
+        const val CACHE_INITIAL_CAPACITY = 64
+        const val CACHE_LOAD_FACTOR = 0.75f
 
         inline fun forEachWordSpan(
             text: String,
@@ -111,29 +160,42 @@ internal class SingleInputCorrection {
                 while (i < text.length && !TextRules.isInWord(text[i])) i++
                 val rawStart = i
                 while (i < text.length && TextRules.isInWord(text[i])) i++
-                trimAndValidateSpan(text, rawStart, i, skipFirst, skipLast)?.let { (start, end) ->
-                    onWord(start, end)
-                }
+                emitValidSpan(text, rawStart, i, skipFirst, skipLast, onWord)
             }
         }
 
-        fun trimAndValidateSpan(
+        inline fun emitValidSpan(
             text: String,
             rawStart: Int,
             rawEnd: Int,
             skipFirst: Boolean,
             skipLast: Boolean,
-        ): Pair<Int, Int>? {
-            val boundaryCut = (skipFirst && rawStart == 0) || (skipLast && rawEnd == text.length)
-            if (boundaryCut) return null
+            onWord: (start: Int, end: Int) -> Unit,
+        ) {
+            if (isBoundaryCut(rawStart, rawEnd, text.length, skipFirst, skipLast)) return
             var start = rawStart
             var end = rawEnd
             while (start < end && text[start] == '-') start++
             while (end > start && text[end - 1] == '-') end--
-            if (end - start !in MIN_WORD until MAX_WORD) return null
-            if (isWordJoinBoundary(text.getOrNull(start - 1)) || isWordJoinBoundary(text.getOrNull(end))) return null
-            return start to end
+            if (isValidSpan(text, start, end)) onWord(start, end)
         }
+
+        fun isBoundaryCut(
+            rawStart: Int,
+            rawEnd: Int,
+            textLength: Int,
+            skipFirst: Boolean,
+            skipLast: Boolean,
+        ): Boolean = (skipFirst && rawStart == 0) || (skipLast && rawEnd == textLength)
+
+        fun isValidSpan(
+            text: String,
+            start: Int,
+            end: Int,
+        ): Boolean =
+            end - start in MIN_WORD until MAX_WORD &&
+                !isWordJoinBoundary(text.getOrNull(start - 1)) &&
+                !isWordJoinBoundary(text.getOrNull(end))
 
         fun isWordJoinBoundary(c: Char?): Boolean = c != null && (c.isDigit() || c == '_')
     }

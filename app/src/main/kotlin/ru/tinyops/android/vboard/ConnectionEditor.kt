@@ -6,6 +6,8 @@ import android.view.inputmethod.InputConnection
 import ru.tinyops.android.vboard.core.input.ArrowKey
 import ru.tinyops.android.vboard.core.input.CursorEditor
 import ru.tinyops.android.vboard.core.input.CursorWindow
+import ru.tinyops.android.vboard.core.input.SurroundingTextProvider
+import ru.tinyops.android.vboard.core.input.TextAround
 import ru.tinyops.android.vboard.core.input.TextEditor
 
 /** [TextEditor] and [CursorEditor] over the focused editor's [InputConnection]. */
@@ -13,10 +15,24 @@ internal class ConnectionEditor(
     private val ic: InputConnection,
     private val service: InputMethodService,
 ) : TextEditor,
-    CursorEditor {
+    CursorEditor,
+    SurroundingTextProvider {
     override fun textBeforeCursor(length: Int): CharSequence? = ic.getTextBeforeCursor(length, 0)
 
     override fun textAfterCursor(length: Int): CharSequence? = ic.getTextAfterCursor(length, 0)
+
+    override fun textAroundCursor(
+        beforeLength: Int,
+        afterLength: Int,
+    ): TextAround {
+        val surrounding =
+            ic.getSurroundingText(beforeLength, afterLength, 0)
+                ?: return TextAround(textBeforeCursor(beforeLength) ?: "", textAfterCursor(afterLength) ?: "")
+        val text = surrounding.text
+        val start = minOf(surrounding.selectionStart, surrounding.selectionEnd).coerceIn(0, text.length)
+        val end = maxOf(surrounding.selectionStart, surrounding.selectionEnd).coerceIn(0, text.length)
+        return TextAround(text.subSequence(0, start), text.subSequence(end, text.length))
+    }
 
     override fun replaceAroundCursor(
         before: Int,

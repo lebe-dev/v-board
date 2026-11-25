@@ -39,9 +39,10 @@ internal class SuggestionStrip(
     }
 
     private fun wordsAfter(editor: TextEditor): List<String> {
-        val before = editor.textBeforeCursor(InputLogic.CONTEXT_CHARS)?.toString()
-        if (before == null || !before.endsWith(' ')) return emptyList()
-        val next = editor.textAfterCursor(1)?.firstOrNull()
+        val around = editor.textAroundCursor(InputLogic.CONTEXT_CHARS, 1)
+        val before = around.before.toString()
+        if (!before.endsWith(' ')) return emptyList()
+        val next = around.after.firstOrNull()
         if (next != null && TextRules.isInWord(next)) return emptyList()
         return predictions(before)
     }

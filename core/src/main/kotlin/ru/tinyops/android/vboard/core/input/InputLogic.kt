@@ -4,6 +4,30 @@ import ru.tinyops.android.vboard.core.dict.TapPoint
 import ru.tinyops.android.vboard.core.dict.TapSuggestions
 import java.util.Locale
 
+/** Text immediately before and after the cursor. */
+data class TextAround(
+    val before: CharSequence,
+    val after: CharSequence,
+)
+
+/** Optional fast path for editors that can fetch text on both sides of the cursor in one call. */
+interface SurroundingTextProvider {
+    fun textAroundCursor(
+        beforeLength: Int,
+        afterLength: Int,
+    ): TextAround
+}
+
+internal fun TextEditor.textAroundCursor(
+    beforeLength: Int,
+    afterLength: Int,
+): TextAround =
+    if (this is SurroundingTextProvider) {
+        textAroundCursor(beforeLength, afterLength)
+    } else {
+        TextAround(textBeforeCursor(beforeLength) ?: "", textAfterCursor(afterLength) ?: "")
+    }
+
 /** The editing operations the input logic needs; implemented over an `InputConnection`. */
 interface TextEditor {
     fun textBeforeCursor(length: Int): CharSequence?
@@ -133,6 +157,7 @@ class InputLogic(
                 editor.commitText(text)
             }
             phantomSpace = false
+            clearCorrections()
             strip.dropNextWords()
         }
         editor.endBatchEdit()
@@ -173,6 +198,7 @@ class InputLogic(
         commitComposing(editor)
         phantomSpace = false
         editor.sendEnter()
+        clearCorrections()
         strip.dropNextWords()
     }
 
@@ -192,6 +218,7 @@ class InputLogic(
                 showCompletions(editor)
             }
             autocorrect.undoIfMatching(editor) -> {
+                clearCorrections()
                 strip.dropNextWords()
             }
             suggestionsAllowed && reopenWord(editor, dropLast = 1, extraLength = 0) -> {
@@ -202,6 +229,7 @@ class InputLogic(
             }
             else -> {
                 editor.sendBackspace()
+                clearCorrections()
                 strip.dropNextWords()
             }
         }
@@ -231,6 +259,7 @@ class InputLogic(
         }
         val length = TextRules.wordBeforeLength(editor.textBeforeCursor(WORD_LOOKBACK))
         if (length > 0) editor.replaceAroundCursor(length, 0, "")
+        clearCorrections()
         strip.dropNextWords()
     }
 
@@ -253,8 +282,13 @@ class InputLogic(
     ) {
         autocorrect.clearUndo()
         when {
-            misspelled != null && composing.isEmpty() -> replaceMisspelled(editor, word)
-            singleCorrection.apply(editor, word) { commitComposing(editor) } -> {
+            misspelled != null && composing.isEmpty() -> {
+                val target = misspelled ?: return
+                misspelled = null
+                editor.replaceAroundCursor(target.before, target.after, word)
+                strip.show(emptyList())
+            }
+            !composingIsGesture && singleCorrection.apply(editor, word) { commitComposing(editor) } -> {
                 if (!showPredictions(editor)) strip.show(emptyList())
             }
             strip.offersNextWords && composing.isEmpty() -> {
@@ -286,6 +320,7 @@ class InputLogic(
     fun startGesture(editor: TextEditor) {
         autocorrect.clearUndo()
         commitComposing(editor)
+        clearCorrections()
     }
 
     /**
@@ -300,6 +335,7 @@ class InputLogic(
         val word = candidates.firstOrNull() ?: return
         editor.beginBatchEdit()
         commitComposing(editor)
+        clearCorrections(dropStrip = !suggestionsAllowed)
         if (TextRules.needsSpaceBefore(editor.textBeforeCursor(1))) editor.commitText(" ")
         if (suggestionsAllowed) {
             composing.append(word)
@@ -315,7 +351,10 @@ class InputLogic(
     }
 
     /** Live suggestions for a gesture still in progress. */
-    fun showGesturePreview(words: List<String>) = strip.show(casedForShift(words))
+    fun showGesturePreview(words: List<String>) {
+        clearCorrections(dropStrip = false)
+        strip.show(casedForShift(words))
+    }
 
     /**
      * Reacts to a selection change reported by the editor. Updates without a composing region
@@ -397,16 +436,6 @@ class InputLogic(
         return true
     }
 
-    private fun replaceMisspelled(
-        editor: TextEditor,
-        word: String,
-    ) {
-        val target = misspelled ?: return
-        misspelled = null
-        editor.replaceAroundCursor(target.before, target.after, word)
-        strip.show(emptyList())
-    }
-
     /** Commits the composing text, if any. */
     fun commitComposing(editor: TextEditor) {
         if (composing.isEmpty()) return
@@ -427,12 +456,14 @@ class InputLogic(
     fun reset() {
         autocorrect.reset()
         resetComposing()
+        singleCorrection.invalidate()
         phantomSpace = false
         lastSpaceAt = Long.MIN_VALUE
     }
 
     /** Recomputes completions for the word being typed (e.g. once a dictionary is loaded). */
     fun refreshCompletions(editor: TextEditor? = null) {
+        singleCorrection.invalidate()
         if (composing.isNotEmpty() && !composingIsGesture) showCompletions(editor)
     }
 
@@ -490,6 +521,13 @@ class InputLogic(
         return true
     }
 
+    private fun clearCorrections(dropStrip: Boolean = true) {
+        val hadCorrections = misspelled != null || singleCorrection.target != null
+        misspelled = null
+        singleCorrection.clear()
+        if (dropStrip && hadCorrections) strip.show(emptyList())
+    }
+
     private fun resetComposing() {
         autocorrect.clearPending()
         onAutocorrectHighlight(false)
@@ -527,18 +565,9 @@ private class WordAtCursor(
 )
 
 private fun wordAtCursor(editor: TextEditor): WordAtCursor? {
-    val before =
-        editor
-            .textBeforeCursor(InputLogic.MAX_WORD)
-            ?.takeLastWhile(TextRules::isInWord)
-            ?.toString()
-            .orEmpty()
-    val after =
-        editor
-            .textAfterCursor(InputLogic.MAX_WORD)
-            ?.takeWhile(TextRules::isInWord)
-            ?.toString()
-            .orEmpty()
+    val around = editor.textAroundCursor(InputLogic.MAX_WORD, InputLogic.MAX_WORD)
+    val before = around.before.takeLastWhile(TextRules::isInWord).toString()
+    val after = around.after.takeWhile(TextRules::isInWord).toString()
     val text = before + after
     if (text.length < MIN_CORRECTED || text.length >= InputLogic.MAX_WORD) return null
     if (text.first() == '-' || text.last() == '-') return null

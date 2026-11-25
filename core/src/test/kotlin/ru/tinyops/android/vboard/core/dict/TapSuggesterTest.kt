@@ -133,5 +133,26 @@ class TapSuggesterTest {
         val ru = TapSuggester(bundledDictionary(Language.RUSSIAN), ruProximity)
         assertEquals("сделать", ru.corrections("сделат").firstOrNull())
         assertTrue(ru.corrections("семиклассница").isEmpty())
+        assertTrue(ru.corrections("докторе").isEmpty())
+        assertTrue(ru.corrections("главах").isEmpty())
+        assertTrue(ru.corrections("далекое").isEmpty())
+    }
+
+    @Test
+    fun `reused two-edit scratch matches fresh computation across lengths`() {
+        val dict =
+            Dictionary.parse(
+                "apple\t10\napricot\t10\nbanana\t10\nband\t10\napp\t10\napplication\t10\n".byteInputStream(),
+            )
+        val scratch = TapEditDistance.TwoEditScratch(maxTypedLength = 7)
+        for (query in listOf("aple", "apricto", "bannana", "appl")) {
+            for (index in 0 until dict.size) {
+                assertEquals(
+                    TapEditDistance.withinTwo(query, dict.words, index),
+                    TapEditDistance.withinTwo(query, dict.words, index, scratch = scratch),
+                    "Mismatch for query=$query word=${dict.words.wordAt(index)}",
+                )
+            }
+        }
     }
 }

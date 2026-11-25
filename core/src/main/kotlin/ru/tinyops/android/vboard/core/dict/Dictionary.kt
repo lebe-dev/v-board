@@ -22,9 +22,9 @@ class Dictionary internal constructor(
     /** Unigram model over the same vocabulary, used by the gesture decoder. */
     val languageModel: LanguageModel by lazy(LazyThreadSafetyMode.SYNCHRONIZED, model)
 
-    fun contains(word: String): Boolean = indexOf(word) >= 0
+    fun contains(word: CharSequence): Boolean = indexOf(word) >= 0
 
-    fun frequency(word: String): Double? = indexOf(word).takeIf { it >= 0 }?.let { frequencies[it] }
+    fun frequency(word: CharSequence): Double? = indexOf(word).takeIf { it >= 0 }?.let { frequencies[it] }
 
     /**
      * The [limit] most frequent words starting with [prefix] (lowercase), most frequent first.
@@ -95,13 +95,13 @@ class Dictionary internal constructor(
         return from until to
     }
 
-    private fun indexOf(word: String): Int {
+    internal fun indexOf(word: CharSequence): Int {
         val index = lowerBound(word)
         return if (index < words.size && words.compareAt(index, word) == 0) index else -1
     }
 
     /** First index whose word is `>= key`. */
-    private fun lowerBound(key: String): Int {
+    private fun lowerBound(key: CharSequence): Int {
         var low = 0
         var high = words.size
         while (low < high) {
@@ -183,7 +183,7 @@ internal class WordTable(
     /** Compares the word at [index] with [key], in the order of [String.compareTo]. */
     fun compareAt(
         index: Int,
-        key: String,
+        key: CharSequence,
     ): Int {
         val start = offsets.get(index)
         val length = offsets.get(index + 1) - start

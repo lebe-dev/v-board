@@ -22,22 +22,36 @@ internal object TapEditDistance {
     private const val KEY_SUB_SLOPE = 0.45
     private const val NEAR_DELETE_RADIUS = 1.35f
 
+    class TwoEditScratch(
+        maxTypedLength: Int,
+        maxDist: Int = MAX_BAND_DIST,
+    ) {
+        private val capacity = maxTypedLength + maxDist + 1
+        val prev2 = IntArray(capacity)
+        val prev1 = IntArray(capacity)
+        val curr = IntArray(capacity)
+    }
+
     /**
      * Optimal string alignment distance between [typed] and word [index] in [table], or
-     * `maxDist + 1` when the distance exceeds [maxDist] (at most 2). Allocates no strings.
+     * `maxDist + 1` when the distance exceeds [maxDist] (at most 2). Allocates no strings or row
+     * arrays when [scratch] is provided.
      */
     fun withinTwo(
         typed: String,
         table: WordTable,
         index: Int,
         maxDist: Int = MAX_BAND_DIST,
+        scratch: TwoEditScratch? = null,
     ): Int {
         val m = typed.length
         val n = table.lengthAt(index)
         if (abs(m - n) > maxDist) return maxDist + 1
-        var prev2 = IntArray(n + 1)
-        var prev1 = IntArray(n + 1) { it }
-        var curr = IntArray(n + 1)
+        val buffer = scratch ?: TwoEditScratch(m, maxDist)
+        var prev2 = buffer.prev2
+        var prev1 = buffer.prev1
+        var curr = buffer.curr
+        for (j in 0..n) prev1[j] = j
         for (i in 1..m) {
             curr[0] = i
             val from = maxOf(1, i - maxDist)
