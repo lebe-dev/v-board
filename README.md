@@ -33,5 +33,6 @@
 - [Частые вопросы](docs/FAQ.md)
 - [Безопасность](docs/SECURITY.md)
 - [Решение проблем](docs/troubleshooting.md)
+- [Архитектура](docs/architecture/README.md)
 - [История изменений](CHANGELOG.md)
 - [Для разработчиков](DEV.md)
