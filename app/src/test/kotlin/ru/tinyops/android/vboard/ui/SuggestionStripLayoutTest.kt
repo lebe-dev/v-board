@@ -76,7 +76,7 @@ class SuggestionStripLayoutTest {
         val available = strip.width - strip.height
         tap(available * 0.25f)
         tap(available * 0.75f)
-        assertEquals(listOf("pick:программирование", "pick:программирования"), events)
+        assertEquals(listOf("pick:программирования", "pick:программирование"), events)
         assertEquals(2, strip.displayedSuggestions.size)
     }
 
@@ -92,9 +92,9 @@ class SuggestionStripLayoutTest {
         val shown = strip.displayedSuggestions
         assertEquals(2, shown.size)
         assertTrue("Expected start ellipsis in ${shown[0]}", shown[0].startsWith("\u2026"))
-        assertTrue("Expected ending preserved in ${shown[0]}", shown[0].endsWith("ство"))
+        assertTrue("Expected ending preserved in ${shown[0]}", shown[0].endsWith("ству"))
         assertTrue("Expected start ellipsis in ${shown[1]}", shown[1].startsWith("\u2026"))
-        assertTrue("Expected ending preserved in ${shown[1]}", shown[1].endsWith("ству"))
+        assertTrue("Expected ending preserved in ${shown[1]}", shown[1].endsWith("ство"))
     }
 
     @Test
@@ -108,8 +108,8 @@ class SuggestionStripLayoutTest {
         val shown = strip.displayedSuggestions
         assertEquals(2, shown.size)
         assertTrue("Expected end ellipsis in ${shown[0]}", shown[0].endsWith("\u2026"))
-        assertTrue("Expected beginning preserved in ${shown[0]}", shown[0].startsWith("досто"))
+        assertTrue("Expected beginning preserved in ${shown[0]}", shown[0].startsWith("элект"))
         assertTrue("Expected end ellipsis in ${shown[1]}", shown[1].endsWith("\u2026"))
-        assertTrue("Expected beginning preserved in ${shown[1]}", shown[1].startsWith("элект"))
+        assertTrue("Expected beginning preserved in ${shown[1]}", shown[1].startsWith("досто"))
     }
 }

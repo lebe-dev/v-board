@@ -45,8 +45,8 @@ internal class StripSuggestions(
             suggestions.size == 1 -> listOf(Slot(SuggestionStripView.Zone.SLOT_MIDDLE, suggestions[0], primary = true))
             else ->
                 listOf(
-                    Slot(SuggestionStripView.Zone.SLOT_LEFT, suggestions[0], primary = true),
-                    Slot(SuggestionStripView.Zone.SLOT_RIGHT, suggestions[1]),
+                    Slot(SuggestionStripView.Zone.SLOT_LEFT, suggestions[1]),
+                    Slot(SuggestionStripView.Zone.SLOT_RIGHT, suggestions[0], primary = true),
                 )
         }
     }

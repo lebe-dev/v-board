@@ -31,7 +31,7 @@ import kotlin.math.abs
  * slots while typing (the cog and the clipboard button are hidden then and the slots span their room):
  * when all words fit in three slots, the primary suggestion is shown in the middle in bold, the second on
  * the left and the third on the right; when long words do not fit, only the first two are shown side by side
- * (primary on the left), and if they share a long prefix and still overflow, their beginning is ellipsized
+ * (primary on the right), and if they share a long prefix and still overflow, their beginning is ellipsized
  * so the differing endings stay visible. With nothing to suggest, the recently copied text, image
  * and the links found in it are shown as chips, centered, that paste on tap. Left of the microphone
  * sits the proofread button, while proofreading is on and the field has text. The custom buttons

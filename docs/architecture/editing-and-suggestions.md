@@ -116,7 +116,7 @@ bounds. See [Keyboard service](keyboard-service.md) for the two space-drag modes
 
 - Up to three suggestions are shown. When all fit in three equal slots, the primary suggestion stands
   in the middle in bold with the second on the left and the third on the right. When long words do not
-  fit in three slots, only the first two are shown side by side (primary on the left). If a word still
+  fit in three slots, only the first two are shown side by side (primary on the right). If a word still
   overflows its slot and the shown words share a long prefix, the beginning is ellipsized instead of
   the end so differing endings stay readable.
 - Chips disappear after the configured suggestion timeout.
